@@ -1,9 +1,43 @@
 import Foundation
 
+/// キーマップマネージャの設定
+///
+/// 外部アプリがアプリ固有のキーマップを組み込みとして追加したり、
+/// デフォルトキーマップを変更するために使用する。
+///
+/// ```swift
+/// let config = KeymapManagerConfiguration(
+///     additionalKeymaps: [("builtin:my_layout", myDefinition)],
+///     defaultKeymapID: "builtin:my_layout"
+/// )
+/// let manager = KeymapManager(configuration: config)
+/// ```
+public struct KeymapManagerConfiguration: Sendable {
+    /// 追加の組み込みキーマップ（アプリ固有）
+    ///
+    /// `DefaultKeymaps.allKeymaps` に続けて一覧に表示される。
+    /// ID は `"builtin:"` プレフィックスを推奨（`loadDefinition` で解決可能にするため）。
+    public var additionalKeymaps: [(id: String, definition: KeymapDefinition)]
+
+    /// デフォルトのキーマップ ID（未選択時のフォールバック）
+    public var defaultKeymapID: String
+
+    public init(
+        additionalKeymaps: [(id: String, definition: KeymapDefinition)] = [],
+        defaultKeymapID: String = "builtin:romaji_us"
+    ) {
+        self.additionalKeymaps = additionalKeymaps
+        self.defaultKeymapID = defaultKeymapID
+    }
+}
+
 /// キーマップの管理（一覧・選択・永続化・インポート・削除）
 ///
 /// 組み込みキーマップとカスタムキーマップを統一的に管理する。
 /// 選択状態は UserDefaults に永続化される。
+///
+/// 外部アプリからアプリ固有のキーマップを追加するには
+/// `KeymapManagerConfiguration` 付きの `init(configuration:)` を使用する。
 @Observable
 public class KeymapManager {
 
@@ -33,21 +67,32 @@ public class KeymapManager {
     /// 直近のエラーメッセージ（UI 表示用）
     public var lastError: String?
 
-    // MARK: - UserDefaults キー
+    // MARK: - Private
+
+    private let configuration: KeymapManagerConfiguration
 
     private static let selectedKeymapIDKey = "selectedKeymapID"
-    private static let defaultKeymapID = "builtin:romaji_us"
 
     // MARK: - 初期化
 
+    /// デフォルト設定で初期化する（後方互換）
     public init() {
+        self.init(configuration: KeymapManagerConfiguration())
+    }
+
+    /// 設定付きで初期化する
+    ///
+    /// 外部アプリがアプリ固有のキーマップを組み込みとして追加する場合に使用。
+    /// - Parameter configuration: キーマップマネージャの設定
+    public init(configuration: KeymapManagerConfiguration) {
+        self.configuration = configuration
         // UserDefaults から選択状態を復元
         let savedID = UserDefaults.standard.string(forKey: Self.selectedKeymapIDKey)
-        self.selectedEntryID = savedID ?? Self.defaultKeymapID
+        self.selectedEntryID = savedID ?? configuration.defaultKeymapID
         reload()
         // 保存された ID が一覧にない場合はデフォルトにフォールバック
         if !entries.contains(where: { $0.id == selectedEntryID }) {
-            selectedEntryID = Self.defaultKeymapID
+            selectedEntryID = configuration.defaultKeymapID
         }
     }
 
@@ -57,8 +102,13 @@ public class KeymapManager {
     public func reload() {
         var newEntries: [KeymapEntry] = []
 
-        // 組み込みキーマップ
+        // KeyLogicKit 組み込みキーマップ
         for (id, definition) in DefaultKeymaps.allKeymaps {
+            newEntries.append(KeymapEntry(id: id, name: definition.name, isBuiltIn: true))
+        }
+
+        // アプリ固有の組み込みキーマップ
+        for (id, definition) in configuration.additionalKeymaps {
             newEntries.append(KeymapEntry(id: id, name: definition.name, isBuiltIn: true))
         }
 
@@ -84,8 +134,15 @@ public class KeymapManager {
     /// 指定 ID のキーマップ定義を読み込む
     public func loadDefinition(for entryID: String) -> KeymapDefinition? {
         if entryID.hasPrefix("builtin:") {
-            // 組み込みキーマップ
-            return DefaultKeymaps.allKeymaps.first(where: { $0.id == entryID })?.definition
+            // KeyLogicKit 組み込みキーマップ
+            if let definition = DefaultKeymaps.allKeymaps.first(where: { $0.id == entryID })?.definition {
+                return definition
+            }
+            // アプリ固有の組み込みキーマップ
+            if let definition = configuration.additionalKeymaps.first(where: { $0.id == entryID })?.definition {
+                return definition
+            }
+            return nil
         } else if entryID.hasPrefix("custom:") {
             // カスタムキーマップ
             let fileName = String(entryID.dropFirst("custom:".count))
@@ -138,7 +195,7 @@ public class KeymapManager {
 
         // 選択中のキーマップを削除した場合はデフォルトにフォールバック
         if selectedEntryID == entryID {
-            selectedEntryID = Self.defaultKeymapID
+            selectedEntryID = configuration.defaultKeymapID
         }
 
         reload()
