@@ -1,0 +1,257 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "keymap-v1.schema.json",
+  "title": "Keymap Definition v1",
+  "description": "キーマップ定義フォーマット v1。逐次入力（ローマ字等）と同時打鍵入力（薙刀式・NICOLA 等）の両方を表現する。",
+  "type": "object",
+  "required": ["formatVersion", "name", "keyboardLayout", "behavior"],
+  "properties": {
+    "formatVersion": {
+      "type": "string",
+      "const": "1.0",
+      "description": "フォーマットバージョン（現在は \"1.0\" 固定）"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "キーマップの表示名"
+    },
+    "description": {
+      "type": "string",
+      "description": "入力方式の説明"
+    },
+    "author": {
+      "type": "string",
+      "description": "作者名"
+    },
+    "license": {
+      "type": "string",
+      "description": "ライセンス識別子（SPDX 形式推奨）"
+    },
+    "keyboardLayout": {
+      "type": "string",
+      "enum": ["us", "jis"],
+      "description": "対象キーボードの物理配列"
+    },
+    "targetScript": {
+      "type": "string",
+      "description": "出力文字体系（\"hiragana\", \"katakana\" 等）"
+    },
+    "behavior": {
+      "$ref": "#/$defs/inputBehavior"
+    },
+    "controlBindings": {
+      "$ref": "#/$defs/controlBindings"
+    },
+    "inputBase": {
+      "type": "string",
+      "enum": ["romaji"],
+      "description": "ベーステーブルの種類。\"romaji\" で組み込み標準ローマ字テーブルを自動ロード。"
+    },
+    "keyRemap": {
+      "type": "object",
+      "additionalProperties": { "type": "string", "minLength": 1, "maxLength": 1 },
+      "propertyNames": { "type": "string", "minLength": 1, "maxLength": 1 },
+      "description": "キーリマップテーブル（物理キー文字 → 論理キー文字）。inputBase と併用すると、ベーステーブルのキーを物理キー空間に自動変換する。bufferDisplayMap が未指定の場合は bufferDisplayMap としても使用される。"
+    },
+    "suffixRules": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["vowel", "suffix"],
+        "properties": {
+          "vowel": { "type": "string", "enum": ["a", "i", "u", "e", "o"] },
+          "suffix": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": false
+      },
+      "description": "サフィックス展開ルール。キーは展開トリガー文字、値は { vowel, suffix } の展開定義。"
+    },
+    "inputMappings": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "逐次入力のカスタムマッピング（キーシーケンス → かな）。inputBase / suffixRules と併用時は固有エントリのみ。"
+    },
+    "prefixShiftKeys": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1, "maxLength": 1 },
+      "description": "前置シフトキーの明示指定。指定されたキーのみシフトキーとして扱い ⇧ ラベル + シフトレイヤーを生成する。省略時は空配列と同等（前置シフトなし）。"
+    },
+    "bufferDisplayMap": {
+      "type": "object",
+      "additionalProperties": { "type": "string", "minLength": 1 },
+      "propertyNames": { "type": "string", "minLength": 1 },
+      "description": "逐次入力バッファの表示変換テーブル（OS 文字 → 表示文字）。キー位置リマップ型の配列で使用。"
+    },
+    "extensions": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "アプリ固有の拡張フィールド。キー名は \"x-\" プレフィックスを推奨。"
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "inputBehavior": {
+      "type": "object",
+      "required": ["type"],
+      "oneOf": [
+        {
+          "properties": {
+            "type": { "const": "sequential" },
+            "characterMap": {
+              "type": "object",
+              "additionalProperties": { "type": "string", "minLength": 1, "maxLength": 1 },
+              "description": "半角→全角文字マッピング（1文字→1文字）"
+            }
+          },
+          "required": ["type", "characterMap"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "type": { "const": "chord" },
+            "config": { "$ref": "#/$defs/chordConfig" }
+          },
+          "required": ["type", "config"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "chordConfig": {
+      "type": "object",
+      "required": ["hidToKey", "lookupTable", "specialActions", "simultaneousWindow", "shiftKeys"],
+      "properties": {
+        "hidToKey": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/chordKeyName" },
+          "propertyNames": { "$ref": "#/$defs/keyName" },
+          "description": "物理キー名 → ChordKey のマッピング"
+        },
+        "lookupTable": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "propertyNames": { "$ref": "#/$defs/bitmaskString" },
+          "description": "キー組合せビットマスク → 出力文字列"
+        },
+        "specialActions": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/keyActionString" },
+          "propertyNames": { "$ref": "#/$defs/bitmaskString" },
+          "description": "キー組合せビットマスク → 特殊アクション"
+        },
+        "simultaneousWindow": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "同時打鍵判定ウィンドウ（秒）"
+        },
+        "englishLookupTable": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "propertyNames": { "$ref": "#/$defs/bitmaskString" },
+          "description": "英数モード用の lookup テーブル"
+        },
+        "englishSpecialActions": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/keyActionString" },
+          "propertyNames": { "$ref": "#/$defs/bitmaskString" },
+          "description": "英数モード用の特殊アクション"
+        },
+        "shiftKeys": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/shiftKeyConfig" },
+          "minItems": 0,
+          "maxItems": 2,
+          "description": "シフトキー定義（0〜2個）"
+        }
+      },
+      "additionalProperties": false
+    },
+    "shiftKeyConfig": {
+      "type": "object",
+      "required": ["key"],
+      "properties": {
+        "key": { "$ref": "#/$defs/chordKeyName" },
+        "singleTapAction": { "$ref": "#/$defs/keyActionString" }
+      },
+      "additionalProperties": false
+    },
+    "controlBindings": {
+      "type": "object",
+      "properties": {
+        "emacsBindings": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/keyActionString" },
+          "propertyNames": { "$ref": "#/$defs/keyName" },
+          "description": "Ctrl+キー → KeyAction のマッピング"
+        },
+        "ctrlSemicolonAction": {
+          "$ref": "#/$defs/keyActionString",
+          "description": "Ctrl+; のアクション"
+        },
+        "ctrlColonAction": {
+          "$ref": "#/$defs/keyActionString",
+          "description": "Ctrl+: のアクション"
+        }
+      },
+      "additionalProperties": false
+    },
+    "chordKeyName": {
+      "type": "string",
+      "enum": [
+        "Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P",
+        "A", "S", "D", "F", "G", "H", "J", "K", "L", "semicolon",
+        "Z", "X", "C", "V", "B", "N", "M", "comma", "dot", "slash",
+        "space", "leftThumb", "rightThumb"
+      ],
+      "description": "ChordKey 識別子（QWERTY 30キー + 親指3キー）"
+    },
+    "keyName": {
+      "type": "string",
+      "enum": [
+        "a", "b", "c", "d", "e", "f", "g", "h", "i", "j",
+        "k", "l", "m", "n", "o", "p", "q", "r", "s", "t",
+        "u", "v", "w", "x", "y", "z",
+        "1", "2", "3", "4", "5", "6", "7", "8", "9", "0",
+        "enter", "escape", "backspace", "delete", "tab", "space", "capsLock",
+        "hyphen", "equal", "bracketLeft", "bracketRight",
+        "backslash", "semicolon", "quote", "backquote",
+        "comma", "period", "slash",
+        "arrowRight", "arrowLeft", "arrowDown", "arrowUp",
+        "home", "end", "pageUp", "pageDown",
+        "f1", "f2", "f3", "f4", "f5", "f6",
+        "f7", "f8", "f9", "f10", "f11", "f12",
+        "international1", "international2", "international3",
+        "international4", "international5",
+        "lang1", "lang2",
+        "rightAlt"
+      ],
+      "description": "物理キー名（フォーマット独自命名、USB HID Keyboard/Keypad Page に対応）"
+    },
+    "bitmaskString": {
+      "type": "string",
+      "pattern": "^[A-Za-z]+(\\+[A-Za-z]+)*$",
+      "description": "ChordKey の組合せ表記（\"+\" 区切り、親指キー先頭・他はアルファベット順）"
+    },
+    "keyActionString": {
+      "type": "string",
+      "description": "アクション文字列。well-known 名またはパラメータ付き形式。\"x-\" プレフィックスでアプリ固有アクションを拡張可能。",
+      "anyOf": [
+        { "enum": [
+          "convert", "convertPrev", "confirm", "cancel", "deleteBack",
+          "moveLeft", "moveRight", "moveUp", "moveDown",
+          "editSegmentLeft", "editSegmentRight",
+          "confirmHiragana", "confirmKatakana", "confirmHalfWidthKatakana",
+          "confirmFullWidthRoman", "confirmHalfWidthRoman",
+          "chordModeOff", "chordModeOn", "pass"
+        ]},
+        { "pattern": "^printable:.$" },
+        { "pattern": "^selectCandidate:[0-9]+$" },
+        { "pattern": "^chordInput:(Q|W|E|R|T|Y|U|I|O|P|A|S|D|F|G|H|J|K|L|semicolon|Z|X|C|V|B|N|M|comma|dot|slash|space|leftThumb|rightThumb)$" },
+        { "pattern": "^chordShiftDown:(space|leftThumb|rightThumb)$" },
+        { "pattern": "^insertAndConfirm:.+$" },
+        { "pattern": "^directInsert:.+$" },
+        { "pattern": "^x-.+$" }
+      ]
+    }
+  }
+}
