@@ -1,7 +1,7 @@
 {
   "formatVersion": "1.0",
   "name": "月配列2-263(US)",
-  "description": "月配列 2-263 前置シフト方式（US キーボード）",
+  "description": "月配列2-263 前置シフト方式（US キーボード）",
   "keyboardLayout": "us",
   "targetScript": "hiragana",
   "behavior": {
