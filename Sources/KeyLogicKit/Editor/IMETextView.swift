@@ -12,6 +12,9 @@ public class IMETextView: UITextView {
     /// 変換管理（外部から注入）
     public var inputManager: InputManager?
 
+    /// エディタの表示スタイル（markedText 属性のベースとして使用）
+    public var editorStyle = EditorStyle()
+
     /// キーイベントログ用コールバック
     public var onKeyEvent: ((KeyEventInfo) -> Void)?
 
@@ -880,9 +883,12 @@ public class IMETextView: UITextView {
         setMarkedText(fullText, selectedRange: NSRange(location: fullText.count, length: 0))
         guard !fullText.isEmpty, let range = markedTextRange else { return }
         let baseOffset = offset(from: beginningOfDocument, to: range.start)
-        var currentOffset = 0
+        let fullRange = NSRange(location: baseOffset, length: (fullText as NSString).length)
         // beginEditing/endEditing で属性変更を一括通知し、レイアウトマネージャの再描画を確実にする
         textStorage.beginEditing()
+        // editorStyle のベース属性を markedText 全体に適用
+        textStorage.addAttributes(editorStyle.typingAttributes, range: fullRange)
+        var currentOffset = 0
         for segment in segments {
             let segmentLength = (segment.text as NSString).length
             guard segmentLength > 0 else { continue }

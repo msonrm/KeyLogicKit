@@ -133,6 +133,7 @@ let config = KeymapManagerConfiguration(
 ```
 KeyLogicKit
 ├── Editor/
+│   ├── EditorStyle              # エディタ表示スタイル（フォント・行間・文末揃え）
 │   ├── IMETextView              # UITextView サブクラス（キー入力横取り）
 │   └── IMETextViewRepresentable # SwiftUI ラッパー
 ├── IME/
