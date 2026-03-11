@@ -10,6 +10,9 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
     /// キールーター（入力方式・キーボードレイアウトの切替で差し替え）
     public var keyRouter: KeyRouter
 
+    /// エディタの表示スタイル（フォント・行間・文末揃え）
+    public var editorStyle: EditorStyle
+
     /// キーイベントログの追加コールバック
     public var onKeyEvent: ((IMETextView.KeyEventInfo) -> Void)?
 
@@ -29,6 +32,7 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
     public init(
         inputManager: InputManager,
         keyRouter: KeyRouter,
+        editorStyle: EditorStyle = .init(),
         onKeyEvent: ((IMETextView.KeyEventInfo) -> Void)? = nil,
         onKeyDown: ((UIKeyboardHIDUsage, Date) -> Void)? = nil,
         onKeyUp: ((UIKeyboardHIDUsage, Date) -> Void)? = nil,
@@ -37,6 +41,7 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
     ) {
         self.inputManager = inputManager
         self.keyRouter = keyRouter
+        self.editorStyle = editorStyle
         self.onKeyEvent = onKeyEvent
         self.onKeyDown = onKeyDown
         self.onKeyUp = onKeyUp
@@ -56,10 +61,17 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         textView.smartInsertDeleteType = .no
 
         // 外観設定
-        textView.font = .monospacedSystemFont(ofSize: 18, weight: .regular)
+        textView.typingAttributes = editorStyle.typingAttributes
+        textView.textStorage.setAttributes(
+            editorStyle.typingAttributes,
+            range: NSRange(location: 0, length: textView.textStorage.length)
+        )
         textView.backgroundColor = .systemBackground
         textView.isEditable = true
         textView.isScrollEnabled = true
+
+        // EditorStyle を IMETextView に保持（markedText 属性のベースとして使う）
+        textView.editorStyle = editorStyle
 
         // InputManager、KeyRouter、コールバックを設定
         textView.inputManager = inputManager
@@ -71,9 +83,7 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         textView.onCaretRectChange = onCaretRectChange
 
         // エディタのフォントサイズを InputManager に反映
-        if let fontSize = textView.font?.pointSize {
-            inputManager.setEditorFontSize(fontSize)
-        }
+        inputManager.setEditorFontSize(editorStyle.font.pointSize)
 
         // 入力モード監視を開始
         textView.setupInputModeObserver()
@@ -95,5 +105,16 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         uiView.onEnglishModeChange = onEnglishModeChange
         uiView.onCaretRectChange = onCaretRectChange
         uiView.setSimultaneousWindow(inputManager.simultaneousWindow)
+
+        // EditorStyle の変更を検知して再設定
+        if uiView.editorStyle != editorStyle {
+            uiView.editorStyle = editorStyle
+            uiView.typingAttributes = editorStyle.typingAttributes
+            uiView.textStorage.setAttributes(
+                editorStyle.typingAttributes,
+                range: NSRange(location: 0, length: uiView.textStorage.length)
+            )
+            inputManager.setEditorFontSize(editorStyle.font.pointSize)
+        }
     }
 }
