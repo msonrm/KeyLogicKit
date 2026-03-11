@@ -168,6 +168,14 @@ inputManager.zenzaiWeightURL = Bundle.main.url(
 
 アプリの `Package.swift` で `traits: ["ZenzaiCPU"]` を指定すること。
 
+## Acknowledgements
+
+KeyLogicKit のかな漢字変換は [AzooKeyKanaKanjiConverter](https://github.com/azooKey/AzooKeyKanaKanjiConverter) (MIT License, Copyright (c) 2023 Miwa / Ensan) を使用しています。素晴らしい変換エンジンを公開してくださっている [@ensan-hcl](https://github.com/ensan-hcl) さんに感謝します。
+
+詳細は [ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md) を参照してください。
+
 ## ライセンス
 
-MIT License
+MIT License — Copyright (c) 2026 Narumi Masao
+
+詳細は [LICENSE](LICENSE) を参照してください。

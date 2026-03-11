@@ -76,7 +76,7 @@ public class KeymapManager {
     // MARK: - 初期化
 
     /// デフォルト設定で初期化する（後方互換）
-    public convenience init() {
+    public init() {
         self.init(configuration: KeymapManagerConfiguration())
     }
 
