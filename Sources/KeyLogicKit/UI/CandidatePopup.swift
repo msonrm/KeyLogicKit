@@ -23,8 +23,8 @@ public struct CandidatePopup: View {
     let candidates: [String]
     /// ウィンドウ内での選択位置（0-based）
     let selectedIndex: Int
-    /// 候補テキストのフォントサイズ（エディタ連動）
-    var fontSize: CGFloat = 15
+    /// 候補テキストのフォント（エディタ連動）
+    var font: Font
 
     public init(
         additionalCandidates: [InputManager.AdditionalCandidate],
@@ -32,14 +32,14 @@ public struct CandidatePopup: View {
         selectedAdditionalCandidateIndex: Int,
         candidates: [String],
         selectedIndex: Int,
-        fontSize: CGFloat = 15
+        font: Font = .system(size: 15)
     ) {
         self.additionalCandidates = additionalCandidates
         self.isAdditionalCandidateSelected = isAdditionalCandidateSelected
         self.selectedAdditionalCandidateIndex = selectedAdditionalCandidateIndex
         self.candidates = candidates
         self.selectedIndex = selectedIndex
-        self.fontSize = fontSize
+        self.font = font
     }
 
     public var body: some View {
@@ -93,7 +93,7 @@ public struct CandidatePopup: View {
                 .foregroundStyle(isSelected ? Color.primary.opacity(0.6) : Color.secondary)
                 .frame(width: 18, alignment: .trailing)
             Text(text)
-                .font(.system(size: fontSize))
+                .font(font)
                 .foregroundStyle(.primary)
             Spacer(minLength: 0)
         }
@@ -111,7 +111,7 @@ public struct CandidatePopup: View {
                 .foregroundStyle(isSelected ? Color.primary.opacity(0.6) : Color.secondary)
                 .frame(minWidth: 18, alignment: .trailing)
             Text(text)
-                .font(.system(size: fontSize))
+                .font(font)
                 .foregroundStyle(.primary)
             Spacer(minLength: 0)
         }
