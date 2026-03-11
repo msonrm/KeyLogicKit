@@ -145,6 +145,8 @@ KeyLogicKit
 │   ├── DefaultKeymaps           # 組み込みキーマップ定義
 │   ├── ChordKey                 # 同時打鍵キー識別子
 │   └── SimultaneousKeyBuffer    # 同時打鍵バッファ
+├── UI/
+│   └── CandidatePopup           # 変換候補ポップアップ（macOS IME 風）
 └── Resources/Keymaps/           # 組み込みキーマップ JSON
 ```
 
