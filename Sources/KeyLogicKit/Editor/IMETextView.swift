@@ -1,6 +1,6 @@
 import UIKit
 
-/// キー入力を横取りする UITextView サブクラス。
+/// キー入力を横取りする UITextView サブクラス
 ///
 /// 設計原則:
 ///   - InputManager が変換状態の唯一の管理元。IMETextView は表示とキー入力の橋渡しのみ。
