@@ -29,10 +29,10 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
     public var onKeyEvent: ((IMETextView.KeyEventInfo) -> Void)?
 
     /// キーダウン通知（可視化パネル用、HID コード + タイムスタンプ）
-    public var onKeyDown: ((UIKeyboardHIDUsage, Date) -> Void)?
+    public var onKeyDown: ((HIDKeyCode, Date) -> Void)?
 
     /// キーアップ通知（可視化パネル用、HID コード + タイムスタンプ）
-    public var onKeyUp: ((UIKeyboardHIDUsage, Date) -> Void)?
+    public var onKeyUp: ((HIDKeyCode, Date) -> Void)?
 
     /// 英数モード切替通知（レイヤー自動追従用）
     public var onEnglishModeChange: ((Bool) -> Void)?
@@ -54,8 +54,8 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         selectionLength: Binding<Int> = .constant(0),
         scrollRevision: Int = 0,
         onKeyEvent: ((IMETextView.KeyEventInfo) -> Void)? = nil,
-        onKeyDown: ((UIKeyboardHIDUsage, Date) -> Void)? = nil,
-        onKeyUp: ((UIKeyboardHIDUsage, Date) -> Void)? = nil,
+        onKeyDown: ((HIDKeyCode, Date) -> Void)? = nil,
+        onKeyUp: ((HIDKeyCode, Date) -> Void)? = nil,
         onEnglishModeChange: ((Bool) -> Void)? = nil,
         onCaretRectChange: ((CGRect) -> Void)? = nil,
         onScrollRequest: ((IMETextView, Int) -> Void)? = nil

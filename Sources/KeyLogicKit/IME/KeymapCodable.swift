@@ -1,4 +1,4 @@
-import UIKit
+import Foundation
 
 // MARK: - Private Helpers
 
@@ -18,24 +18,24 @@ private struct DynamicCodingKey: CodingKey {
     }
 }
 
-// MARK: - UIKeyboardHIDUsage ↔ 文字列名
+// MARK: - HIDKeyCode ↔ 文字列名
 
-/// UIKeyboardHIDUsage と JSON 用文字列名の相互変換
+/// HIDKeyCode と JSON 用文字列名の相互変換
 ///
 /// フォーマット仕様の独自命名を使用。Apple の UIKeyboardHIDUsage 名には依存しない。
 private enum HIDUsageNames {
 
-    /// UIKeyboardHIDUsage → 文字列名
-    static func name(for usage: UIKeyboardHIDUsage) -> String? {
-        usageToName[usage]
+    /// HIDKeyCode → 文字列名
+    static func name(for keyCode: HIDKeyCode) -> String? {
+        codeToName[keyCode]
     }
 
-    /// 文字列名 → UIKeyboardHIDUsage
-    static func usage(for name: String) -> UIKeyboardHIDUsage? {
-        nameToUsage[name]
+    /// 文字列名 → HIDKeyCode
+    static func keyCode(for name: String) -> HIDKeyCode? {
+        nameToCode[name]
     }
 
-    private static let table: [(UIKeyboardHIDUsage, String)] = [
+    private static let table: [(HIDKeyCode, String)] = [
         // アルファベット
         (.keyboardA, "a"), (.keyboardB, "b"), (.keyboardC, "c"),
         (.keyboardD, "d"), (.keyboardE, "e"), (.keyboardF, "f"),
@@ -97,18 +97,18 @@ private enum HIDUsageNames {
         (.keyboardRightAlt, "rightAlt"),
     ]
 
-    static let usageToName: [UIKeyboardHIDUsage: String] = {
-        var dict: [UIKeyboardHIDUsage: String] = [:]
-        for (usage, name) in table {
-            dict[usage] = name
+    static let codeToName: [HIDKeyCode: String] = {
+        var dict: [HIDKeyCode: String] = [:]
+        for (code, name) in table {
+            dict[code] = name
         }
         return dict
     }()
 
-    static let nameToUsage: [String: UIKeyboardHIDUsage] = {
-        var dict: [String: UIKeyboardHIDUsage] = [:]
-        for (usage, name) in table {
-            dict[name] = usage
+    static let nameToCode: [String: HIDKeyCode] = {
+        var dict: [String: HIDKeyCode] = [:]
+        for (code, name) in table {
+            dict[name] = code
         }
         return dict
     }()
@@ -368,12 +368,12 @@ extension ControlBindings: Codable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
 
-        // emacsBindings: [UIKeyboardHIDUsage: KeyAction] → {"keyboardH": "deleteBack", ...}
+        // emacsBindings: [HIDKeyCode: KeyAction] → {"h": "deleteBack", ...}
         var bindingsContainer = container.nestedContainer(
             keyedBy: DynamicCodingKey.self, forKey: .emacsBindings
         )
-        for (usage, action) in emacsBindings {
-            guard let name = HIDUsageNames.name(for: usage) else { continue }
+        for (keyCode, action) in emacsBindings {
+            guard let name = HIDUsageNames.name(for: keyCode) else { continue }
             try bindingsContainer.encode(action, forKey: DynamicCodingKey(stringValue: name))
         }
 
@@ -387,16 +387,16 @@ extension ControlBindings: Codable {
         let bindingsContainer = try container.nestedContainer(
             keyedBy: DynamicCodingKey.self, forKey: .emacsBindings
         )
-        var bindings: [UIKeyboardHIDUsage: KeyAction] = [:]
+        var bindings: [HIDKeyCode: KeyAction] = [:]
         for key in bindingsContainer.allKeys {
-            guard let usage = HIDUsageNames.usage(for: key.stringValue) else {
+            guard let code = HIDUsageNames.keyCode(for: key.stringValue) else {
                 throw DecodingError.dataCorruptedError(
                     forKey: key, in: bindingsContainer,
                     debugDescription: "不明な HID usage 名: \(key.stringValue)"
                 )
             }
             let action = try bindingsContainer.decode(KeyAction.self, forKey: key)
-            bindings[usage] = action
+            bindings[code] = action
         }
         self.emacsBindings = bindings
 
@@ -421,12 +421,12 @@ extension KeymapDefinition.ChordConfig: Codable {
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
 
-        // hidToKey: [UIKeyboardHIDUsage: ChordKey] → {"keyboardQ": "Q", ...}
+        // hidToKey: [HIDKeyCode: ChordKey] → {"q": "Q", ...}
         var hidContainer = container.nestedContainer(
             keyedBy: DynamicCodingKey.self, forKey: .hidToKey
         )
-        for (usage, nKey) in hidToKey {
-            guard let name = HIDUsageNames.name(for: usage) else { continue }
+        for (keyCode, nKey) in hidToKey {
+            guard let name = HIDUsageNames.name(for: keyCode) else { continue }
             try hidContainer.encode(nKey, forKey: DynamicCodingKey(stringValue: name))
         }
 
@@ -456,15 +456,15 @@ extension KeymapDefinition.ChordConfig: Codable {
         let hidContainer = try container.nestedContainer(
             keyedBy: DynamicCodingKey.self, forKey: .hidToKey
         )
-        var hidDict: [UIKeyboardHIDUsage: ChordKey] = [:]
+        var hidDict: [HIDKeyCode: ChordKey] = [:]
         for key in hidContainer.allKeys {
-            guard let usage = HIDUsageNames.usage(for: key.stringValue) else {
+            guard let code = HIDUsageNames.keyCode(for: key.stringValue) else {
                 throw DecodingError.dataCorruptedError(
                     forKey: key, in: hidContainer,
                     debugDescription: "不明な HID usage 名: \(key.stringValue)"
                 )
             }
-            hidDict[usage] = try hidContainer.decode(ChordKey.self, forKey: key)
+            hidDict[code] = try hidContainer.decode(ChordKey.self, forKey: key)
         }
         self.hidToKey = hidDict
 

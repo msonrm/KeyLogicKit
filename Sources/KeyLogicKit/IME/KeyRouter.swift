@@ -1,4 +1,4 @@
-import UIKit
+import Foundation
 
 /// 汎用キールーター
 ///
@@ -10,7 +10,7 @@ import UIKit
 ///   2. 標準制御キー（composing 中）→ Enter/Escape/Space/BS/矢印/数字
 ///      ※ chord 方式ではシフトキー（Space 等）を除外（selecting 中を除く）
 ///   3. behavior に応じた文字キー処理:
-///      - sequential: key.characters → .printable(c)
+///      - sequential: event.characters → .printable(c)
 ///      - chord: hidToKey → .chordInput(key) / .chordShiftDown(key)
 ///   4. 該当なし → .pass
 @MainActor
@@ -27,17 +27,17 @@ public struct KeyRouter {
     /// キーイベントを KeyAction に変換する
     ///
     /// - Parameters:
-    ///   - key: UIKit のキーイベント
+    ///   - event: プラットフォーム非依存のキーイベント
     ///   - isComposing: 現在 composing/selecting 中か
     ///   - state: 現在の変換状態
     ///   - isDirectEnglishMode: 英数直接入力モードか（薙刀式の F+G 後の状態）
     /// - Returns: 実行すべきアクション
-    public func route(_ key: UIKey, isComposing: Bool,
+    public func route(_ event: KeyEvent, isComposing: Bool,
                state: InputManager.ConversionState,
                isDirectEnglishMode: Bool = false) -> KeyAction {
         // Ctrl+キー（composing 中）→ Emacs バインド
-        if isComposing && key.modifierFlags.contains(.control) {
-            return routeControlKey(key)
+        if isComposing && event.modifierFlags.contains(.control) {
+            return routeControlKey(event)
         }
 
         // composing/selecting 中の標準制御キー
@@ -47,14 +47,14 @@ public struct KeyRouter {
             let isChordShiftKey: Bool
             if case .chord(let config) = definition.behavior,
                state != .selecting,
-               let chordKey = config.hidToKey[key.keyCode],
+               let chordKey = config.hidToKey[event.keyCode],
                config.shiftKeys.contains(where: { $0.key == chordKey }) {
                 isChordShiftKey = true
             } else {
                 isChordShiftKey = false
             }
 
-            if !isChordShiftKey, let action = routeStandardControlKey(key, state: state) {
+            if !isChordShiftKey, let action = routeStandardControlKey(event, state: state) {
                 return action
             }
         }
@@ -62,9 +62,9 @@ public struct KeyRouter {
         // behavior に応じた文字キー処理
         switch definition.behavior {
         case .sequential(let characterMap):
-            return routeSequential(key, characterMap: characterMap, isComposing: isComposing, state: state)
+            return routeSequential(event, characterMap: characterMap, isComposing: isComposing, state: state)
         case .chord(let config):
-            return routeChord(key, config: config, isComposing: isComposing, state: state,
+            return routeChord(event, config: config, isComposing: isComposing, state: state,
                               isDirectEnglishMode: isDirectEnglishMode)
         }
     }
@@ -72,26 +72,26 @@ public struct KeyRouter {
     // MARK: - Ctrl+キー（Emacs バインド）
 
     /// Ctrl+キーを controlBindings から検索して KeyAction に変換する
-    private func routeControlKey(_ key: UIKey) -> KeyAction {
+    private func routeControlKey(_ event: KeyEvent) -> KeyAction {
         let bindings = definition.controlBindings
 
         // Ctrl+: の特殊処理（Shift+; で入力、Ctrl+Shift+; として届く）
         // Ctrl+; と同じ keyCode (0x33) だが Shift が付いている場合
-        if key.keyCode.rawValue == 0x33 && key.modifierFlags.contains(.shift) {
+        if event.keyCode == .keyboardSemicolon && event.modifierFlags.contains(.shift) {
             if let action = bindings.ctrlColonAction {
                 return action
             }
         }
 
-        // Ctrl+; の特殊処理（UIKeyboardHIDUsage にシンボル名がないため）
-        if key.characters == ";" || key.keyCode.rawValue == 0x33 {
+        // Ctrl+; の特殊処理
+        if event.characters == ";" || event.keyCode == .keyboardSemicolon {
             if let action = bindings.ctrlSemicolonAction {
                 return action
             }
         }
 
         // 通常の Ctrl+キー
-        if let action = bindings.emacsBindings[key.keyCode] {
+        if let action = bindings.emacsBindings[event.keyCode] {
             return action
         }
 
@@ -105,8 +105,8 @@ public struct KeyRouter {
     ///
     /// Enter, Escape, Space, BS, 矢印, 数字キーの振る舞いは
     /// 全入力方式で共通のためハードコードする。
-    private func routeStandardControlKey(_ key: UIKey, state: InputManager.ConversionState) -> KeyAction? {
-        switch key.keyCode {
+    private func routeStandardControlKey(_ event: KeyEvent, state: InputManager.ConversionState) -> KeyAction? {
+        switch event.keyCode {
         case .keyboardReturnOrEnter, .keyboardTab:
             return .confirm
 
@@ -114,7 +114,7 @@ public struct KeyRouter {
             return .cancel
 
         case .keyboardSpacebar:
-            if key.modifierFlags.contains(.shift) && state == .selecting {
+            if event.modifierFlags.contains(.shift) && state == .selecting {
                 return .convertPrev
             }
             return .convert
@@ -123,13 +123,13 @@ public struct KeyRouter {
             return .deleteBack
 
         case .keyboardLeftArrow:
-            if key.modifierFlags.contains(.shift) {
+            if event.modifierFlags.contains(.shift) {
                 return .editSegmentLeft
             }
             return .moveLeft
 
         case .keyboardRightArrow:
-            if key.modifierFlags.contains(.shift) {
+            if event.modifierFlags.contains(.shift) {
                 return .editSegmentRight
             }
             return .moveRight
@@ -142,8 +142,8 @@ public struct KeyRouter {
 
         case .keyboard1, .keyboard2, .keyboard3, .keyboard4, .keyboard5,
              .keyboard6, .keyboard7, .keyboard8, .keyboard9:
-            if state == .selecting && !key.modifierFlags.contains(.shift) {
-                let offset = Int(key.keyCode.rawValue) - Int(UIKeyboardHIDUsage.keyboard1.rawValue)
+            if state == .selecting && !event.modifierFlags.contains(.shift) {
+                let offset = Int(event.keyCode.rawValue) - Int(HIDKeyCode.keyboard1.rawValue)
                 return .selectCandidate(offset)
             }
             // composing/previewing 中の数字キーは nil を返して後続の文字入力処理に委譲
@@ -158,16 +158,16 @@ public struct KeyRouter {
 
     /// 逐次入力方式のルーティング
     ///
-    /// key.characters を keyRemap で論理キーに変換し、
+    /// event.characters を keyRemap で論理キーに変換し、
     /// characterMap に含まれるか英字/数字であれば .printable を返す。
     /// inputMappings がある場合は、全ての非制御文字を .printable として IME に渡す
     /// （記号キー `;`, `,`, `.`, `/` 等もカスタムテーブルで解決するため）。
     /// 数字は composing 中のテキストに直接追加される（azooKey-Desktop と同等）。
     /// .printable には物理キー文字を渡す（論理変換は addPrintableToComposing で行う）。
     /// それ以外は .pass。
-    private func routeSequential(_ key: UIKey, characterMap: [Character: Character],
+    private func routeSequential(_ event: KeyEvent, characterMap: [Character: Character],
                                  isComposing: Bool, state: InputManager.ConversionState) -> KeyAction {
-        let chars = key.characters
+        let chars = event.characters
         guard chars.count == 1, let c = chars.first else {
             return .pass
         }
@@ -197,11 +197,11 @@ public struct KeyRouter {
     /// 文字キーは SimultaneousKeyBuffer に投入するため .chordInput を返す。
     /// シフトキーは .chordShiftDown を返す（どのキーがシフトかは shiftKeys で定義）。
     /// 英数直接入力モードでは、キーマップにないキーの印字可能文字を .directInsert で返す。
-    private func routeChord(_ key: UIKey, config: KeymapDefinition.ChordConfig,
+    private func routeChord(_ event: KeyEvent, config: KeymapDefinition.ChordConfig,
                             isComposing: Bool, state: InputManager.ConversionState,
                             isDirectEnglishMode: Bool) -> KeyAction {
         // 同時打鍵テーブルに含まれるキー → シフトキーか文字キーかを判定
-        if let chordKey = config.hidToKey[key.keyCode] {
+        if let chordKey = config.hidToKey[event.keyCode] {
             if config.shiftKeys.contains(where: { $0.key == chordKey }) {
                 return .chordShiftDown(chordKey)
             }
@@ -210,7 +210,7 @@ public struct KeyRouter {
 
         // 英数モード: 印字可能文字は直接挿入
         if isDirectEnglishMode {
-            let chars = key.characters
+            let chars = event.characters
             if !chars.isEmpty,
                let scalar = chars.unicodeScalars.first,
                !CharacterSet.controlCharacters.contains(scalar) {
