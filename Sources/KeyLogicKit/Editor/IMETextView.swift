@@ -4,10 +4,11 @@ import UIKit
 
 extension KeyEvent {
     /// UIKey からプラットフォーム非依存の KeyEvent を生成する
+    @MainActor
     init(_ uiKey: UIKey) {
         self.init(
             keyCode: HIDKeyCode(uiKey.keyCode),
-            characters: uiKey.characters ?? "",
+            characters: uiKey.characters,
             modifierFlags: KeyModifierFlags(uiKey.modifierFlags)
         )
     }
