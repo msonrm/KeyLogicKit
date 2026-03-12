@@ -22,6 +22,9 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
     /// 選択範囲の長さのバインディング（アプリ側との同期用）
     @Binding public var selectionLength: Int
 
+    /// スクロール強制リクエスト（値が変わるたびにカーソル位置が同じでもスクロール実行）
+    public var scrollRevision: Int
+
     /// キーイベントログの追加コールバック
     public var onKeyEvent: ((IMETextView.KeyEventInfo) -> Void)?
 
@@ -37,6 +40,10 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
     /// カーソル位置変更通知（候補ポップアップの配置用）
     public var onCaretRectChange: ((CGRect) -> Void)?
 
+    /// プログラム的なカーソル移動後のスクロール要求コールバック
+    /// カーソル位置の UTF-16 オフセットを渡す。スクロール方法はアプリ側が決定する。
+    public var onScrollRequest: ((IMETextView, Int) -> Void)?
+
     /// 明示的な公開イニシャライザ（public struct のメンバワイズ init は internal のため）
     public init(
         inputManager: InputManager,
@@ -45,11 +52,13 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         text: Binding<String> = .constant(""),
         cursorLocation: Binding<Int> = .constant(0),
         selectionLength: Binding<Int> = .constant(0),
+        scrollRevision: Int = 0,
         onKeyEvent: ((IMETextView.KeyEventInfo) -> Void)? = nil,
         onKeyDown: ((UIKeyboardHIDUsage, Date) -> Void)? = nil,
         onKeyUp: ((UIKeyboardHIDUsage, Date) -> Void)? = nil,
         onEnglishModeChange: ((Bool) -> Void)? = nil,
-        onCaretRectChange: ((CGRect) -> Void)? = nil
+        onCaretRectChange: ((CGRect) -> Void)? = nil,
+        onScrollRequest: ((IMETextView, Int) -> Void)? = nil
     ) {
         self.inputManager = inputManager
         self.keyRouter = keyRouter
@@ -57,11 +66,13 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         self._text = text
         self._cursorLocation = cursorLocation
         self._selectionLength = selectionLength
+        self.scrollRevision = scrollRevision
         self.onKeyEvent = onKeyEvent
         self.onKeyDown = onKeyDown
         self.onKeyUp = onKeyUp
         self.onEnglishModeChange = onEnglishModeChange
         self.onCaretRectChange = onCaretRectChange
+        self.onScrollRequest = onScrollRequest
     }
 
     public func makeCoordinator() -> Coordinator {
@@ -123,8 +134,9 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
     }
 
     public func updateUIView(_ uiView: IMETextView, context: Context) {
-        context.coordinator.isProgrammaticChange = true
-        defer { context.coordinator.isProgrammaticChange = false }
+        let coordinator = context.coordinator
+        coordinator.isProgrammaticChange = true
+        defer { coordinator.isProgrammaticChange = false }
 
         uiView.inputManager = inputManager
         uiView.keyRouter = keyRouter
@@ -145,6 +157,40 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
             )
             inputManager.setEditorFontSize(editorStyle.font.pointSize)
         }
+
+        // composing 中は InputManager がテキスト管理しているため外部同期をスキップ
+        guard inputManager.isEmpty else { return }
+
+        // テキスト同期（SwiftUI → UIKit）
+        if uiView.text != text {
+            uiView.text = text
+        }
+
+        // カーソル / 選択の差分検出 → 差分あれば適用
+        let textLength = (uiView.text as NSString).length
+        let safeLoc = min(cursorLocation, textLength)
+        let safeLen = min(selectionLength, textLength - safeLoc)
+
+        if safeLoc != coordinator.appliedCursorLocation
+            || safeLen != coordinator.appliedSelectionLength
+            || scrollRevision != coordinator.appliedScrollRevision
+        {
+            if !uiView.isFirstResponder, uiView.window != nil {
+                uiView.becomeFirstResponder()
+            }
+            uiView.selectedRange = NSRange(location: safeLoc, length: safeLen)
+
+            // スクロール要求をアプリ側に委譲
+            if let onScrollRequest = onScrollRequest {
+                DispatchQueue.main.async {
+                    onScrollRequest(uiView, safeLoc)
+                }
+            }
+
+            coordinator.appliedCursorLocation = safeLoc
+            coordinator.appliedSelectionLength = safeLen
+            coordinator.appliedScrollRevision = scrollRevision
+        }
     }
 
     // MARK: - Coordinator
@@ -157,6 +203,13 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
 
         /// updateUIView 実行中のデリゲートフィードバック抑制フラグ
         var isProgrammaticChange = false
+
+        /// 前回 updateUIView で UIKit に適用したカーソル位置（差分検出用）
+        var appliedCursorLocation = 0
+        /// 前回 updateUIView で UIKit に適用した選択長（差分検出用）
+        var appliedSelectionLength = 0
+        /// 前回 updateUIView で処理したスクロールリビジョン（差分検出用）
+        var appliedScrollRevision = 0
 
         init(text: Binding<String>, cursorLocation: Binding<Int>,
              selectionLength: Binding<Int>) {
@@ -176,6 +229,11 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
             guard textView.markedTextRange == nil else { return }
             let loc = textView.selectedRange.location
             let len = textView.selectedRange.length
+
+            // applied* も同時更新 → 次の updateUIView で差分なし → 不要な再適用を防止
+            appliedCursorLocation = loc
+            appliedSelectionLength = len
+
             if cursorLocation.wrappedValue != loc {
                 cursorLocation.wrappedValue = loc
             }
