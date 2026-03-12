@@ -218,6 +218,15 @@ public class InputManager {
     /// 予測変換の有効/無効（デフォルト無効。エディタ再利用時に有効化可能）
     public var predictionEnabled: Bool = false
 
+    /// 予測候補（composing 中に表示。変換候補とは別に管理）
+    public private(set) var predictionCandidates: [PredictionItem] = []
+
+    /// 動的ショートカットのレジストリ（日時展開等）
+    public var dynamicShortcuts: [DynamicShortcut] = BuiltInShortcuts.dateTimeShortcuts
+
+    /// 動的ショートカットの有効/無効
+    public var dynamicShortcutsEnabled: Bool = true
+
     /// 同時打鍵判定ウィンドウ（秒）。同時打鍵方式の判定に使用。
     public var simultaneousWindow: TimeInterval = 0.080
 
@@ -324,6 +333,7 @@ public class InputManager {
             resetToComposing()
         }
         requestLiveConversion()
+        requestPrediction()
     }
 
     // MARK: - 逐次入力バッファ操作（カスタムテーブル用）
@@ -344,6 +354,7 @@ public class InputManager {
             resetToComposing()
         }
         requestLiveConversion()
+        requestPrediction()
     }
 
     /// 逐次入力バッファの仮解決テキスト（markedText 表示・変換候補取得用）
@@ -456,6 +467,7 @@ public class InputManager {
             resetToComposing()
         }
         requestLiveConversion()
+        requestPrediction()
     }
 
     /// 末尾の1文字を削除する
@@ -574,6 +586,7 @@ public class InputManager {
         guard !allCandidates.isEmpty else { return }
 
         liveConversionText = nil
+        predictionCandidates = []
 
         if forceSelecting || liveConversionEnabled {
             // forceSelecting / ライブ変換 ON: selecting に直接遷移
@@ -945,6 +958,7 @@ public class InputManager {
         selectedCandidateIndex = 0
         liveConversionText = nil
         previewText = nil
+        predictionCandidates = []
         didExperienceSegmentEdition = false
         resetAdditionalCandidates()
         state = .composing
@@ -1008,13 +1022,21 @@ public class InputManager {
         let fullWidthRoman = rawInput.applyingTransform(StringTransform.fullwidthToHalfwidth, reverse: true)
         let katakana = hiragana.applyingTransform(.hiraganaToKatakana, reverse: false)
 
+        // 動的ショートカット候補（読みが一致するもの）
+        var dynamicCandidates: [(text: String?, annotation: String)] = []
+        if dynamicShortcutsEnabled {
+            for shortcut in dynamicShortcuts where shortcut.reading == hiragana {
+                dynamicCandidates.append((shortcut.resolve(), shortcut.annotation))
+            }
+        }
+
         // 候補を組み立て（展開は末尾から行われるため、先に出したい候補を後ろに配置）
-        let rawCandidates: [(text: String?, annotation: String)] = [
-            (halfWidthRoman, "英数"),
-            (fullWidthRoman, "全角英数"),
-            (katakana, "カタカナ"),
-            (hiragana, "ひらがな"),
-        ]
+        let rawCandidates: [(text: String?, annotation: String)] =
+            [(halfWidthRoman, "英数"),
+             (fullWidthRoman, "全角英数"),
+             (katakana, "カタカナ"),
+             (hiragana, "ひらがな")]
+            + dynamicCandidates
 
         // nil とテキスト重複を除外
         var seenTexts: Set<String> = []
@@ -1050,6 +1072,7 @@ public class InputManager {
         selectedCandidateIndex = 0
         liveConversionText = nil
         previewText = nil
+        predictionCandidates = []
         didExperienceSegmentEdition = false
         resetAdditionalCandidates()
         state = .composing
@@ -1101,6 +1124,85 @@ public class InputManager {
         } else {
             liveConversionText = nil
         }
+    }
+
+    // MARK: - 予測変換
+
+    /// 予測候補の最大件数
+    private static let maxPredictions = 3
+
+    /// composing 中に予測候補を取得する
+    ///
+    /// `predictionEnabled` が true かつ composing 中の場合に呼ばれる。
+    /// 動的ショートカット（日時等）があれば先頭に追加する。
+    private func requestPrediction() {
+        guard predictionEnabled, state == .composing,
+              !(composingText.isEmpty && sequentialBuffer.isEmpty) else {
+            predictionCandidates = []
+            return
+        }
+
+        var items: [PredictionItem] = []
+
+        // 動的ショートカットの展開（読みが一致するもの）
+        if dynamicShortcutsEnabled {
+            let currentReading = resolvedPrefixForConversion().convertTarget
+            for shortcut in dynamicShortcuts where shortcut.reading == currentReading {
+                items.append(PredictionItem(
+                    text: shortcut.resolve(),
+                    annotation: shortcut.annotation
+                ))
+            }
+        }
+
+        // 変換エンジンの予測候補（軽量リクエスト）
+        let prefixText = resolvedPrefixForConversion()
+        let options = makePredictionRequestOptions()
+        let result = converter.requestCandidates(prefixText, options: options)
+
+        let currentText = prefixText.convertTarget
+        let engineCandidates = (result.mainResults + result.firstClauseResults)
+            .map(\.text)
+            .filter { $0 != currentText }  // 入力と同一の候補を除外
+
+        // 重複除去して追加
+        var seen = Set(items.map(\.text))
+        for text in engineCandidates {
+            guard seen.insert(text).inserted else { continue }
+            items.append(PredictionItem(text: text))
+            if items.count >= Self.maxPredictions { break }
+        }
+
+        predictionCandidates = Array(items.prefix(Self.maxPredictions))
+    }
+
+    /// 予測候補を確定する
+    ///
+    /// - Parameter index: 確定する予測候補のインデックス（デフォルト 0 = 先頭）
+    /// - Returns: 確定テキスト（commitText に渡す）。候補がなければ nil
+    public func acceptPrediction(at index: Int = 0) -> String? {
+        guard index < predictionCandidates.count else { return nil }
+        let text = confirmedPrefix + predictionCandidates[index].text
+        updateLeftSideContext(predictionCandidates[index].text)
+        finalizeComposition()
+        return text
+    }
+
+    /// 予測候補用の軽量リクエストオプション
+    private func makePredictionRequestOptions() -> ConvertRequestOptions {
+        ConvertRequestOptions(
+            N_best: 5,
+            requireJapanesePrediction: .autoMix,
+            requireEnglishPrediction: .disabled,
+            keyboardLanguage: .ja_JP,
+            learningType: .inputAndOutput,
+            memoryDirectoryURL: memoryDirectoryURL,
+            sharedContainerURL: memoryDirectoryURL,
+            textReplacer: .withDefaultEmojiDictionary(),
+            specialCandidateProviders: KanaKanjiConverter.defaultSpecialCandidateProviders,
+            zenzaiMode: makeZenzaiMode(inferenceLimit: 3, richCandidates: false),
+            metadata: .init(versionString: "1.0")
+        )
     }
 
     /// ライブ変換用の軽量オプション（パフォーマンス優先）

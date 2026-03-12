@@ -25,6 +25,8 @@ public struct CandidatePopup: View {
     let selectedIndex: Int
     /// 候補テキストのフォント（エディタ連動）
     var font: Font
+    /// フォントサイズ（動的幅計算用）
+    var fontSize: CGFloat
 
     public init(
         additionalCandidates: [InputManager.AdditionalCandidate],
@@ -32,7 +34,8 @@ public struct CandidatePopup: View {
         selectedAdditionalCandidateIndex: Int,
         candidates: [String],
         selectedIndex: Int,
-        font: Font = .system(size: 15)
+        font: Font = .system(size: 15),
+        fontSize: CGFloat = 15
     ) {
         self.additionalCandidates = additionalCandidates
         self.isAdditionalCandidateSelected = isAdditionalCandidateSelected
@@ -40,6 +43,23 @@ public struct CandidatePopup: View {
         self.candidates = candidates
         self.selectedIndex = selectedIndex
         self.font = font
+        self.fontSize = fontSize
+    }
+
+    /// 候補テキストの最長幅に基づいて最小幅を動的に計算する
+    private var dynamicMinWidth: CGFloat {
+        let indexColumnWidth: CGFloat = 28   // 数字ラベル + 間隔
+        let horizontalPadding: CGFloat = 16  // 左右パディング
+        let baseMinWidth: CGFloat = 120      // 絶対最小幅
+        let maxWidth: CGFloat = 400          // 最大幅制限
+
+        let allTexts = candidates + additionalCandidates.map(\.text)
+        let longestCount = allTexts.map(\.count).max() ?? 0
+        let estimatedCharWidth = fontSize * 1.1  // 全角文字の概算幅
+        let contentWidth = CGFloat(longestCount) * estimatedCharWidth
+        let totalWidth = indexColumnWidth + contentWidth + horizontalPadding
+
+        return min(max(totalWidth, baseMinWidth), maxWidth)
     }
 
     public var body: some View {
@@ -99,7 +119,7 @@ public struct CandidatePopup: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
-        .frame(minWidth: 160)
+        .frame(minWidth: dynamicMinWidth)
         .background(isSelected ? Self.selectionBackground : Color.clear)
     }
 
@@ -117,7 +137,7 @@ public struct CandidatePopup: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
-        .frame(minWidth: 160)
+        .frame(minWidth: dynamicMinWidth)
         .background(isSelected ? Self.selectionBackground : Color.clear)
     }
 }

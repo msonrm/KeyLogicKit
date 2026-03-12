@@ -1,4 +1,4 @@
-import UIKit
+import Foundation
 
 /// IME が実行するアクション（入力方式に依存しない統一表現）
 ///

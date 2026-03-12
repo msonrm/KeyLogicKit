@@ -1,4 +1,4 @@
-import UIKit
+import Foundation
 
 /// キーマップ定義（JSON でシリアライズ可能な汎用フォーマット v1）
 ///
@@ -227,8 +227,8 @@ public struct KeymapDefinition: Sendable {
 
     /// 同時打鍵設定
     public struct ChordConfig: Sendable {
-        /// 物理キー（HID usage）→ 内部キー ID の変換テーブル
-        public let hidToKey: [UIKeyboardHIDUsage: ChordKey]
+        /// 物理キー（HID キーコード）→ 内部キー ID の変換テーブル
+        public let hidToKey: [HIDKeyCode: ChordKey]
 
         /// キーの組合せビットマスク → 出力文字列
         public let lookupTable: [UInt64: String]
@@ -262,7 +262,7 @@ public struct KeymapDefinition: Sendable {
 public struct ControlBindings: Sendable {
 
     /// Ctrl+キー → KeyAction のマッピング
-    public var emacsBindings: [UIKeyboardHIDUsage: KeyAction]
+    public var emacsBindings: [HIDKeyCode: KeyAction]
 
     /// Ctrl+; の特殊処理（UIKeyboardHIDUsage にシンボル名がないため）
     public var ctrlSemicolonAction: KeyAction?
@@ -273,17 +273,17 @@ public struct ControlBindings: Sendable {
     /// デフォルトの Emacs 風バインド（macOS 標準「ことえり」準拠）
     public static let `default` = ControlBindings(
         emacsBindings: [
-            .keyboardH: .deleteBack,         // Ctrl+H = Backspace
-            .keyboardM: .confirm,            // Ctrl+M = Enter
-            .keyboardP: .moveUp,             // Ctrl+P = Up（前の候補）
-            .keyboardN: .moveDown,           // Ctrl+N = Down（次の候補 / 変換開始）
-            .keyboardF: .moveRight,          // Ctrl+F = Right（selecting 中: 確定）
-            .keyboardG: .cancel,             // Ctrl+G = Escape
-            .keyboardI: .editSegmentLeft,    // Ctrl+I = 文節区切り左
-            .keyboardJ: .confirmHiragana,    // Ctrl+J = ひらがな確定
-            .keyboardK: .confirmKatakana,    // Ctrl+K = カタカナ確定
-            .keyboardL: .confirmHalfWidthKatakana, // Ctrl+L = 半角カタカナ確定（ことえり準拠）
-            .keyboardO: .editSegmentRight,   // Ctrl+O = 文節区切り右
+            HIDKeyCode.keyboardH: .deleteBack,         // Ctrl+H = Backspace
+            HIDKeyCode.keyboardM: .confirm,            // Ctrl+M = Enter
+            HIDKeyCode.keyboardP: .moveUp,             // Ctrl+P = Up（前の候補）
+            HIDKeyCode.keyboardN: .moveDown,           // Ctrl+N = Down（次の候補 / 変換開始）
+            HIDKeyCode.keyboardF: .moveRight,          // Ctrl+F = Right（selecting 中: 確定）
+            HIDKeyCode.keyboardG: .cancel,             // Ctrl+G = Escape
+            HIDKeyCode.keyboardI: .editSegmentLeft,    // Ctrl+I = 文節区切り左
+            HIDKeyCode.keyboardJ: .confirmHiragana,    // Ctrl+J = ひらがな確定
+            HIDKeyCode.keyboardK: .confirmKatakana,    // Ctrl+K = カタカナ確定
+            HIDKeyCode.keyboardL: .confirmHalfWidthKatakana, // Ctrl+L = 半角カタカナ確定（ことえり準拠）
+            HIDKeyCode.keyboardO: .editSegmentRight,   // Ctrl+O = 文節区切り右
         ],
         ctrlSemicolonAction: .confirmFullWidthRoman, // Ctrl+; = 全角英数確定（ことえり準拠）
         ctrlColonAction: .confirmHalfWidthRoman      // Ctrl+: = 半角英数確定（ことえり準拠）

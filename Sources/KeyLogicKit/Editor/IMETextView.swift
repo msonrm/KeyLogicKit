@@ -1,6 +1,43 @@
 import UIKit
 
-/// キー入力を横取りする UITextView サブクラス
+// MARK: - UIKey → KeyEvent 変換
+
+extension KeyEvent {
+    /// UIKey からプラットフォーム非依存の KeyEvent を生成する
+    init(_ uiKey: UIKey) {
+        self.init(
+            keyCode: HIDKeyCode(uiKey.keyCode),
+            characters: uiKey.characters ?? "",
+            modifierFlags: KeyModifierFlags(uiKey.modifierFlags)
+        )
+    }
+}
+
+extension HIDKeyCode {
+    /// UIKeyboardHIDUsage から変換する
+    init(_ usage: UIKeyboardHIDUsage) {
+        self.init(rawValue: UInt32(usage.rawValue))
+    }
+
+    /// UIKeyboardHIDUsage に変換する
+    var hidUsage: UIKeyboardHIDUsage {
+        UIKeyboardHIDUsage(rawValue: Int(rawValue)) ?? .keyboardErrorUndefined
+    }
+}
+
+extension KeyModifierFlags {
+    /// UIKeyModifierFlags から変換する
+    init(_ flags: UIKeyModifierFlags) {
+        var result = KeyModifierFlags()
+        if flags.contains(.shift) { result.insert(.shift) }
+        if flags.contains(.control) { result.insert(.control) }
+        if flags.contains(.alternate) { result.insert(.alternate) }
+        if flags.contains(.command) { result.insert(.command) }
+        self = result
+    }
+}
+
+/// キー入力を横取りする UITextView サブクラス。
 ///
 /// 設計原則:
 ///   - InputManager が変換状態の唯一の管理元。IMETextView は表示とキー入力の橋渡しのみ。
@@ -19,10 +56,10 @@ public class IMETextView: UITextView {
     public var onKeyEvent: ((KeyEventInfo) -> Void)?
 
     /// キーダウン通知（可視化パネル用、HID コード + タイムスタンプ）
-    public var onKeyDown: ((UIKeyboardHIDUsage, Date) -> Void)?
+    public var onKeyDown: ((HIDKeyCode, Date) -> Void)?
 
     /// キーアップ通知（可視化パネル用、HID コード + タイムスタンプ）
-    public var onKeyUp: ((UIKeyboardHIDUsage, Date) -> Void)?
+    public var onKeyUp: ((HIDKeyCode, Date) -> Void)?
 
     /// 英数モード切替通知（レイヤー自動追従用）
     public var onEnglishModeChange: ((Bool) -> Void)?
@@ -45,7 +82,7 @@ public class IMETextView: UITextView {
     /// pressesEnded/pressesCancelled で super に渡すかどうかの判定に使う。
     /// pressesBegan で super を呼ばずにインターセプトしたキーは、
     /// pressesEnded でも super を呼ばない（UIKit の内部状態の不整合を防ぐ）。
-    private var interceptedKeyCodes: Set<UIKeyboardHIDUsage> = []
+    private var interceptedKeyCodes: Set<HIDKeyCode> = []
 
     /// 同時打鍵バッファ（chord 方式の入力で使用）
     private let chordBuffer = SimultaneousKeyBuffer()
@@ -66,7 +103,7 @@ public class IMETextView: UITextView {
     /// 現在のキーマップが指定 HID キーコードを処理するか（chord の hidToKey に含まれるか）
     private func keymapHandles(_ keyCode: UIKeyboardHIDUsage) -> Bool {
         guard case .chord(let config) = keyRouter.definition.behavior else { return false }
-        return config.hidToKey[keyCode] != nil
+        return config.hidToKey[HIDKeyCode(keyCode)] != nil
     }
 
     /// InputManager の状態に基づく composing 判定
@@ -79,7 +116,7 @@ public class IMETextView: UITextView {
 
     public struct KeyEventInfo {
         public let phase: String
-        public let keyCode: UIKeyboardHIDUsage
+        public let keyCode: HIDKeyCode
         public let characters: String?
         public let modifiers: UIKeyModifierFlags
         public let handled: Bool
@@ -417,9 +454,10 @@ public class IMETextView: UITextView {
             return
         }
 
-        // KeyRouter にルーティングを委譲
+        // KeyRouter にルーティングを委譲（UIKey → KeyEvent 変換）
         let isDirectEnglish = im.inputMethod == .directEnglish
-        let action = keyRouter.route(key, isComposing: isComposing, state: im.state,
+        let keyEvent = KeyEvent(key)
+        let action = keyRouter.route(keyEvent, isComposing: isComposing, state: im.state,
                                      isDirectEnglishMode: isDirectEnglish)
         executeAction(action, key: key, inputManager: im, presses: presses, event: event)
     }
@@ -430,15 +468,15 @@ public class IMETextView: UITextView {
             return
         }
         // 可視化パネル向けキーアップ通知
-        onKeyUp?(key.keyCode, Date())
+        onKeyUp?(HIDKeyCode(key.keyCode), Date())
         // chord 方式: キーアップ通知
         if case .chord(let config) = keyRouter.definition.behavior {
-            if let chordKey = config.hidToKey[key.keyCode] {
+            if let chordKey = config.hidToKey[HIDKeyCode(key.keyCode)] {
                 chordBuffer.keyUp(chordKey)
             }
         }
         // pressesBegan でインターセプトしたキーは super に渡さない
-        if interceptedKeyCodes.remove(key.keyCode) != nil {
+        if interceptedKeyCodes.remove(HIDKeyCode(key.keyCode)) != nil {
             return
         }
         super.pressesEnded(presses, with: event)
@@ -451,11 +489,11 @@ public class IMETextView: UITextView {
         }
         // chord 方式: キーアップ通知
         if case .chord(let config) = keyRouter.definition.behavior {
-            if let chordKey = config.hidToKey[key.keyCode] {
+            if let chordKey = config.hidToKey[HIDKeyCode(key.keyCode)] {
                 chordBuffer.keyUp(chordKey)
             }
         }
-        if interceptedKeyCodes.remove(key.keyCode) != nil {
+        if interceptedKeyCodes.remove(HIDKeyCode(key.keyCode)) != nil {
             return
         }
         super.pressesCancelled(presses, with: event)
@@ -478,7 +516,7 @@ public class IMETextView: UITextView {
                 if case .chord = keyRouter.definition.behavior {
                     chordBuffer.reset()
                 }
-                interceptedKeyCodes.insert(key.keyCode)
+                interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
                 logKeyEvent(phase: "began", key: key, handled: true)
             } else {
                 logKeyEvent(phase: "began", key: key, handled: false)
@@ -486,7 +524,7 @@ public class IMETextView: UITextView {
             }
 
         case .printable(let c):
-            interceptedKeyCodes.insert(key.keyCode)
+            interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
             selectionAnchor = nil
 
             // selecting/previewing 中 → 確定して新しい composing を開始
@@ -502,13 +540,22 @@ public class IMETextView: UITextView {
             logKeyEvent(phase: "began", key: key, handled: true)
 
         case .confirm:
-            interceptedKeyCodes.insert(key.keyCode)
+            interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
             resetChordBufferIfNeeded()
-            confirmComposition(im)
+            // Tab キー + 予測候補あり → 予測候補を確定
+            if key.keyCode == .keyboardTab,
+               im.state == .composing,
+               !im.predictionCandidates.isEmpty,
+               let text = im.acceptPrediction() {
+                commitText(text)
+                logEvent("prediction-accept", detail: text)
+            } else {
+                confirmComposition(im)
+            }
             logKeyEvent(phase: "began", key: key, handled: true)
 
         case .cancel:
-            interceptedKeyCodes.insert(key.keyCode)
+            interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
             resetChordBufferIfNeeded()
             if im.state == .selecting || im.state == .previewing {
                 // selecting/previewing → composing に戻す
@@ -521,20 +568,20 @@ public class IMETextView: UITextView {
             logKeyEvent(phase: "began", key: key, handled: true)
 
         case .convert:
-            interceptedKeyCodes.insert(key.keyCode)
+            interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
             resetChordBufferIfNeeded()
             handleSpace(im)
             logKeyEvent(phase: "began", key: key, handled: true)
 
         case .convertPrev:
-            interceptedKeyCodes.insert(key.keyCode)
+            interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
             resetChordBufferIfNeeded()
             im.selectPrevCandidate()
             updateMarkedTextDisplay()
             logKeyEvent(phase: "began", key: key, handled: true)
 
         case .deleteBack:
-            interceptedKeyCodes.insert(key.keyCode)
+            interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
             resetChordBufferIfNeeded()
             if im.state == .selecting || im.state == .previewing {
                 // macOS 標準 IME 準拠: selecting/previewing 中の BS は
@@ -548,13 +595,13 @@ public class IMETextView: UITextView {
             logKeyEvent(phase: "began", key: key, handled: true)
 
         case .moveLeft:
-            interceptedKeyCodes.insert(key.keyCode)
+            interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
             resetChordBufferIfNeeded()
             // composing/previewing/selecting 全状態で消費のみ（azooKey-Desktop / macOS 標準準拠）
             logKeyEvent(phase: "began", key: key, handled: true)
 
         case .moveRight:
-            interceptedKeyCodes.insert(key.keyCode)
+            interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
             resetChordBufferIfNeeded()
             if im.state == .selecting || im.state == .previewing {
                 // → キーからの確定: 残りがあれば selecting 維持
@@ -564,7 +611,7 @@ public class IMETextView: UITextView {
             logKeyEvent(phase: "began", key: key, handled: true)
 
         case .moveUp:
-            interceptedKeyCodes.insert(key.keyCode)
+            interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
             resetChordBufferIfNeeded()
             if im.state == .selecting {
                 im.selectPrevCandidate()
@@ -574,7 +621,7 @@ public class IMETextView: UITextView {
             logKeyEvent(phase: "began", key: key, handled: true)
 
         case .moveDown:
-            interceptedKeyCodes.insert(key.keyCode)
+            interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
             resetChordBufferIfNeeded()
             if im.state == .selecting {
                 im.selectNextCandidate()
@@ -592,21 +639,21 @@ public class IMETextView: UITextView {
             logKeyEvent(phase: "began", key: key, handled: true)
 
         case .editSegmentLeft:
-            interceptedKeyCodes.insert(key.keyCode)
+            interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
             resetChordBufferIfNeeded()
             im.editSegment(count: -1)
             updateMarkedTextDisplay()
             logKeyEvent(phase: "began", key: key, handled: true)
 
         case .editSegmentRight:
-            interceptedKeyCodes.insert(key.keyCode)
+            interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
             resetChordBufferIfNeeded()
             im.editSegment(count: 1)
             updateMarkedTextDisplay()
             logKeyEvent(phase: "began", key: key, handled: true)
 
         case .selectCandidate(let offset):
-            interceptedKeyCodes.insert(key.keyCode)
+            interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
             resetChordBufferIfNeeded()
             if let result = im.selectCandidateInWindow(at: offset) {
                 switch result {
@@ -621,35 +668,35 @@ public class IMETextView: UITextView {
             logKeyEvent(phase: "began", key: key, handled: true)
 
         case .confirmHiragana:
-            interceptedKeyCodes.insert(key.keyCode)
+            interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
             resetChordBufferIfNeeded()
             let confirmed = im.confirmWithForm(.hiragana)
             commitText(confirmed)
             logEvent("ctrl-j-hiragana", detail: confirmed)
 
         case .confirmKatakana:
-            interceptedKeyCodes.insert(key.keyCode)
+            interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
             resetChordBufferIfNeeded()
             let confirmed = im.confirmWithForm(.katakana)
             commitText(confirmed)
             logEvent("ctrl-k-katakana", detail: confirmed)
 
         case .confirmHalfWidthKatakana:
-            interceptedKeyCodes.insert(key.keyCode)
+            interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
             resetChordBufferIfNeeded()
             let confirmed = im.confirmWithForm(.halfWidthKatakana)
             commitText(confirmed)
             logEvent("ctrl-l-halfkana", detail: confirmed)
 
         case .confirmHalfWidthRoman:
-            interceptedKeyCodes.insert(key.keyCode)
+            interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
             resetChordBufferIfNeeded()
             let confirmed = im.confirmWithForm(.halfWidthRoman)
             commitText(confirmed)
             logEvent("ctrl-colon-halfwidth", detail: confirmed)
 
         case .confirmFullWidthRoman:
-            interceptedKeyCodes.insert(key.keyCode)
+            interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
             resetChordBufferIfNeeded()
             let confirmed = im.confirmWithForm(.fullWidthRoman)
             commitText(confirmed)
@@ -657,7 +704,7 @@ public class IMETextView: UITextView {
 
         case .chordInput(let chordKey):
             selectionAnchor = nil
-            interceptedKeyCodes.insert(key.keyCode)
+            interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
 
             // selecting/previewing 中に文字キーを押した場合 → 確定して新規 composing
             if im.state == .selecting || im.state == .previewing {
@@ -674,12 +721,12 @@ public class IMETextView: UITextView {
             logKeyEvent(phase: "began", key: key, handled: true)
 
         case .chordShiftDown(let shiftKey):
-            interceptedKeyCodes.insert(key.keyCode)
+            interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
             chordBuffer.keyDown(shiftKey)
             logKeyEvent(phase: "began", key: key, handled: true)
 
         case .directInsert(let text):
-            interceptedKeyCodes.insert(key.keyCode)
+            interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
             rawInsertText(text)
             logKeyEvent(phase: "began", key: key, handled: true)
 
@@ -957,13 +1004,13 @@ public class IMETextView: UITextView {
     private func logKeyEvent(phase: String, key: UIKey, handled: Bool) {
         let now = Date()
         onKeyEvent?(KeyEventInfo(
-            phase: phase, keyCode: key.keyCode,
+            phase: phase, keyCode: HIDKeyCode(key.keyCode),
             characters: key.characters, modifiers: key.modifierFlags,
             handled: handled, timestamp: now
         ))
         // 可視化パネル向けコールバック
         if phase == "began" {
-            onKeyDown?(key.keyCode, now)
+            onKeyDown?(HIDKeyCode(key.keyCode), now)
         }
     }
 
