@@ -5,15 +5,18 @@ public struct EditorStyle: Equatable {
     public var font: UIFont
     public var lineSpacing: CGFloat
     public var textAlignment: NSTextAlignment
+    public var showInvisibles: Bool
 
     public init(
         font: UIFont = .monospacedSystemFont(ofSize: 18, weight: .regular),
         lineSpacing: CGFloat = 0,
-        textAlignment: NSTextAlignment = .natural
+        textAlignment: NSTextAlignment = .natural,
+        showInvisibles: Bool = false
     ) {
         self.font = font
         self.lineSpacing = lineSpacing
         self.textAlignment = textAlignment
+        self.showInvisibles = showInvisibles
     }
 
     /// typingAttributes 用の辞書を生成

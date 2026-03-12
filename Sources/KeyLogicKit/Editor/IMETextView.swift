@@ -47,6 +47,29 @@ extension KeyModifierFlags {
 ///   - insertText / deleteBackward はソフトウェアキーボード用のフォールバック。
 public class IMETextView: UITextView {
 
+    /// 不可視文字描画用レイアウトマネージャ（`useInvisibleCharLayout: true` で初期化時に設定）
+    private(set) var invisibleLayoutManager: InvisibleCharLayoutManager?
+
+    /// 不可視文字レイアウトマネージャを組み込んだ convenience initializer
+    ///
+    /// `useInvisibleCharLayout: true` の場合、NSTextStorage + InvisibleCharLayoutManager +
+    /// NSTextContainer を手動構成して UITextView を初期化する。
+    public convenience init(useInvisibleCharLayout: Bool) {
+        if useInvisibleCharLayout {
+            let storage = NSTextStorage()
+            let layoutManager = InvisibleCharLayoutManager()
+            storage.addLayoutManager(layoutManager)
+            let container = NSTextContainer()
+            container.widthTracksTextView = true
+            container.heightTracksTextView = false
+            layoutManager.addTextContainer(container)
+            self.init(frame: .zero, textContainer: container)
+            self.invisibleLayoutManager = layoutManager
+        } else {
+            self.init(frame: .zero)
+        }
+    }
+
     /// 変換管理（外部から注入）
     public var inputManager: InputManager?
 
@@ -352,6 +375,9 @@ public class IMETextView: UITextView {
     @objc private func inputModeDidChange() {
         let isJapanese = isJapaneseInputMode
         inputManager?.setInputMode(isJapanese ? .japanese : .english)
+
+        // アプリ側の IM バッジにも通知
+        onEnglishModeChange?(!isJapanese)
 
         // 日本語 → 英語に切り替わった時、composing 中なら全文確定
         if !isJapanese && isComposing {
