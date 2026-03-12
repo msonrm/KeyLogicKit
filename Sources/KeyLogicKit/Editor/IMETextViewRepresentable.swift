@@ -84,7 +84,7 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
     }
 
     public func makeUIView(context: Context) -> IMETextView {
-        let textView = IMETextView()
+        let textView = IMETextView(useInvisibleCharLayout: editorStyle.showInvisibles)
 
         // システム IME の干渉を無効化
         textView.autocorrectionType = .no
@@ -156,6 +156,12 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
                 range: NSRange(location: 0, length: uiView.textStorage.length)
             )
             inputManager.setEditorFontSize(editorStyle.font.pointSize)
+
+            // 不可視文字表示の ON/OFF を反映
+            if let lm = uiView.invisibleLayoutManager, lm.showInvisibles != editorStyle.showInvisibles {
+                lm.showInvisibles = editorStyle.showInvisibles
+                lm.invalidateDisplay(forCharacterRange: NSRange(location: 0, length: uiView.textStorage.length))
+            }
         }
 
         // composing 中は InputManager がテキスト管理しているため外部同期をスキップ
