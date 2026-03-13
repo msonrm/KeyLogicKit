@@ -71,7 +71,14 @@ public class IMETextView: UITextView {
     }
 
     /// 変換管理（外部から注入）
-    public var inputManager: InputManager?
+    ///
+    /// 設定時に現在の `keyRouter` の入力マッピングを自動で同期する。
+    public var inputManager: InputManager? {
+        didSet {
+            guard inputManager !== oldValue else { return }
+            inputManager?.updateInputMappings(keyRouter.definition.inputMappings)
+        }
+    }
 
     /// エディタの表示スタイル（markedText 属性のベースとして使用）
     public var editorStyle = EditorStyle()
@@ -93,7 +100,13 @@ public class IMETextView: UITextView {
 
     /// 現在のキールーター（入力方式・キーボードレイアウトの切替で差し替え）
     public var keyRouter = KeyRouter(definition: DefaultKeymaps.romajiUS) {
-        didSet { syncChordBufferTables() }
+        didSet {
+            syncChordBufferTables()
+            // キーマップ切替時に入力マッピングを同期（同一定義の再代入はスキップ）
+            if keyRouter.definition.name != oldValue.definition.name {
+                inputManager?.updateInputMappings(keyRouter.definition.inputMappings)
+            }
+        }
     }
 
     /// 同時打鍵判定ウィンドウを設定する
