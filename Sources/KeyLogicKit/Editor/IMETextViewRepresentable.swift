@@ -168,8 +168,15 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         guard inputManager.isEmpty else { return }
 
         // テキスト同期（SwiftUI → UIKit）
+        // UIKit 起源の変更（undo/redo 含む）がフィードバックで戻ってきた場合は
+        // 代入をスキップし、undoManager の履歴を保護する。
         if uiView.text != text {
-            uiView.text = text
+            if coordinator.lastTextFromUIKit == text {
+                // UIKit → Binding → updateUIView のフィードバック: スキップ
+            } else {
+                uiView.text = text
+            }
+            coordinator.lastTextFromUIKit = nil
         }
 
         // カーソル / 選択の差分検出 → 差分あれば適用
@@ -217,6 +224,13 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         /// 前回 updateUIView で処理したスクロールリビジョン（差分検出用）
         var appliedScrollRevision = 0
 
+        /// UIKit 側から最後に通知されたテキスト（undo 履歴保護用）
+        ///
+        /// `textViewDidChange` → Binding 更新 → `updateUIView` のフィードバックループで
+        /// `uiView.text` を再代入すると `undoManager` が全クリアされる。
+        /// UIKit 起源の変更なら代入をスキップするためにこの値を保持する。
+        var lastTextFromUIKit: String?
+
         init(text: Binding<String>, cursorLocation: Binding<Int>,
              selectionLength: Binding<Int>) {
             self.text = text
@@ -227,6 +241,7 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         // MARK: - UITextViewDelegate
 
         public func textViewDidChange(_ textView: UITextView) {
+            lastTextFromUIKit = textView.text
             text.wrappedValue = textView.text
         }
 
