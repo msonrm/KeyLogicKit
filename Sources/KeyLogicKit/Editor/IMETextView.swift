@@ -443,7 +443,19 @@ public class IMETextView: UITextView {
         }
 
         // Cmd+ 系は常に super（コピペ等）
+        // ただし composing 中の Cmd+Z（Shift なし）は composing キャンセルに使う。
+        // super を呼ぶと marked text が勝手に commit されるため。
+        // 1回目の Cmd+Z で composing キャンセル、2回目で UITextView の undo が実行される。
         if key.modifierFlags.contains(.command) {
+            if isComposing,
+               key.keyCode == .keyboardZ,
+               !key.modifierFlags.contains(.shift),
+               let im = inputManager {
+                interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
+                cancelComposition(im)
+                logKeyEvent(phase: "began", key: key, handled: true)
+                return
+            }
             logKeyEvent(phase: "began", key: key, handled: false)
             super.pressesBegan(presses, with: event)
             return
