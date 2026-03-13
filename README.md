@@ -1,8 +1,8 @@
 # KeyLogicKit
 
-iPadOS 向け自前 IME エンジンライブラリ。外付けキーボードでシステム IME に依存せず日本語入力を実現する。
+iPadOS 向け非標準 IME エンジンライブラリ。外付けキーボードでシステム IME に依存せず日本語入力を実現する。
 
-ローマ字・AZIK・月配列・NICOLA・薙刀式など、逐次入力と同時打鍵の両方をデータ駆動でサポートする。
+ローマ字・AZIK・月配列・NICOLAなど、逐次入力と同時打鍵の両方をデータ駆動でサポートする。
 
 ## 特徴
 
@@ -173,7 +173,7 @@ inputManager.zenzaiWeightURL = Bundle.main.url(
 
 ## Acknowledgements
 
-KeyLogicKit のかな漢字変換は [AzooKeyKanaKanjiConverter](https://github.com/azooKey/AzooKeyKanaKanjiConverter) (MIT License, Copyright (c) 2023 Miwa / Ensan) を使用しています。素晴らしい変換エンジンを公開してくださっている [@ensan-hcl](https://github.com/ensan-hcl) さんに感謝します。
+KeyLogicKit のかな漢字変換は [AzooKeyKanaKanjiConverter](https://github.com/azooKey/AzooKeyKanaKanjiConverter) (MIT License, Copyright (c) 2023 Miwa / Ensan) を使用しています。素晴らしい変換エンジンを公開してくださっている [@ensan-hcl](https://github.com/ensan-hcl) さんに感謝いたします。
 
 詳細は [ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md) を参照してください。
 
