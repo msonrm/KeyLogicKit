@@ -684,7 +684,8 @@ public class IMETextView: UITextView {
                                presses: Set<UIPress>, event: UIPressesEvent?) {
         // スマート選択系以外のアクションでは状態をリセット
         switch action {
-        case .smartSelectExpand, .smartSelectShrink, .selectSentenceUp, .selectSentenceDown:
+        case .smartSelectExpand, .smartSelectShrink, .selectSentenceUp, .selectSentenceDown,
+             .swapSentenceUp, .swapSentenceDown:
             break
         default:
             if smartSelectionState.level != .none {
@@ -1313,6 +1314,14 @@ public class IMETextView: UITextView {
         guard !text.isEmpty, let range = selectedTextRange else { return }
 
         let cursor = cursorStringIndex(in: text, from: range.start)
+
+        // スマート選択がブロックレベルならブロック単位でスワップ
+        if smartSelectionState.level == .block,
+           let provider = blockRangeProvider {
+            swapBlock(direction: direction, text: text, cursor: cursor, provider: provider)
+            return
+        }
+
         let currentSentence = SentenceBoundary.sentenceRange(in: text, at: cursor)
 
         let adjacentSentence: Range<String.Index>
@@ -1374,6 +1383,74 @@ public class IMETextView: UITextView {
             let newCursor = updatedText.index(updatedText.startIndex, offsetBy: startOffset)
             let newSentence = SentenceBoundary.sentenceRange(in: updatedText, at: newCursor)
             setSelection(range: newSentence, in: updatedText)
+        }
+    }
+
+    /// ブロック単位で前後のブロックと入れ替える（Option+↑/↓、ブロック選択時）
+    ///
+    /// `BlockRangeProvider` を使ってブロック範囲を取得し、隣接ブロックと交換する。
+    /// プロバイダが返す範囲には末尾のセパレータ（空行等）を含む前提。
+    private func swapBlock(direction: Int, text: String, cursor: String.Index,
+                           provider: BlockRangeProvider) {
+        guard let currentBlock = provider(text, cursor) else { return }
+
+        // 隣接ブロックを探す
+        let adjacentBlock: Range<String.Index>?
+        if direction < 0 {
+            guard currentBlock.lowerBound > text.startIndex else { return }
+            let prevIdx = text.index(before: currentBlock.lowerBound)
+            adjacentBlock = provider(text, prevIdx)
+        } else {
+            guard currentBlock.upperBound < text.endIndex else { return }
+            adjacentBlock = provider(text, currentBlock.upperBound)
+        }
+
+        guard let adjacent = adjacentBlock, currentBlock != adjacent else { return }
+
+        // テキストを取得
+        let currentText = String(text[currentBlock])
+        let adjacentText = String(text[adjacent])
+
+        // 後方の範囲から先に置換（前方のオフセットを壊さないため）
+        let (first, second): (Range<String.Index>, Range<String.Index>)
+        let (firstText, secondText): (String, String)
+
+        if currentBlock.lowerBound < adjacent.lowerBound {
+            first = currentBlock
+            second = adjacent
+            firstText = adjacentText
+            secondText = currentText
+        } else {
+            first = adjacent
+            second = currentBlock
+            firstText = currentText
+            secondText = adjacentText
+        }
+
+        // Undo 対応: replace を使用
+        let fullRange = first.lowerBound..<second.upperBound
+        let nsFullRange = NSRange(fullRange, in: text)
+        guard let textRangeForReplace = convertNSRangeToTextRange(nsFullRange) else { return }
+
+        let newText = firstText + secondText
+        replace(textRangeForReplace, withText: newText)
+
+        // 入れ替え後、移動先のブロックを選択状態にする
+        let updatedText = fullText()
+        if direction < 0 {
+            let newCursor = updatedText.index(updatedText.startIndex,
+                                               offsetBy: text.distance(from: text.startIndex, to: first.lowerBound))
+            if let newBlock = provider(updatedText, newCursor) {
+                setSelection(range: newBlock, in: updatedText)
+            }
+        } else {
+            let adjacentLength = adjacentText.count
+            let startOffset = text.distance(from: text.startIndex, to: first.lowerBound) + adjacentLength
+            guard startOffset < updatedText.count else { return }
+            let newCursor = updatedText.index(updatedText.startIndex, offsetBy: startOffset)
+            if let newBlock = provider(updatedText, newCursor) {
+                setSelection(range: newBlock, in: updatedText)
+            }
         }
     }
 
