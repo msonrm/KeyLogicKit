@@ -208,6 +208,8 @@ public class InputManager {
     public private(set) var editorFontSize: CGFloat = 18
 
     /// 直前に確定されたテキスト（左側コンテキスト用）
+    ///
+    /// 確定操作で自動蓄積されるほか、`setLeftSideContext(_:)` で外部から設定可能。
     public private(set) var leftSideContext: String = ""
 
     // MARK: - 設定トグル
@@ -243,6 +245,12 @@ public class InputManager {
     /// 月配列等のカスタムテーブルでは、プレフィクスキー（"q" → "ql" の先頭）の
     /// バックトラックを AzooKey が行えないため、自前で greedy longest-match を実装する。
     private var sequentialBuffer: String = ""
+
+    /// バックトラックのフォールバックで composingText に追加された生キー
+    ///
+    /// BS でバッファが空になった際に composingText から引き戻してバッファに復元するために使う。
+    /// 非フォールバック（マッピング解決）の挿入が起きると無効化される。
+    private var fallbackFlushedKeys: [String] = []
 
     /// アクティブなカスタム入力マッピング（nil = カスタムテーブルなし → AzooKey trie を使用）
     public private(set) var activeInputMappings: [String: String]?
@@ -300,6 +308,14 @@ public class InputManager {
         editorFontSize = size
     }
 
+    /// 左側コンテキストを外部から設定する（カーソル移動・ファイル開封時等）
+    ///
+    /// composing 中でないときに、カーソル左側のテキストを設定する。
+    /// 最大30文字に切り詰められる。確定操作による自動蓄積とは独立して使用可能。
+    public func setLeftSideContext(_ context: String) {
+        leftSideContext = String(context.suffix(30))
+    }
+
     /// 入力マッピングを設定する
     ///
     /// 入力テーブル（ローマ字・月配列等）がある場合は `activeInputMappings` に保存し、
@@ -326,6 +342,7 @@ public class InputManager {
         }
         // バッファクリア（キーマップ切替時）
         sequentialBuffer = ""
+        fallbackFlushedKeys.removeAll()
     }
 
     // MARK: - 入力操作
@@ -345,6 +362,7 @@ public class InputManager {
     /// `inputStyle: .direct` で挿入するため、AzooKey の内部 trie を経由せず
     /// 文字がそのまま ComposingText に入る。
     public func appendDirectKana(_ kana: String) {
+        fallbackFlushedKeys.removeAll()
         composingText.insertAtCursorPosition(kana, inputStyle: .direct)
         if state == .selecting || state == .previewing {
             resetToComposing()
@@ -420,6 +438,7 @@ public class InputManager {
 
             if hasMatch && !isPrefix {
                 // 一意マッチ → 即座に解決
+                fallbackFlushedKeys.removeAll()
                 composingText.insertAtCursorPosition(mappings[sequentialBuffer]!, inputStyle: .direct)
                 sequentialBuffer = ""
             } else if isPrefix {
@@ -431,6 +450,7 @@ public class InputManager {
                 for len in stride(from: sequentialBuffer.count - 1, through: 1, by: -1) {
                     let prefix = String(sequentialBuffer.prefix(len))
                     if mappings[prefix] != nil {
+                        fallbackFlushedKeys.removeAll()
                         composingText.insertAtCursorPosition(mappings[prefix]!, inputStyle: .direct)
                         sequentialBuffer = String(sequentialBuffer.dropFirst(len))
                         resolved = true
@@ -439,8 +459,9 @@ public class InputManager {
                 }
                 if !resolved {
                     // 先頭1文字もマッチしない → 生文字として追加（フォールバック）
-                    composingText.insertAtCursorPosition(
-                        String(sequentialBuffer.prefix(1)), inputStyle: .direct)
+                    let rawChar = String(sequentialBuffer.prefix(1))
+                    composingText.insertAtCursorPosition(rawChar, inputStyle: .direct)
+                    fallbackFlushedKeys.append(rawChar)
                     sequentialBuffer = String(sequentialBuffer.dropFirst())
                 }
             }
@@ -469,6 +490,7 @@ public class InputManager {
     /// `count` で削除するピース数を指定できる（3キー同時打鍵で2つの単打出力を
     /// まとめて差し替える場合は count=2）。
     public func replaceDirectKana(count: Int, with newKana: String) {
+        fallbackFlushedKeys.removeAll()
         for _ in 0..<count {
             composingText.deleteBackwardFromCursorPosition(count: 1)
         }
@@ -494,6 +516,14 @@ public class InputManager {
         // 逐次入力バッファに未解決キーがある場合、バッファから削除
         if !sequentialBuffer.isEmpty {
             sequentialBuffer = String(sequentialBuffer.dropLast())
+            // BS でバッファが空になった場合、フォールバックでフラッシュされた
+            // 生キーを引き戻してバッファに復元する
+            if sequentialBuffer.isEmpty, let lastRaw = fallbackFlushedKeys.last,
+               inputMappingPrefixes.contains(lastRaw) {
+                fallbackFlushedKeys.removeLast()
+                composingText.deleteBackwardFromCursorPosition(count: 1)
+                sequentialBuffer = lastRaw
+            }
             if sequentialBuffer.isEmpty && composingText.isEmpty {
                 let prefix = confirmedPrefix
                 resetState()
@@ -505,6 +535,8 @@ public class InputManager {
             requestLiveConversion()
             return .continuing
         }
+        // バッファが空で composingText から直接削除 → フォールバック履歴を無効化
+        fallbackFlushedKeys.removeAll()
         // 文節編集中ならカーソルを末尾に戻してから削除（azooKey-Desktop 準拠）
         if !composingText.isAtEndIndex {
             let delta = composingText.convertTarget.count - composingText.convertTargetCursorPosition
@@ -976,6 +1008,7 @@ public class InputManager {
     /// composing 全体をリセットする（全文確定時）
     private func finalizeComposition() {
         sequentialBuffer = ""
+        fallbackFlushedKeys.removeAll()
         directRawInput = ""
         confirmedPrefix = ""
         composingText.stopComposition()
@@ -1086,6 +1119,7 @@ public class InputManager {
 
     private func resetState() {
         sequentialBuffer = ""
+        fallbackFlushedKeys.removeAll()
         confirmedPrefix = ""
         composingText.stopComposition()
         converter.stopComposition()
