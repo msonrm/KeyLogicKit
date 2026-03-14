@@ -127,6 +127,16 @@ public class IMETextView: UITextView {
     /// スマート選択の状態（Shift+Option+→/← で段階的に拡大・縮小）
     private var smartSelectionState = SmartSelectionState()
 
+    /// ブロック境界検出の外部注入プロパティ
+    ///
+    /// アプリ側がブロック（シーン区切り等）の定義を注入すると、
+    /// スマート選択の最上位レベルとしてブロック選択が有効になる。
+    /// nil の場合、`.block` レベルはスキップされる。
+    public var blockRangeProvider: BlockRangeProvider? {
+        get { smartSelectionState.blockRangeProvider }
+        set { smartSelectionState.blockRangeProvider = newValue }
+    }
+
     /// テキスト選択のアンカー位置（SHFT+T/Y の選択起点）
     ///
     /// 標準テキストエディタでは Shift+矢印は「アンカー（固定端）」と「アクティブエンド（移動端）」で

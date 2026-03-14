@@ -165,9 +165,15 @@ public enum SentenceBoundary {
         return text.endIndex
     }
 
-    /// 文末記号の直後から、閉じカッコと空白をスキップした位置を返す
+    /// 文末記号の直後から、連続文末記号・閉じカッコ・空白をスキップした位置を返す
+    ///
+    /// `！？` や `!?` のように連続する文末記号は一つの文末として扱う。
     private static func consumeTrailingAfterEnder(in text: String, from start: String.Index) -> String.Index {
         var idx = start
+        // 連続する文末記号をスキップ（！？、!? 等）
+        while idx < text.endIndex && sentenceEnders.contains(text[idx]) {
+            idx = text.index(after: idx)
+        }
         // 閉じカッコをスキップ
         while idx < text.endIndex && closingBrackets.contains(text[idx]) {
             idx = text.index(after: idx)

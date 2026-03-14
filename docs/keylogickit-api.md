@@ -165,27 +165,41 @@ static func enclosingBrackets(in text: String, at position: String.Index)
     -> (inner: Range<String.Index>, outer: Range<String.Index>)?
 ```
 
+## BlockRangeProvider — ブロック境界検出型（typealias）
+
+```swift
+public typealias BlockRangeProvider = @Sendable (String, String.Index) -> Range<String.Index>?
+```
+
+アプリ固有のブロック境界（シーン区切り、段落グループ等）を検出するクロージャ。
+`nil` を返すと `.block` レベルはスキップされる。
+
 ## SmartSelectionLevel — スマート選択レベル（enum）
 
 | ケース | 説明 |
 |---|---|
 | `.none` | 選択なし |
-| `.clause` | 句（読点区切り） |
 | `.insideBrackets` | カッコ内側 |
 | `.includingBrackets` | カッコを含む |
 | `.sentence` | 文全体 |
+| `.block` | ブロック（境界定義はアプリ側から注入） |
 
 ## SmartSelectionState — スマート選択状態（struct）
 
+```swift
+init(blockRangeProvider: BlockRangeProvider? = nil)
+```
+
 | プロパティ | 型 | 説明 |
 |---|---|---|
+| `blockRangeProvider` | `BlockRangeProvider?` | ブロック境界検出（アプリ側から注入） |
 | `level` | `SmartSelectionLevel` | 現在の拡大レベル |
 | `origin` | `String.Index?` | 起点位置 |
 | `currentRange` | `Range<String.Index>?` | 現在の選択範囲 |
 
 | メソッド | 説明 |
 |---|---|
-| `expand(in:cursor:)` | 次レベルに拡大（範囲が同じならスキップ） |
+| `expand(in:cursor:)` | 次レベルに拡大（範囲が包含される場合もスキップ） |
 | `shrink(in:)` | 前レベルに縮小 |
 | `reset()` | 状態リセット |
 
@@ -395,6 +409,7 @@ func setSimultaneousWindow(_ window: TimeInterval)
 | `onKeyUp` | `((HIDKeyCode, Date) -> Void)?` | キーアップ通知 |
 | `onEnglishModeChange` | `((Bool) -> Void)?` | 英数モード変更通知 |
 | `onCaretRectChange` | `((CGRect) -> Void)?` | キャレット位置変更通知 |
+| `blockRangeProvider` | `BlockRangeProvider?` | ブロック境界検出（スマート選択用） |
 
 ## IMETextViewRepresentable — SwiftUI ラッパー
 
@@ -407,7 +422,8 @@ init(inputManager: InputManager, keyRouter: KeyRouter, editorStyle: EditorStyle 
      onKeyUp: ((HIDKeyCode, Date) -> Void)? = nil,
      onEnglishModeChange: ((Bool) -> Void)? = nil,
      onCaretRectChange: ((CGRect) -> Void)? = nil,
-     onScrollRequest: ((IMETextView, Int) -> Void)? = nil)
+     onScrollRequest: ((IMETextView, Int) -> Void)? = nil,
+     blockRangeProvider: BlockRangeProvider? = nil)
 ```
 
 ## CandidatePopup — 変換候補ポップアップ（SwiftUI View）
