@@ -65,6 +65,11 @@ public struct KeyRouter {
             }
         }
 
+        // idle 時の Option+矢印 → 文ナビゲーション / スマート選択
+        if !isComposing, let action = routeOptionArrow(event) {
+            return action
+        }
+
         // behavior に応じた文字キー処理
         switch definition.behavior {
         case .sequential(let characterMap):
@@ -156,6 +161,31 @@ public struct KeyRouter {
             // composing/previewing 中の数字キーは nil を返して後続の文字入力処理に委譲
             return nil
 
+        default:
+            return nil
+        }
+    }
+
+    // MARK: - Option+矢印（文ナビゲーション / スマート選択）
+
+    /// idle 時の Option+矢印キーを文ナビゲーション / スマート選択に変換する
+    ///
+    /// - Shift なし: 文頭/文末移動、文入れ替え
+    /// - Shift あり: スマート選択拡大/縮小、文選択拡張
+    private func routeOptionArrow(_ event: KeyEvent) -> KeyAction? {
+        guard event.modifierFlags.contains(.alternate) else { return nil }
+
+        let hasShift = event.modifierFlags.contains(.shift)
+
+        switch event.keyCode {
+        case .keyboardLeftArrow:
+            return hasShift ? .smartSelectShrink : .moveSentenceStart
+        case .keyboardRightArrow:
+            return hasShift ? .smartSelectExpand : .moveSentenceEnd
+        case .keyboardUpArrow:
+            return hasShift ? .selectSentenceUp : .swapSentenceUp
+        case .keyboardDownArrow:
+            return hasShift ? .selectSentenceDown : .swapSentenceDown
         default:
             return nil
         }

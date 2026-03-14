@@ -124,6 +124,9 @@ public class IMETextView: UITextView {
     /// 同時打鍵バッファ（chord 方式の入力で使用）
     private let chordBuffer = SimultaneousKeyBuffer()
 
+    /// スマート選択の状態（Shift+Option+→/← で段階的に拡大・縮小）
+    private var smartSelectionState = SmartSelectionState()
+
     /// テキスト選択のアンカー位置（SHFT+T/Y の選択起点）
     ///
     /// 標準テキストエディタでは Shift+矢印は「アンカー（固定端）」と「アクティブエンド（移動端）」で
@@ -669,6 +672,16 @@ public class IMETextView: UITextView {
     /// 入力方式ごとの重複コードを排除する。
     private func executeAction(_ action: KeyAction, key: UIKey, inputManager im: InputManager,
                                presses: Set<UIPress>, event: UIPressesEvent?) {
+        // スマート選択系以外のアクションでは状態をリセット
+        switch action {
+        case .smartSelectExpand, .smartSelectShrink, .selectSentenceUp, .selectSentenceDown:
+            break
+        default:
+            if smartSelectionState.level != .none {
+                smartSelectionState.reset()
+            }
+        }
+
         switch action {
         case .pass:
             if isComposing {
@@ -938,6 +951,58 @@ public class IMETextView: UITextView {
             }
             logKeyEvent(phase: "began", key: key, handled: true)
 
+        // MARK: 文ナビゲーション（Option+矢印）
+
+        case .moveSentenceStart:
+            interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
+            selectionAnchor = nil
+            moveCursorToSentenceStart()
+            logKeyEvent(phase: "began", key: key, handled: true)
+
+        case .moveSentenceEnd:
+            interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
+            selectionAnchor = nil
+            moveCursorToSentenceEnd()
+            logKeyEvent(phase: "began", key: key, handled: true)
+
+        case .swapSentenceUp:
+            interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
+            selectionAnchor = nil
+            swapSentence(direction: -1)
+            logKeyEvent(phase: "began", key: key, handled: true)
+
+        case .swapSentenceDown:
+            interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
+            selectionAnchor = nil
+            swapSentence(direction: 1)
+            logKeyEvent(phase: "began", key: key, handled: true)
+
+        // MARK: スマート選択（Shift+Option+矢印）
+
+        case .smartSelectExpand:
+            interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
+            selectionAnchor = nil
+            handleSmartSelectExpand()
+            logKeyEvent(phase: "began", key: key, handled: true)
+
+        case .smartSelectShrink:
+            interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
+            selectionAnchor = nil
+            handleSmartSelectShrink()
+            logKeyEvent(phase: "began", key: key, handled: true)
+
+        case .selectSentenceUp:
+            interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
+            selectionAnchor = nil
+            handleSelectSentence(direction: -1)
+            logKeyEvent(phase: "began", key: key, handled: true)
+
+        case .selectSentenceDown:
+            interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
+            selectionAnchor = nil
+            handleSelectSentence(direction: 1)
+            logKeyEvent(phase: "began", key: key, handled: true)
+
         case .insertAndConfirm:
             // chord buffer のコールバック経由でのみ発火するアクション。
             // executeChordAction() で処理済みなので、ここでは何もしない。
@@ -1164,6 +1229,209 @@ public class IMETextView: UITextView {
             currentOffset += segmentLength
         }
         textStorage.endEditing()
+    }
+
+    // MARK: - 文ナビゲーション・スマート選択
+
+    /// テキスト全文を取得する
+    private func fullText() -> String {
+        textStorage.string
+    }
+
+    /// カーソル位置を String.Index に変換する
+    ///
+    /// UITextView の offset は UTF-16 ベースなので、NSString 経由で変換する。
+    private func cursorStringIndex(in text: String, from textPosition: UITextPosition) -> String.Index {
+        let utf16Offset = offset(from: beginningOfDocument, to: textPosition)
+        let nsString = text as NSString
+        // UTF-16 オフセットの範囲チェック
+        guard utf16Offset >= 0, utf16Offset <= nsString.length else {
+            return text.endIndex
+        }
+        // NSRange → Range<String.Index> 変換
+        let nsRange = NSRange(location: utf16Offset, length: 0)
+        guard let range = Range(nsRange, in: text) else {
+            return text.endIndex
+        }
+        return range.lowerBound
+    }
+
+    /// String.Index の範囲を UITextView の selectedTextRange に設定する
+    private func setSelection(range: Range<String.Index>, in text: String) {
+        let nsString = text as NSString
+        let nsRange = NSRange(range, in: text)
+        guard nsRange.location != NSNotFound,
+              nsRange.location + nsRange.length <= nsString.length else { return }
+        guard let start = position(from: beginningOfDocument, offset: nsRange.location),
+              let end = position(from: beginningOfDocument, offset: nsRange.location + nsRange.length) else { return }
+        selectedTextRange = textRange(from: start, to: end)
+    }
+
+    /// String.Index を UITextPosition に変換してカーソルを設定する
+    private func setCursor(at index: String.Index, in text: String) {
+        let nsRange = NSRange(index..<index, in: text)
+        guard let pos = position(from: beginningOfDocument, offset: nsRange.location) else { return }
+        selectedTextRange = textRange(from: pos, to: pos)
+    }
+
+    /// 文頭へカーソルを移動する（Option+←）
+    private func moveCursorToSentenceStart() {
+        let text = fullText()
+        guard !text.isEmpty, let range = selectedTextRange else { return }
+
+        let cursor = cursorStringIndex(in: text, from: range.start)
+        let target = SentenceBoundary.previousSentenceStart(in: text, before: cursor)
+        setCursor(at: target, in: text)
+    }
+
+    /// 文末へカーソルを移動する（Option+→）
+    private func moveCursorToSentenceEnd() {
+        let text = fullText()
+        guard !text.isEmpty, let range = selectedTextRange else { return }
+
+        let cursor = cursorStringIndex(in: text, from: range.end)
+        let target = SentenceBoundary.nextSentenceEnd(in: text, after: cursor)
+        setCursor(at: target, in: text)
+    }
+
+    /// 文を前後の文と入れ替える（Option+↑/↓）
+    ///
+    /// 選択中の文（または現在カーソルのある文）を direction 方向の隣の文と交換する。
+    /// - Parameter direction: -1 で前の文と、+1 で後の文と入れ替え
+    private func swapSentence(direction: Int) {
+        let text = fullText()
+        guard !text.isEmpty, let range = selectedTextRange else { return }
+
+        let cursor = cursorStringIndex(in: text, from: range.start)
+        let currentSentence = SentenceBoundary.sentenceRange(in: text, at: cursor)
+
+        let adjacentSentence: Range<String.Index>
+        if direction < 0 {
+            // 前の文: 現在の文の開始位置より前
+            guard currentSentence.lowerBound > text.startIndex else { return }
+            let prevIdx = text.index(before: currentSentence.lowerBound)
+            adjacentSentence = SentenceBoundary.sentenceRange(in: text, at: prevIdx)
+        } else {
+            // 後の文: 現在の文の終了位置以降
+            guard currentSentence.upperBound < text.endIndex else { return }
+            adjacentSentence = SentenceBoundary.sentenceRange(in: text, at: currentSentence.upperBound)
+        }
+
+        // 同じ範囲なら何もしない
+        guard currentSentence != adjacentSentence else { return }
+
+        // テキストを取得
+        let currentText = String(text[currentSentence])
+        let adjacentText = String(text[adjacentSentence])
+
+        // 後方の範囲から先に置換（前方のオフセットを壊さないため）
+        let (first, second): (Range<String.Index>, Range<String.Index>)
+        let (firstText, secondText): (String, String)
+
+        if currentSentence.lowerBound < adjacentSentence.lowerBound {
+            first = currentSentence
+            second = adjacentSentence
+            firstText = adjacentText
+            secondText = currentText
+        } else {
+            first = adjacentSentence
+            second = currentSentence
+            firstText = currentText
+            secondText = adjacentText
+        }
+
+        // Undo 対応: replace を使用
+        let fullRange = first.lowerBound..<second.upperBound
+        let nsFullRange = NSRange(fullRange, in: text)
+        guard let textRangeForReplace = convertNSRangeToTextRange(nsFullRange) else { return }
+
+        let newText = firstText + secondText
+        replace(textRangeForReplace, withText: newText)
+
+        // 入れ替え後、元の文のテキストが移動した先にカーソルを設定
+        let updatedText = fullText()
+        if direction < 0 {
+            // 上方向: 元の文は先頭に移動した
+            let newCursor = updatedText.index(updatedText.startIndex,
+                                               offsetBy: text.distance(from: text.startIndex, to: first.lowerBound))
+            let newSentence = SentenceBoundary.sentenceRange(in: updatedText, at: newCursor)
+            setSelection(range: newSentence, in: updatedText)
+        } else {
+            // 下方向: 元の文は末尾側に移動した
+            let adjacentLength = adjacentText.count
+            let startOffset = text.distance(from: text.startIndex, to: first.lowerBound) + adjacentLength
+            guard startOffset < updatedText.count else { return }
+            let newCursor = updatedText.index(updatedText.startIndex, offsetBy: startOffset)
+            let newSentence = SentenceBoundary.sentenceRange(in: updatedText, at: newCursor)
+            setSelection(range: newSentence, in: updatedText)
+        }
+    }
+
+    /// NSRange を UITextRange に変換する
+    private func convertNSRangeToTextRange(_ nsRange: NSRange) -> UITextRange? {
+        guard let start = position(from: beginningOfDocument, offset: nsRange.location),
+              let end = position(from: beginningOfDocument, offset: nsRange.location + nsRange.length) else {
+            return nil
+        }
+        return textRange(from: start, to: end)
+    }
+
+    /// スマート選択を拡大する（Shift+Option+→）
+    private func handleSmartSelectExpand() {
+        let text = fullText()
+        guard !text.isEmpty, let range = selectedTextRange else { return }
+
+        let cursor = cursorStringIndex(in: text, from: range.start)
+        if let newRange = smartSelectionState.expand(in: text, cursor: cursor) {
+            setSelection(range: newRange, in: text)
+        }
+    }
+
+    /// スマート選択を縮小する（Shift+Option+←）
+    private func handleSmartSelectShrink() {
+        let text = fullText()
+        guard !text.isEmpty else { return }
+
+        if let newRange = smartSelectionState.shrink(in: text) {
+            setSelection(range: newRange, in: text)
+        } else if let origin = smartSelectionState.origin {
+            // none に戻った — カーソルを起点に戻す
+            setCursor(at: origin, in: text)
+            smartSelectionState.reset()
+        }
+    }
+
+    /// 文選択を上下に拡張する（Shift+Option+↑/↓）
+    ///
+    /// 未選択なら現在の文を選択。選択中なら direction 方向の隣の文も含めて選択を拡張。
+    /// - Parameter direction: -1 で上（前の文を追加）、+1 で下（次の文を追加）
+    private func handleSelectSentence(direction: Int) {
+        let text = fullText()
+        guard !text.isEmpty, let range = selectedTextRange else { return }
+
+        let selStart = cursorStringIndex(in: text, from: range.start)
+        let selEnd = cursorStringIndex(in: text, from: range.end)
+        let hasSelection = selStart != selEnd
+
+        if !hasSelection {
+            // 未選択: カーソル位置の文を選択
+            let sentence = SentenceBoundary.sentenceRange(in: text, at: selStart)
+            setSelection(range: sentence, in: text)
+        } else {
+            // 選択中: direction 方向に1文分拡張
+            if direction < 0 {
+                // 上方向: 選択の先頭を前の文の先頭まで拡張
+                guard selStart > text.startIndex else { return }
+                let prevIdx = text.index(before: selStart)
+                let prevSentence = SentenceBoundary.sentenceRange(in: text, at: prevIdx)
+                setSelection(range: prevSentence.lowerBound..<selEnd, in: text)
+            } else {
+                // 下方向: 選択の末尾を次の文の末尾まで拡張
+                guard selEnd < text.endIndex else { return }
+                let nextSentence = SentenceBoundary.sentenceRange(in: text, at: selEnd)
+                setSelection(range: selStart..<nextSentence.upperBound, in: text)
+            }
+        }
     }
 
     // MARK: - テキスト選択（アンカーベース）
