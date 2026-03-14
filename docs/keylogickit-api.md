@@ -358,13 +358,33 @@ init(inputManager: InputManager, keyRouter: KeyRouter, editorStyle: EditorStyle 
 init(additionalCandidates: [InputManager.AdditionalCandidate],
      isAdditionalCandidateSelected: Bool, selectedAdditionalCandidateIndex: Int,
      candidates: [String], selectedIndex: Int,
-     font: Font = .system(size: 15), fontSize: CGFloat = 15)
+     font: Font = .system(size: 15), fontSize: CGFloat = 15,
+     anchor: CGRect? = nil, bounds: CGSize? = nil)
 ```
+
+| パラメータ | 型 | 説明 |
+|---|---|---|
+| `anchor` | `CGRect?` | カーソル矩形（配置のアンカー）。`bounds` と共に指定すると自動配置が有効になる |
+| `bounds` | `CGSize?` | 表示領域のサイズ（overlay の親ビューサイズ） |
+
+自動配置ルール（`anchor` と `bounds` の両方が非 nil の場合）:
+- デフォルト: `anchor.maxY` の直下に表示
+- 垂直フリップ: ポップアップが `bounds.height` を超える場合、`anchor.minY` の直上に反転
+- 水平クランプ: ポップアップが `bounds.width` を超える場合、右端に収まるよう左にずらす
+- 左端・上端は 0 でクランプ
 
 ## PredictionPopup — 予測候補ポップアップ（SwiftUI View）
 
 ```swift
-init(predictions: [PredictionItem], font: Font)
+init(predictions: [PredictionItem], font: Font,
+     anchor: CGRect? = nil, bounds: CGSize? = nil)
 ```
+
+| パラメータ | 型 | 説明 |
+|---|---|---|
+| `anchor` | `CGRect?` | カーソル矩形（配置のアンカー）。`bounds` と共に指定すると自動配置が有効になる |
+| `bounds` | `CGSize?` | 表示領域のサイズ（overlay の親ビューサイズ） |
+
+自動配置ルールは CandidatePopup と同一。
 
 関連型: `PredictionItem` struct（`text: String`, `annotation: String?`）
