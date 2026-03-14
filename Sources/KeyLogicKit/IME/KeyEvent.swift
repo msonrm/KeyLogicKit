@@ -142,6 +142,21 @@ public struct HIDKeyCode: RawRepresentable, Hashable, Sendable {
     // MARK: エラー/未定義
 
     public static let keyboardErrorUndefined = HIDKeyCode(rawValue: 0x03)
+
+    // MARK: システム IME トリガーキー
+
+    /// システム IME の切替をトリガーするキーコード
+    ///
+    /// fullControlMode 有効時にこれらのキーをインターセプトし、
+    /// システム IME の切替を防止する。
+    public static let systemIMETriggerKeys: Set<HIDKeyCode> = [
+        .keyboardLANG1,           // かな
+        .keyboardLANG2,           // 英数
+        .keyboardCapsLock,        // CAPS LOCK
+        .keyboardInternational4,  // 変換
+        .keyboardInternational5,  // 無変換
+        .keyboardInternational2,  // ひらがな/カタカナ
+    ]
 }
 
 // MARK: - KeyModifierFlags

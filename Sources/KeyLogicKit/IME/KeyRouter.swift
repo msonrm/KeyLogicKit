@@ -6,11 +6,12 @@ import Foundation
 /// 入力方式ごとのサブクラスは不要 — データ（テーブル）で振る舞いが決まる。
 ///
 /// ルーティングの優先順位:
+///   0. modeKeys → モード切替キー（最優先）
 ///   1. Ctrl+キー（composing 中）→ controlBindings の Emacs バインド
 ///   2. 標準制御キー（composing 中）→ Enter/Escape/Space/BS/矢印/数字
 ///      ※ chord 方式ではシフトキー（Space 等）を除外（selecting 中を除く）
 ///   3. behavior に応じた文字キー処理:
-///      - sequential: event.characters → .printable(c)
+///      - sequential: event.characters → .printable(c) / .directInsert(c)
 ///      - chord: hidToKey → .chordInput(key) / .chordShiftDown(key)
 ///   4. 該当なし → .pass
 @MainActor
@@ -30,11 +31,16 @@ public struct KeyRouter {
     ///   - event: プラットフォーム非依存のキーイベント
     ///   - isComposing: 現在 composing/selecting 中か
     ///   - state: 現在の変換状態
-    ///   - isDirectEnglishMode: 英数直接入力モードか（薙刀式の F+G 後の状態）
+    ///   - isDirectEnglishMode: 英数直接入力モードか（F+G 後や modeKeys 切替後の状態）
     /// - Returns: 実行すべきアクション
     public func route(_ event: KeyEvent, isComposing: Bool,
                state: InputManager.ConversionState,
                isDirectEnglishMode: Bool = false) -> KeyAction {
+        // modeKeys: モード切替キー（最優先）
+        if let action = definition.modeKeys?[event.keyCode] {
+            return action
+        }
+
         // Ctrl+キー（composing 中）→ Emacs バインド
         if isComposing && event.modifierFlags.contains(.control) {
             return routeControlKey(event)
@@ -62,7 +68,8 @@ public struct KeyRouter {
         // behavior に応じた文字キー処理
         switch definition.behavior {
         case .sequential(let characterMap):
-            return routeSequential(event, characterMap: characterMap, isComposing: isComposing, state: state)
+            return routeSequential(event, characterMap: characterMap, isComposing: isComposing,
+                                   state: state, isDirectEnglishMode: isDirectEnglishMode)
         case .chord(let config):
             return routeChord(event, config: config, isComposing: isComposing, state: state,
                               isDirectEnglishMode: isDirectEnglishMode)
@@ -164,9 +171,22 @@ public struct KeyRouter {
     /// （記号キー `;`, `,`, `.`, `/` 等もカスタムテーブルで解決するため）。
     /// 数字は composing 中のテキストに直接追加される（azooKey-Desktop と同等）。
     /// .printable には物理キー文字を渡す（論理変換は addPrintableToComposing で行う）。
+    /// 英数直接入力モードでは印字可能文字を .directInsert で返す。
     /// それ以外は .pass。
     private func routeSequential(_ event: KeyEvent, characterMap: [Character: Character],
-                                 isComposing: Bool, state: InputManager.ConversionState) -> KeyAction {
+                                 isComposing: Bool, state: InputManager.ConversionState,
+                                 isDirectEnglishMode: Bool) -> KeyAction {
+        // 英数直接入力モード: 印字可能文字は直接挿入
+        if isDirectEnglishMode {
+            let chars = event.characters
+            if !chars.isEmpty,
+               let scalar = chars.unicodeScalars.first,
+               !CharacterSet.controlCharacters.contains(scalar) {
+                return .directInsert(chars)
+            }
+            return .pass
+        }
+
         let chars = event.characters
         guard chars.count == 1, let c = chars.first else {
             return .pass

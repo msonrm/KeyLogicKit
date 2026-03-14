@@ -79,6 +79,13 @@ public struct KeymapDefinition: Sendable {
     /// 例: 月配列2-263 では `["d", "k"]`、AZIK では `[]`
     public let prefixShiftKeys: [Character]?
 
+    /// モード切替キー（HID コード → KeyAction）
+    ///
+    /// 逐次入力・同時打鍵問わず、英数直接入力モードの切替キーを定義する。
+    /// 例: LANG2 → `.switchToEnglish`、LANG1 → `.switchToJapanese`、CAPS LOCK → `.toggleInputMode`
+    /// chord の specialActions で定義済みの F+G 等と共存可能。
+    public let modeKeys: [HIDKeyCode: KeyAction]?
+
     /// アプリ固有の拡張フィールド（フォーマット仕様の範囲外）
     ///
     /// 将来の拡張用。キー名は `"x-"` プレフィックスを推奨。
@@ -94,6 +101,7 @@ public struct KeymapDefinition: Sendable {
          inputMappings: [String: String]? = nil,
          prefixShiftKeys: [Character]? = nil,
          controlBindings: ControlBindings = .default,
+         modeKeys: [HIDKeyCode: KeyAction]? = nil,
          formatVersion: String = KeymapDefinition.currentFormatVersion,
          description: String? = nil, author: String? = nil,
          license: String? = nil, targetScript: String? = nil,
@@ -111,6 +119,7 @@ public struct KeymapDefinition: Sendable {
         self.suffixRules = suffixRules
         self.prefixShiftKeys = prefixShiftKeys
         self.controlBindings = controlBindings
+        self.modeKeys = modeKeys
         self.extensions = extensions
 
         // inputBase / suffixRules がある場合は展開（論理キー空間のまま）

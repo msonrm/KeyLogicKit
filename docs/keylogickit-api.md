@@ -63,6 +63,7 @@ init()  // 辞書変換エンジンを初期化
 | `dynamicShortcuts` | `[DynamicShortcut]` | 日時ショートカット | 動的ショートカット |
 | `dynamicShortcutsEnabled` | `Bool` | `true` | 動的ショートカット有効化 |
 | `simultaneousWindow` | `TimeInterval` | `0.080` | 同時打鍵判定窓（秒） |
+| `fullControlMode` | `Bool` | `true` | キー入力完全制御モード（システム IME 切替を無効化） |
 | `zenzaiWeightURL` | `URL?` | `nil` | Zenzai モデル URL（DI） |
 
 ### 入力操作メソッド
@@ -124,7 +125,9 @@ func route(_ event: KeyEvent, isComposing: Bool, state: InputManager.ConversionS
 | `.chordInput(ChordKey)` | 同時打鍵文字キー |
 | `.chordShiftDown(ChordKey)` | 同時打鍵シフトキー |
 | `.insertAndConfirm(String)` | 挿入+確定（句読点等） |
-| `.chordModeOff/On` | 英数/日本語モード切替 |
+| `.switchToEnglish` | 英数直接入力に切替 |
+| `.switchToJapanese` | 日本語入力に復帰 |
+| `.toggleInputMode` | 日本語↔英数トグル |
 | `.directInsert(String)` | 英数直接挿入 |
 | `.pass` | UIKit に委任 |
 
@@ -151,6 +154,13 @@ init(keyCode: HIDKeyCode, characters: String, modifierFlags: KeyModifierFlags)
 - 矢印: `.keyboardLeftArrow`, `.keyboardRightArrow`, `.keyboardUpArrow`, `.keyboardDownArrow`
 - ファンクション: `.keyboardF1` 〜 `.keyboardF12`
 - JIS 固有: `.keyboardInternational1` 〜 `.keyboardInternational5`, `.keyboardLANG1`, `.keyboardLANG2`
+- その他: `.keyboardCapsLock`
+
+静的プロパティ:
+
+| プロパティ | 型 | 説明 |
+|---|---|---|
+| `systemIMETriggerKeys` | `Set<HIDKeyCode>` | システム IME 切替トリガーキー（LANG1/2, CAPS LOCK, 変換/無変換, ひらがな/カタカナ） |
 
 ## KeyModifierFlags — 修飾キーフラグ（OptionSet）
 
@@ -182,6 +192,7 @@ init(keyCode: HIDKeyCode, characters: String, modifierFlags: KeyModifierFlags)
 | `inputMappings` | `[String: String]?` | キーシーケンス→かなマッピング |
 | `explicitInputMappings` | `[String: String]?` | 展開前のオリジナルマッピング |
 | `prefixShiftKeys` | `[Character]?` | 前置シフトキー |
+| `modeKeys` | `[HIDKeyCode: KeyAction]?` | モード切替キー（英数/かな切替） |
 | `extensions` | `[String: String]?` | アプリ固有拡張 |
 
 ### 関連型

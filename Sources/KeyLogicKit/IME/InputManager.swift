@@ -78,8 +78,14 @@ public class InputManager {
     /// 現在の変換状態
     public private(set) var state: ConversionState = .composing
 
-    /// 現在の入力モード（システムキーボードの状態に連動）
+    /// 現在の入力モード（システムキーボードの状態に連動、または fullControlMode 時はアプリ制御）
     public private(set) var inputMode: InputMode = .japanese
+
+    /// キー入力完全制御モード
+    ///
+    /// true の場合、システム IME の切替を無効化し、アプリ独自の英数/かなモードを使用する。
+    /// LANG1/LANG2/CAPS LOCK 等のシステム IME トリガーキーをインターセプトする。
+    public var fullControlMode: Bool = true
 
     /// 現在の日本語入力方式（UserDefaults に永続化）
     public var inputMethod: InputMethod = .sequential
