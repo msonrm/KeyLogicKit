@@ -260,6 +260,14 @@ extension KeyAction: Codable {
         case .switchToJapanese:          try container.encode("switchToJapanese")
         case .toggleInputMode:           try container.encode("toggleInputMode")
         case .pass:                      try container.encode("pass")
+        case .moveSentenceStart:         try container.encode("moveSentenceStart")
+        case .moveSentenceEnd:           try container.encode("moveSentenceEnd")
+        case .swapSentenceUp:            try container.encode("swapSentenceUp")
+        case .swapSentenceDown:          try container.encode("swapSentenceDown")
+        case .smartSelectExpand:         try container.encode("smartSelectExpand")
+        case .smartSelectShrink:         try container.encode("smartSelectShrink")
+        case .selectSentenceUp:          try container.encode("selectSentenceUp")
+        case .selectSentenceDown:        try container.encode("selectSentenceDown")
         case .printable(let c):
             try container.encode("printable:\(c)")
         case .selectCandidate(let i):
@@ -296,6 +304,14 @@ extension KeyAction: Codable {
         case "switchToJapanese":          self = .switchToJapanese
         case "toggleInputMode":           self = .toggleInputMode
         case "pass":                     self = .pass
+        case "moveSentenceStart":        self = .moveSentenceStart
+        case "moveSentenceEnd":          self = .moveSentenceEnd
+        case "swapSentenceUp":           self = .swapSentenceUp
+        case "swapSentenceDown":         self = .swapSentenceDown
+        case "smartSelectExpand":        self = .smartSelectExpand
+        case "smartSelectShrink":        self = .smartSelectShrink
+        case "selectSentenceUp":         self = .selectSentenceUp
+        case "selectSentenceDown":       self = .selectSentenceDown
         case "printable":
             guard parts.count == 2, parts[1].count == 1, let c = parts[1].first else {
                 throw DecodingError.dataCorruptedError(
