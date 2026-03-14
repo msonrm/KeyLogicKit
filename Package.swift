@@ -28,6 +28,9 @@ let package = Package(
             path: "Sources/KeyLogicKit",
             resources: [
                 .copy("Resources/Keymaps")
+            ],
+            swiftSettings: [
+                .interoperabilityMode(.Cxx)
             ]
         ),
     ]
