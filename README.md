@@ -162,6 +162,18 @@ KeyLogicKit
 
 デフォルトは辞書ベース変換のみ。Zenzai を有効化するには:
 
+1. アプリの `Package.swift` で KeyLogicKit 依存に `traits: ["ZenzaiCPU"]` を指定する:
+
+```swift
+dependencies: [
+    .package(url: "https://github.com/msonrm/KeyLogicKit",
+             from: "0.1.0",
+             traits: ["ZenzaiCPU"]),
+]
+```
+
+2. `InputManager` に Zenzai モデルの URL を設定する:
+
 ```swift
 let inputManager = InputManager()
 inputManager.zenzaiWeightURL = Bundle.main.url(
@@ -169,7 +181,7 @@ inputManager.zenzaiWeightURL = Bundle.main.url(
 )
 ```
 
-アプリの `Package.swift` で `traits: ["ZenzaiCPU"]` を指定すること。
+トレイト未指定時は推論バックエンドがリンクされず、辞書ベース変換のみで動作する（振る舞い変化なし）。
 
 ## Acknowledgements
 
