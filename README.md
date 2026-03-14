@@ -160,19 +160,9 @@ KeyLogicKit
 
 ## Zenzai（ニューラル変換）の有効化
 
-デフォルトは辞書ベース変換のみ。Zenzai を有効化するには:
+`ZenzaiCPU` トレイトはデフォルト有効のため、Zenzai 推論バックエンド（llama.cpp）は自動的にビルドに含まれる。
 
-1. アプリの `Package.swift` で KeyLogicKit 依存に `traits: ["ZenzaiCPU"]` を指定する:
-
-```swift
-dependencies: [
-    .package(url: "https://github.com/msonrm/KeyLogicKit",
-             from: "0.1.0",
-             traits: ["ZenzaiCPU"]),
-]
-```
-
-2. `InputManager` に Zenzai モデルの URL を設定する:
+Zenzai を使うには `InputManager` にモデルの URL を設定するだけでよい:
 
 ```swift
 let inputManager = InputManager()
@@ -181,7 +171,15 @@ inputManager.zenzaiWeightURL = Bundle.main.url(
 )
 ```
 
-トレイト未指定時は推論バックエンドがリンクされず、辞書ベース変換のみで動作する（振る舞い変化なし）。
+`zenzaiWeightURL` を設定しなければ辞書ベース変換のみで動作する（ランタイム動作は変わらない）。
+
+### Zenzai を無効化する（バイナリサイズ削減）
+
+推論バックエンドが不要な場合は `--disable-default-traits` で無効化できる:
+
+```
+swift build --disable-default-traits
+```
 
 ## Acknowledgements
 

@@ -6,6 +6,7 @@ let package = Package(
     platforms: [.iOS(.v18)],
     traits: [
         .trait(name: "ZenzaiCPU", description: "Zenzai ニューラル変換（CPU）を有効にする"),
+        .default(enabledTraits: ["ZenzaiCPU"]),
     ],
     products: [
         .library(name: "KeyLogicKit", targets: ["KeyLogicKit"]),
