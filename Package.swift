@@ -4,10 +4,6 @@ import PackageDescription
 let package = Package(
     name: "KeyLogicKit",
     platforms: [.iOS(.v18)],
-    traits: [
-        .trait(name: "ZenzaiCPU", description: "Zenzai ニューラル変換（CPU）を有効にする"),
-        .default(enabledTraits: ["ZenzaiCPU"]),
-    ],
     products: [
         .library(name: "KeyLogicKit", targets: ["KeyLogicKit"]),
     ],
@@ -29,5 +25,9 @@ let package = Package(
                 .copy("Resources/Keymaps")
             ]
         ),
+    ],
+    traits: [
+        .trait(name: "ZenzaiCPU", description: "Zenzai ニューラル変換（CPU）を有効にする"),
+        .default(enabledTraits: ["ZenzaiCPU"]),
     ]
 )
