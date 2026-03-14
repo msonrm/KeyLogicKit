@@ -766,6 +766,11 @@ public class IMETextView: UITextView {
                 logEvent("chord-select-and-continue", detail: confirmed)
             }
 
+            // 英数候補用: 日本語モードのみ QWERTY キー文字を蓄積
+            if im.inputMethod != .directEnglish {
+                im.recordChordKey(chordKey)
+            }
+
             // 英数モード + 物理 Shift → lookup 時に shift ビットを合成して大文字を出力
             chordBuffer.physicalShift = im.inputMethod == .directEnglish
                 && key.modifierFlags.contains(.shift)

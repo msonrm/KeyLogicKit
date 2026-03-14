@@ -259,6 +259,13 @@ public class InputManager {
     private let converter: KanaKanjiConverter
     private var composingText = ComposingText()
 
+    /// direct 入力で蓄積された元の入力文字列（英数候補の生成用）
+    ///
+    /// AzooKey trie 経由の入力は composingText.input から復元できるが、
+    /// `.direct` スタイル（カスタムテーブル・同時打鍵）では intention が nil のため復元不可。
+    /// この変数で元のキー文字列を別途保持する。
+    private var directRawInput: String = ""
+
     /// 文節区切り編集が行われたかどうか
     private var didExperienceSegmentEdition = false
 
@@ -325,6 +332,16 @@ public class InputManager {
 
     /// かな文字を直接追加する（変換テーブルで解決済みのかな、全角記号等）
     ///
+    /// 同時打鍵キーの QWERTY 文字を蓄積する（英数候補の生成用）
+    ///
+    /// `IMETextView` の `.chordInput` ハンドラから、chord buffer にキーを渡す前に呼ぶ。
+    /// シフトキー（`.chordShiftDown`）は呼ばないこと（英数候補に不要なため）。
+    public func recordChordKey(_ key: ChordKey) {
+        if let c = key.character {
+            directRawInput.append(c)
+        }
+    }
+
     /// `inputStyle: .direct` で挿入するため、AzooKey の内部 trie を経由せず
     /// 文字がそのまま ComposingText に入る。
     public func appendDirectKana(_ kana: String) {
@@ -348,6 +365,7 @@ public class InputManager {
     /// "q" → "j" と打つと trie がバックトラックできず "qう" になってしまう。
     /// こちら側でバッファ管理することで "そう" に正しく解決される。
     public func handleSequentialInput(_ character: String) {
+        directRawInput += character
         sequentialBuffer += character
         drainSequentialBuffer()
         if state == .selecting || state == .previewing {
@@ -867,14 +885,22 @@ public class InputManager {
     }
 
     /// composingText の入力ピースから元のローマ字/記号文字列を復元する
+    ///
+    /// AzooKey trie 経由の入力は `.character` / `.key(intention:)` で復元可能。
+    /// direct 入力（カスタムテーブル・同時打鍵）では intention が nil のため復元不可。
+    /// その場合は `directRawInput` + 未解決の逐次バッファをフォールバックとして返す。
     private func recoverRawInput() -> String {
-        composingText.input.compactMap { element -> String? in
+        let fromPieces = composingText.input.compactMap { element -> String? in
             switch element.piece {
             case .character(let c): return String(c)
             case .key(let intention, _, _): return intention.map { String($0) }
             case .compositionSeparator: return nil
             }
         }.joined() as String
+        if fromPieces.isEmpty {
+            return directRawInput + sequentialBuffer
+        }
+        return fromPieces
     }
 
     /// selecting/previewing 状態から composing 状態に戻す（Escape で候補ウィンドウを閉じる）
@@ -950,6 +976,7 @@ public class InputManager {
     /// composing 全体をリセットする（全文確定時）
     private func finalizeComposition() {
         sequentialBuffer = ""
+        directRawInput = ""
         confirmedPrefix = ""
         composingText.stopComposition()
         converter.stopComposition()
@@ -1009,13 +1036,7 @@ public class InputManager {
         guard !hiragana.isEmpty else { return }
 
         // composingText の入力ピースから元のローマ字/記号文字列を復元
-        let rawInput = composingText.input.compactMap { element -> String? in
-            switch element.piece {
-            case .character(let c): return String(c)
-            case .key(let intention, _, _): return intention.map { String($0) }
-            case .compositionSeparator: return nil
-            }
-        }.joined() as String
+        let rawInput = recoverRawInput()
 
         // 各種変換テキストを生成
         let halfWidthRoman = rawInput.applyingTransform(StringTransform.fullwidthToHalfwidth, reverse: false)

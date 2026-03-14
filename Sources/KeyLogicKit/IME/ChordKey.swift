@@ -109,6 +109,20 @@ public enum ChordKey: UInt32, CaseIterable, Hashable, Sendable {
 
     // MARK: - 文字 → ChordKey マッピング
 
+    /// ChordKey → QWERTY 文字の逆引き（英数候補生成用）
+    public var character: Character? {
+        Self.toCharacter[self]
+    }
+
+    /// ChordKey → 文字の逆引きテーブル
+    private static let toCharacter: [ChordKey: Character] = {
+        var result: [ChordKey: Character] = [:]
+        for (char, key) in fromCharacter {
+            result[key] = char
+        }
+        return result
+    }()
+
     /// 文字 → ChordKey の逆引きテーブル
     public static let fromCharacter: [Character: ChordKey] = [
         "q": .Q, "w": .W, "e": .E, "r": .R, "t": .T,
