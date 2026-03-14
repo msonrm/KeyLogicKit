@@ -268,10 +268,11 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
                   im.isEmpty else { return }
             let start = max(0, loc - 30)
             let range = NSRange(location: start, length: loc - start)
-            if range.length > 0,
-               let substring = textView.textStorage.attributedSubstring(from: range).string,
-               !substring.isEmpty {
-                im.setLeftSideContext(substring)
+            if range.length > 0 {
+                let substring = textView.textStorage.attributedSubstring(from: range).string
+                if !substring.isEmpty {
+                    im.setLeftSideContext(substring)
+                }
             }
         }
     }
