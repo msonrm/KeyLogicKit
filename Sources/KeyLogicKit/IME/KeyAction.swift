@@ -114,7 +114,7 @@ public enum KeyAction: Sendable {
 
     // MARK: - スマート選択（Shift+Option+矢印、idle 時のみ）
 
-    /// スマート選択を拡大（Shift+Option+→）— 句→カッコ内→カッコ含む→文
+    /// スマート選択を拡大（Shift+Option+→）— カッコ内→カッコ含む→文→ブロック
     case smartSelectExpand
 
     /// スマート選択を縮小（Shift+Option+←）— 拡大の逆

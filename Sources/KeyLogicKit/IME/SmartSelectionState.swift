@@ -8,28 +8,38 @@ import Foundation
 public enum SmartSelectionLevel: Int, Comparable, Sendable {
     /// 選択なし（カーソルのみ）
     case none = 0
-    /// 句（読点 、区切り）
-    case clause = 1
     /// カッコの内側
-    case insideBrackets = 2
+    case insideBrackets = 1
     /// カッコを含む
-    case includingBrackets = 3
+    case includingBrackets = 2
     /// 文全体（句点 。区切り）
-    case sentence = 4
+    case sentence = 3
+    /// ブロック（境界定義はアプリ側から注入）
+    case block = 4
 
     public static func < (lhs: Self, rhs: Self) -> Bool {
         lhs.rawValue < rhs.rawValue
     }
 }
 
+/// ブロック境界検出のクロージャ型
+///
+/// アプリ側が定義するブロック（シーン区切り、段落グループ等）の範囲を返す。
+/// ブロック定義がない、または指定位置がブロック境界上にない場合は nil を返す。
+/// - Parameters:
+///   - text: 対象テキスト全体
+///   - position: カーソル位置
+/// - Returns: position を含むブロックの範囲。nil の場合 `.block` レベルはスキップされる
+public typealias BlockRangeProvider = @Sendable (String, String.Index) -> Range<String.Index>?
+
 /// スマート選択の状態を管理する
 ///
 /// IMETextView が保持し、Shift+Option+→/← で段階的に
 /// 選択範囲を拡大・縮小する。通常のキー操作でリセットされる。
-///
-/// 拡大時、片側がカッコに当たった場合はそちら側を固定して
-/// もう片方だけを拡大する。
 public struct SmartSelectionState: Sendable {
+
+    /// ブロック境界の検出関数（アプリ側から注入）
+    public var blockRangeProvider: BlockRangeProvider?
 
     /// 現在の拡大レベル
     public private(set) var level: SmartSelectionLevel = .none
@@ -43,12 +53,14 @@ public struct SmartSelectionState: Sendable {
     /// 各レベルの選択範囲履歴（縮小時に使用）
     private var rangeHistory: [SmartSelectionLevel: Range<String.Index>] = [:]
 
-    public init() {}
+    public init(blockRangeProvider: BlockRangeProvider? = nil) {
+        self.blockRangeProvider = blockRangeProvider
+    }
 
     /// 選択範囲を次のレベルに拡大する
     ///
-    /// 該当するレベルの範囲が現在の範囲と同じ場合はスキップして
-    /// 次のレベルを試す。
+    /// 該当するレベルの範囲が現在の範囲と同じ、または現在の範囲に包含される場合は
+    /// スキップして次のレベルを試す。
     /// - Parameters:
     ///   - text: 対象テキスト全体
     ///   - cursor: 現在のカーソル位置（初回拡大時の起点）
@@ -63,10 +75,11 @@ public struct SmartSelectionState: Sendable {
 
         // 次のレベルを順に試す
         var nextLevel = SmartSelectionLevel(rawValue: level.rawValue + 1)
-        while let tryLevel = nextLevel, tryLevel <= .sentence {
+        while let tryLevel = nextLevel, tryLevel <= .block {
             if let range = rangeForLevel(tryLevel, in: text, origin: originIdx) {
-                // 現在の選択範囲と同じならスキップ
-                if let current = currentRange, range == current {
+                // 現在の選択範囲と同じ、または現在の範囲に包含される場合はスキップ
+                if let current = currentRange,
+                   range.lowerBound >= current.lowerBound && range.upperBound <= current.upperBound {
                     nextLevel = SmartSelectionLevel(rawValue: tryLevel.rawValue + 1)
                     continue
                 }
@@ -90,7 +103,7 @@ public struct SmartSelectionState: Sendable {
 
         // 前のレベルを探す
         var prevLevel = SmartSelectionLevel(rawValue: level.rawValue - 1)
-        while let tryLevel = prevLevel, tryLevel >= .clause {
+        while let tryLevel = prevLevel, tryLevel >= .insideBrackets {
             if let range = rangeHistory[tryLevel] {
                 level = tryLevel
                 currentRange = range
@@ -122,11 +135,6 @@ public struct SmartSelectionState: Sendable {
         case .none:
             return nil
 
-        case .clause:
-            let sentence = SentenceBoundary.sentenceRange(in: text, at: origin)
-            let clause = SentenceBoundary.clauseRange(in: text, at: origin, within: sentence)
-            return clause
-
         case .insideBrackets:
             guard let brackets = SentenceBoundary.enclosingBrackets(in: text, at: origin) else {
                 return nil
@@ -141,6 +149,9 @@ public struct SmartSelectionState: Sendable {
 
         case .sentence:
             return SentenceBoundary.sentenceRange(in: text, at: origin)
+
+        case .block:
+            return blockRangeProvider?(text, origin)
         }
     }
 }

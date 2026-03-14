@@ -44,6 +44,9 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
     /// カーソル位置の UTF-16 オフセットを渡す。スクロール方法はアプリ側が決定する。
     public var onScrollRequest: ((IMETextView, Int) -> Void)?
 
+    /// ブロック境界検出の外部注入（スマート選択の最上位レベル）
+    public var blockRangeProvider: BlockRangeProvider?
+
     /// 明示的な公開イニシャライザ（public struct のメンバワイズ init は internal のため）
     public init(
         inputManager: InputManager,
@@ -58,7 +61,8 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         onKeyUp: ((HIDKeyCode, Date) -> Void)? = nil,
         onEnglishModeChange: ((Bool) -> Void)? = nil,
         onCaretRectChange: ((CGRect) -> Void)? = nil,
-        onScrollRequest: ((IMETextView, Int) -> Void)? = nil
+        onScrollRequest: ((IMETextView, Int) -> Void)? = nil,
+        blockRangeProvider: BlockRangeProvider? = nil
     ) {
         self.inputManager = inputManager
         self.keyRouter = keyRouter
@@ -73,6 +77,7 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         self.onEnglishModeChange = onEnglishModeChange
         self.onCaretRectChange = onCaretRectChange
         self.onScrollRequest = onScrollRequest
+        self.blockRangeProvider = blockRangeProvider
     }
 
     public func makeCoordinator() -> Coordinator {
@@ -118,6 +123,7 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         textView.onKeyUp = onKeyUp
         textView.onEnglishModeChange = onEnglishModeChange
         textView.onCaretRectChange = onCaretRectChange
+        textView.blockRangeProvider = blockRangeProvider
 
         // エディタのフォントサイズを InputManager に反映
         inputManager.setEditorFontSize(editorStyle.font.pointSize)
@@ -145,6 +151,7 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         uiView.onKeyUp = onKeyUp
         uiView.onEnglishModeChange = onEnglishModeChange
         uiView.onCaretRectChange = onCaretRectChange
+        uiView.blockRangeProvider = blockRangeProvider
         uiView.setSimultaneousWindow(inputManager.simultaneousWindow)
 
         // EditorStyle の変更を検知して再設定
