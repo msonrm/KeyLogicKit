@@ -294,6 +294,9 @@ public class InputManager {
 
         // UserDefaults から設定を復元
         let defaults = UserDefaults.standard
+        if defaults.object(forKey: "fullControlMode") != nil {
+            fullControlMode = defaults.bool(forKey: "fullControlMode")
+        }
         if defaults.object(forKey: "simultaneousWindow") != nil {
             simultaneousWindow = defaults.double(forKey: "simultaneousWindow")
         }
@@ -924,10 +927,17 @@ public class InputManager {
 
     /// composingText の入力ピースから元のローマ字/記号文字列を復元する
     ///
-    /// AzooKey trie 経由の入力は `.character` / `.key(intention:)` で復元可能。
-    /// direct 入力（カスタムテーブル・同時打鍵）では intention が nil のため復元不可。
-    /// その場合は `directRawInput` + 未解決の逐次バッファをフォールバックとして返す。
+    /// AzooKey trie 経由の入力は `.key(intention:)` で元のキー文字を復元可能。
+    /// direct 入力（カスタムテーブル・同時打鍵）では `.character` ピースにかな文字が入り、
+    /// 元のキー入力は `directRawInput` に別途保持されている。
+    /// `directRawInput` が空でなければそちらを優先する。
     private func recoverRawInput() -> String {
+        // direct 入力パス（カスタムテーブル・同時打鍵）では directRawInput に
+        // 元のキー文字列が蓄積されている
+        if !directRawInput.isEmpty {
+            return directRawInput + sequentialBuffer
+        }
+        // AzooKey trie 経由の入力は composingText.input から復元
         let fromPieces = composingText.input.compactMap { element -> String? in
             switch element.piece {
             case .character(let c): return String(c)
@@ -935,9 +945,6 @@ public class InputManager {
             case .compositionSeparator: return nil
             }
         }.joined() as String
-        if fromPieces.isEmpty {
-            return directRawInput + sequentialBuffer
-        }
         return fromPieces
     }
 
