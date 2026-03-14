@@ -98,6 +98,34 @@ public enum KeyAction: Sendable {
     /// 英数モードの印字可能文字を直接挿入
     case directInsert(String)
 
+    // MARK: - 文ナビゲーション（Option+矢印、idle 時のみ）
+
+    /// 文頭へ移動（Option+←）— 既に文頭なら前の文の文頭へ
+    case moveSentenceStart
+
+    /// 文末へ移動（Option+→）— 既に文末なら次の文の文末へ
+    case moveSentenceEnd
+
+    /// 選択中の文を前の文と入れ替え（Option+↑）
+    case swapSentenceUp
+
+    /// 選択中の文を次の文と入れ替え（Option+↓）
+    case swapSentenceDown
+
+    // MARK: - スマート選択（Shift+Option+矢印、idle 時のみ）
+
+    /// スマート選択を拡大（Shift+Option+→）— 句→カッコ内→カッコ含む→文
+    case smartSelectExpand
+
+    /// スマート選択を縮小（Shift+Option+←）— 拡大の逆
+    case smartSelectShrink
+
+    /// 文選択を上に拡張（Shift+Option+↑）— 未選択なら現在の文を選択
+    case selectSentenceUp
+
+    /// 文選択を下に拡張（Shift+Option+↓）— 未選択なら現在の文を選択
+    case selectSentenceDown
+
     // MARK: - パススルー
 
     /// super.pressesBegan に委譲（IME で処理しない）

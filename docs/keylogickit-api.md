@@ -129,7 +129,65 @@ func route(_ event: KeyEvent, isComposing: Bool, state: InputManager.ConversionS
 | `.switchToJapanese` | 日本語入力に復帰 |
 | `.toggleInputMode` | 日本語↔英数トグル |
 | `.directInsert(String)` | 英数直接挿入 |
+| `.moveSentenceStart` | 文頭へ移動（Option+←） |
+| `.moveSentenceEnd` | 文末へ移動（Option+→） |
+| `.swapSentenceUp` | 文を前の文と入れ替え（Option+↑） |
+| `.swapSentenceDown` | 文を次の文と入れ替え（Option+↓） |
+| `.smartSelectExpand` | スマート選択拡大（Shift+Option+→） |
+| `.smartSelectShrink` | スマート選択縮小（Shift+Option+←） |
+| `.selectSentenceUp` | 文選択を上に拡張（Shift+Option+↑） |
+| `.selectSentenceDown` | 文選択を下に拡張（Shift+Option+↓） |
 | `.pass` | UIKit に委任 |
+
+## SentenceBoundary — 文境界検出ユーティリティ（enum）
+
+日本語テキストの文・句・カッコ境界を検出する。UIKit 非依存。
+
+### 定数
+
+| 定数 | 型 | 説明 |
+|---|---|---|
+| `sentenceEnders` | `Set<Character>` | 文末記号（。！？!?） |
+| `closingBrackets` | `Set<Character>` | 閉じカッコ（」』）】〉》)]\}>"'） |
+| `clauseDelimiters` | `Set<Character>` | 句区切り（、,） |
+| `bracketPairs` | `[(open:close:)]` | カッコペア（日本語+ASCII） |
+
+### メソッド
+
+```swift
+static func sentenceRange(in text: String, at position: String.Index) -> Range<String.Index>
+static func sentenceStart(in text: String, at position: String.Index) -> String.Index
+static func previousSentenceStart(in text: String, before position: String.Index) -> String.Index
+static func nextSentenceEnd(in text: String, after position: String.Index) -> String.Index
+static func clauseRange(in text: String, at position: String.Index,
+                         within sentence: Range<String.Index>) -> Range<String.Index>
+static func enclosingBrackets(in text: String, at position: String.Index)
+    -> (inner: Range<String.Index>, outer: Range<String.Index>)?
+```
+
+## SmartSelectionLevel — スマート選択レベル（enum）
+
+| ケース | 説明 |
+|---|---|
+| `.none` | 選択なし |
+| `.clause` | 句（読点区切り） |
+| `.insideBrackets` | カッコ内側 |
+| `.includingBrackets` | カッコを含む |
+| `.sentence` | 文全体 |
+
+## SmartSelectionState — スマート選択状態（struct）
+
+| プロパティ | 型 | 説明 |
+|---|---|---|
+| `level` | `SmartSelectionLevel` | 現在の拡大レベル |
+| `origin` | `String.Index?` | 起点位置 |
+| `currentRange` | `Range<String.Index>?` | 現在の選択範囲 |
+
+| メソッド | 説明 |
+|---|---|
+| `expand(in:cursor:)` | 次レベルに拡大（範囲が同じならスキップ） |
+| `shrink(in:)` | 前レベルに縮小 |
+| `reset()` | 状態リセット |
 
 ## KeyEvent — プラットフォーム非依存キーイベント（struct）
 
