@@ -54,7 +54,31 @@
 | `inputMappings` | object | 逐次入力用カスタムマッピング |
 | `prefixShiftKeys` | array | 前置シフトキーの明示指定（逐次入力用） |
 | `bufferDisplayMap` | object | 逐次入力バッファの表示変換（OS 文字 → 表示文字） |
+| `modeKeys` | object | モード切替キー（HID キー名 → アクション名） |
 | `extensions` | object | アプリ固有の拡張フィールド |
+
+## modeKeys: モード切替キー（任意）
+
+逐次入力・同時打鍵問わず、英数直接入力モードの切替キーを定義する。
+HID キー名をキー、アクション名を値とするオブジェクト。
+
+```json
+{
+  "modeKeys": {
+    "lang2": "switchToEnglish",
+    "lang1": "switchToJapanese",
+    "capsLock": "toggleInputMode"
+  }
+}
+```
+
+使用可能なアクション:
+- `"switchToEnglish"`: 英数直接入力に切替（composing 中は確定してから切替）
+- `"switchToJapanese"`: 日本語入力に復帰
+- `"toggleInputMode"`: 日本語↔英数をトグル
+
+chord の `specialActions`（F+G 等の同時押し）と共存可能。
+`modeKeys` は単一の物理キーによるモード切替、`specialActions` は同時押しによるモード切替として使い分ける。
 
 ## behavior: 入力方式定義
 
@@ -119,13 +143,13 @@
   "config": {
     "hidToKey": { "a": "A", "space": "space", ... },
     "lookupTable": { "J": "あ", "F+J": "が", ... },
-    "specialActions": { "F+G": "chordModeOff", ... },
+    "specialActions": { "F+G": "switchToEnglish", ... },
     "simultaneousWindow": 0.08,
     "shiftKeys": [
       { "key": "space", "singleTapAction": "convert" }
     ],
     "englishLookupTable": { "A": "a", ... },
-    "englishSpecialActions": { "F+G": "chordModeOff", ... }
+    "englishSpecialActions": { "H+J": "switchToJapanese", ... }
   }
 }
 ```
@@ -208,8 +232,9 @@ QWERTY 30 キー + 親指 3 キー:
 | `confirmHalfWidthKatakana` | 半角カタカナ確定 |
 | `confirmFullWidthRoman` | 全角英数確定 |
 | `confirmHalfWidthRoman` | 半角英数確定 |
-| `chordModeOff` | 英数モード切替 |
-| `chordModeOn` | chord モード復帰 |
+| `switchToEnglish` | 英数直接入力に切替 |
+| `switchToJapanese` | 日本語入力に復帰 |
+| `toggleInputMode` | 日本語↔英数トグル |
 | `pass` | ランタイムに委譲 |
 
 ### well-known アクション（パラメータ付き `"アクション名:パラメータ"` 形式）

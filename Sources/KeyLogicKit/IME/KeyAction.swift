@@ -82,13 +82,18 @@ public enum KeyAction: Sendable {
     /// 文字列を挿入して即確定（句読点等。composing 中は先に確定してから挿入）
     case insertAndConfirm(String)
 
-    /// chord 英数モードへ切替（F+G 等）
-    case chordModeOff
+    // MARK: - 入力モード切替
 
-    /// chord モードへ復帰（H+J 等）
-    case chordModeOn
+    /// 英数直接入力モードへ切替（composing 中は確定してから切替）
+    case switchToEnglish
 
-    // MARK: - 英数直接入力（chord 方式の英数モード）
+    /// 日本語入力モードへ復帰
+    case switchToJapanese
+
+    /// 日本語↔英数モードをトグル（CAPS LOCK 等に割当可能）
+    case toggleInputMode
+
+    // MARK: - 英数直接入力
 
     /// 英数モードの印字可能文字を直接挿入
     case directInsert(String)

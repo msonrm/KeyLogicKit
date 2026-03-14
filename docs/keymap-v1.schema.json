@@ -83,6 +83,12 @@
       "propertyNames": { "type": "string", "minLength": 1 },
       "description": "逐次入力バッファの表示変換テーブル（OS 文字 → 表示文字）。キー位置リマップ型の配列で使用。"
     },
+    "modeKeys": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/keyActionString" },
+      "propertyNames": { "$ref": "#/$defs/keyName" },
+      "description": "モード切替キー（HID キー名 → アクション名）。逐次入力・同時打鍵問わず、英数直接入力モードの切替キーを定義する。"
+    },
     "extensions": {
       "type": "object",
       "additionalProperties": { "type": "string" },
@@ -242,7 +248,7 @@
           "editSegmentLeft", "editSegmentRight",
           "confirmHiragana", "confirmKatakana", "confirmHalfWidthKatakana",
           "confirmFullWidthRoman", "confirmHalfWidthRoman",
-          "chordModeOff", "chordModeOn", "pass"
+          "switchToEnglish", "switchToJapanese", "toggleInputMode", "pass"
         ]},
         { "pattern": "^printable:.$" },
         { "pattern": "^selectCandidate:[0-9]+$" },

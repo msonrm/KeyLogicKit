@@ -137,10 +137,16 @@ public class IMETextView: UITextView {
         return lang.hasPrefix("ja")
     }
 
-    /// 現在のキーマップが指定 HID キーコードを処理するか（chord の hidToKey に含まれるか）
+    /// 現在のキーマップが指定 HID キーコードを処理するか
+    ///
+    /// modeKeys に定義されているか、chord の hidToKey に含まれるかを判定する。
+    /// fullControlMode でシステム IME トリガーキーをインターセプトする際、
+    /// キーマップが処理するキーはインターセプトせず KeyRouter に委ねるために使用。
     private func keymapHandles(_ keyCode: UIKeyboardHIDUsage) -> Bool {
+        let hid = HIDKeyCode(keyCode)
+        if keyRouter.definition.modeKeys?[hid] != nil { return true }
         guard case .chord(let config) = keyRouter.definition.behavior else { return false }
-        return config.hidToKey[HIDKeyCode(keyCode)] != nil
+        return config.hidToKey[hid] != nil
     }
 
     /// InputManager の状態に基づく composing 判定
@@ -309,22 +315,38 @@ public class IMETextView: UITextView {
                 logEvent("chord-punct-confirm", detail: confirmed)
             }
             insertText(text)
-        case .chordModeOff:
+        case .switchToEnglish:
             selectionAnchor = nil
             if isComposing {
                 let confirmed = im.confirmAll()
                 commitText(confirmed)
-                logEvent("chord-off-confirm", detail: confirmed)
+                logEvent("switch-en-confirm", detail: confirmed)
             }
             chordBuffer.reset()
             switchToDirectEnglish()
-            logEvent("chord-off", detail: "→ directEnglish")
-        case .chordModeOn:
+            logEvent("switch-en", detail: "→ directEnglish")
+        case .switchToJapanese:
             selectionAnchor = nil
             if im.inputMethod == .directEnglish {
                 chordBuffer.reset()
-                switchToChordMode()
-                logEvent("chord-on", detail: "→ chord")
+                switchToJapaneseMode()
+                logEvent("switch-ja", detail: "→ japanese")
+            }
+        case .toggleInputMode:
+            selectionAnchor = nil
+            if im.inputMethod == .directEnglish {
+                chordBuffer.reset()
+                switchToJapaneseMode()
+                logEvent("toggle-ja", detail: "→ japanese")
+            } else {
+                if isComposing {
+                    let confirmed = im.confirmAll()
+                    commitText(confirmed)
+                    logEvent("toggle-en-confirm", detail: confirmed)
+                }
+                chordBuffer.reset()
+                switchToDirectEnglish()
+                logEvent("toggle-en", detail: "→ directEnglish")
             }
         default:
             break
@@ -333,29 +355,39 @@ public class IMETextView: UITextView {
 
     /// 英数直接入力モードに切り替える
     ///
-    /// chord buffer のテーブルを英数用に差し替え、InputManager のモードを更新する。
+    /// chord 方式の場合は chord buffer のテーブルを英数用に差し替える。
+    /// sequential 方式でも inputMethod を .directEnglish に設定し、
+    /// KeyRouter が印字可能文字を .directInsert で返すようになる。
     /// `inputManager.inputMethod` が唯一の真実の情報源（KeyRouter は struct のため
     /// SwiftUI の updateUIView で上書きされる可能性がある）。
     private func switchToDirectEnglish() {
-        guard case .chord(let config) = keyRouter.definition.behavior else { return }
-        if let englishLookup = config.englishLookupTable {
-            chordBuffer.lookupFunction = { englishLookup[$0] }
-        }
-        if let englishActions = config.englishSpecialActions {
-            chordBuffer.specialActionFunction = { englishActions[$0] }
+        if case .chord(let config) = keyRouter.definition.behavior {
+            if let englishLookup = config.englishLookupTable {
+                chordBuffer.lookupFunction = { englishLookup[$0] }
+            }
+            if let englishActions = config.englishSpecialActions {
+                chordBuffer.specialActionFunction = { englishActions[$0] }
+            }
         }
         inputManager?.inputMethod = .directEnglish
         onEnglishModeChange?(true)
     }
 
-    /// 同時打鍵モードに復帰する
-    private func switchToChordMode() {
-        guard case .chord(let config) = keyRouter.definition.behavior else { return }
-        let lookup = config.lookupTable
-        chordBuffer.lookupFunction = { lookup[$0] }
-        let actions = config.specialActions
-        chordBuffer.specialActionFunction = { actions[$0] }
-        inputManager?.inputMethod = .chord(name: keyRouter.definition.name)
+    /// 日本語入力モードに復帰する
+    ///
+    /// chord 方式の場合は lookup テーブルを日本語用に復元し、
+    /// sequential 方式の場合は inputMethod を .sequential に戻す。
+    private func switchToJapaneseMode() {
+        switch keyRouter.definition.behavior {
+        case .chord(let config):
+            let lookup = config.lookupTable
+            chordBuffer.lookupFunction = { lookup[$0] }
+            let actions = config.specialActions
+            chordBuffer.specialActionFunction = { actions[$0] }
+            inputManager?.inputMethod = .chord(name: keyRouter.definition.name)
+        case .sequential:
+            inputManager?.inputMethod = .sequential
+        }
         onEnglishModeChange?(false)
     }
 
@@ -386,6 +418,9 @@ public class IMETextView: UITextView {
 
     /// システムの入力モードが変わった時のハンドラ
     @objc private func inputModeDidChange() {
+        // fullControlMode ではシステム IME の状態変更を無視
+        if inputManager?.fullControlMode == true { return }
+
         let isJapanese = isJapaneseInputMode
         inputManager?.setInputMode(isJapanese ? .japanese : .english)
 
@@ -401,6 +436,62 @@ public class IMETextView: UITextView {
         }
     }
 
+    // MARK: - fullControlMode: システム IME キーのハンドリング
+
+    /// fullControlMode 有効時にシステム IME トリガーキーを処理する
+    ///
+    /// キーマップの modeKeys / hidToKey に定義されていないシステム IME キーを
+    /// インターセプトし、super に渡さない（システム IME 切替を防止）。
+    /// LANG1/LANG2 はアプリ独自のモード切替に、CAPS LOCK はトグルに使用する。
+    private func handleFullControlIMEKey(_ key: UIKey, presses: Set<UIPress>, event: UIPressesEvent?) {
+        interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
+
+        switch key.keyCode {
+        case .keyboardLANG2:
+            // 英数直接入力に切替
+            if isComposing, let im = inputManager {
+                let confirmed = im.confirmAll()
+                commitText(confirmed)
+                logEvent("fc-eisu-confirm", detail: confirmed)
+            }
+            resetChordBufferIfNeeded()
+            switchToDirectEnglish()
+            logKeyEvent(phase: "began", key: key, handled: true)
+
+        case .keyboardLANG1:
+            // 日本語入力に復帰
+            if inputManager?.inputMethod == .directEnglish {
+                resetChordBufferIfNeeded()
+                switchToJapaneseMode()
+            }
+            logKeyEvent(phase: "began", key: key, handled: true)
+
+        case .keyboardCapsLock:
+            // 日本語↔英数トグル
+            if let im = inputManager {
+                if im.inputMethod == .directEnglish {
+                    resetChordBufferIfNeeded()
+                    switchToJapaneseMode()
+                    logEvent("fc-caps-ja", detail: "→ japanese")
+                } else {
+                    if isComposing {
+                        let confirmed = im.confirmAll()
+                        commitText(confirmed)
+                        logEvent("fc-caps-confirm", detail: confirmed)
+                    }
+                    resetChordBufferIfNeeded()
+                    switchToDirectEnglish()
+                    logEvent("fc-caps-en", detail: "→ directEnglish")
+                }
+            }
+            logKeyEvent(phase: "began", key: key, handled: true)
+
+        default:
+            // 変換、無変換、Ctrl+Space、ひらがな/カタカナ: キーを消費するだけ
+            logKeyEvent(phase: "began", key: key, handled: true)
+        }
+    }
+
     // MARK: - insertText / deleteBackward: ソフトウェアキーボード用フォールバック
 
     public override func insertText(_ text: String) {
@@ -409,7 +500,11 @@ public class IMETextView: UITextView {
             return
         }
         // 英語モードならそのまま挿入
-        if !isJapaneseInputMode {
+        // fullControlMode ではアプリの inputMethod で判定、それ以外はシステム IME 状態で判定
+        let isEnglish = im.fullControlMode
+            ? im.inputMethod == .directEnglish
+            : !isJapaneseInputMode
+        if isEnglish {
             super.insertText(text)
             return
         }
@@ -455,6 +550,19 @@ public class IMETextView: UITextView {
             return
         }
 
+        // fullControlMode: システム IME 切替キーをインターセプト
+        // modeKeys に定義されたキーは keymapHandles() で true → ここをスキップし KeyRouter に流れる
+        if inputManager?.fullControlMode == true {
+            let hidCode = HIDKeyCode(key.keyCode)
+            let isCtrlSpace = key.keyCode == .keyboardSpacebar
+                && key.modifierFlags.contains(.control)
+            if (HIDKeyCode.systemIMETriggerKeys.contains(hidCode) && !keymapHandles(key.keyCode))
+               || isCtrlSpace {
+                handleFullControlIMEKey(key, presses: presses, event: event)
+                return
+            }
+        }
+
         // Cmd+ 系は常に super（コピペ等）
         // ただし composing 中の Cmd+Z（Shift なし）は composing キャンセルに使う。
         // super を呼ぶと marked text が勝手に commit されるため。
@@ -494,7 +602,8 @@ public class IMETextView: UITextView {
         }
 
         // 英語モードなら IME をバイパスし、全てのキーを super に委譲
-        if !isJapaneseInputMode {
+        // fullControlMode ではシステム IME 状態を無視し、inputManager.inputMethod で判定
+        if !isJapaneseInputMode && inputManager?.fullControlMode != true {
             logKeyEvent(phase: "began", key: key, handled: false)
             super.pressesBegan(presses, with: event)
             return
@@ -787,7 +896,49 @@ public class IMETextView: UITextView {
             rawInsertText(text)
             logKeyEvent(phase: "began", key: key, handled: true)
 
-        case .insertAndConfirm, .chordModeOff, .chordModeOn:
+        case .switchToEnglish:
+            // modeKeys 経由（KeyRouter → executeAction）で発火
+            interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
+            selectionAnchor = nil
+            if isComposing {
+                let confirmed = im.confirmAll()
+                commitText(confirmed)
+                logEvent("switch-en-confirm", detail: confirmed)
+            }
+            resetChordBufferIfNeeded()
+            switchToDirectEnglish()
+            logKeyEvent(phase: "began", key: key, handled: true)
+
+        case .switchToJapanese:
+            interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
+            selectionAnchor = nil
+            if im.inputMethod == .directEnglish {
+                resetChordBufferIfNeeded()
+                switchToJapaneseMode()
+                logEvent("switch-ja", detail: "→ japanese")
+            }
+            logKeyEvent(phase: "began", key: key, handled: true)
+
+        case .toggleInputMode:
+            interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
+            selectionAnchor = nil
+            if im.inputMethod == .directEnglish {
+                resetChordBufferIfNeeded()
+                switchToJapaneseMode()
+                logEvent("toggle-ja", detail: "→ japanese")
+            } else {
+                if isComposing {
+                    let confirmed = im.confirmAll()
+                    commitText(confirmed)
+                    logEvent("toggle-en-confirm", detail: confirmed)
+                }
+                resetChordBufferIfNeeded()
+                switchToDirectEnglish()
+                logEvent("toggle-en", detail: "→ directEnglish")
+            }
+            logKeyEvent(phase: "began", key: key, handled: true)
+
+        case .insertAndConfirm:
             // chord buffer のコールバック経由でのみ発火するアクション。
             // executeChordAction() で処理済みなので、ここでは何もしない。
             break

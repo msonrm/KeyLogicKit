@@ -256,8 +256,9 @@ extension KeyAction: Codable {
             try container.encode("chordShiftDown:\(ChordKeyNames.name(for: key))")
         case .insertAndConfirm(let s):
             try container.encode("insertAndConfirm:\(s)")
-        case .chordModeOff:              try container.encode("chordModeOff")
-        case .chordModeOn:               try container.encode("chordModeOn")
+        case .switchToEnglish:           try container.encode("switchToEnglish")
+        case .switchToJapanese:          try container.encode("switchToJapanese")
+        case .toggleInputMode:           try container.encode("toggleInputMode")
         case .pass:                      try container.encode("pass")
         case .printable(let c):
             try container.encode("printable:\(c)")
@@ -291,8 +292,9 @@ extension KeyAction: Codable {
         case "confirmHalfWidthKatakana": self = .confirmHalfWidthKatakana
         case "confirmFullWidthRoman":    self = .confirmFullWidthRoman
         case "confirmHalfWidthRoman":    self = .confirmHalfWidthRoman
-        case "chordModeOff":             self = .chordModeOff
-        case "chordModeOn":              self = .chordModeOn
+        case "switchToEnglish":           self = .switchToEnglish
+        case "switchToJapanese":          self = .switchToJapanese
+        case "toggleInputMode":           self = .toggleInputMode
         case "pass":                     self = .pass
         case "printable":
             guard parts.count == 2, parts[1].count == 1, let c = parts[1].first else {
@@ -653,6 +655,7 @@ extension KeymapDefinition: Codable {
         case suffixRules
         case inputMappings
         case prefixShiftKeys
+        case modeKeys
         case extensions
     }
 
@@ -680,6 +683,16 @@ extension KeymapDefinition: Codable {
         }
         if let prefixShiftKeys {
             try container.encode(prefixShiftKeys.map(String.init), forKey: .prefixShiftKeys)
+        }
+        // modeKeys: [HIDKeyCode: KeyAction] → {"lang2": "switchToEnglish", ...}
+        if let modeKeys {
+            var modeContainer = container.nestedContainer(
+                keyedBy: DynamicCodingKey.self, forKey: .modeKeys
+            )
+            for (keyCode, action) in modeKeys {
+                guard let name = HIDUsageNames.name(for: keyCode) else { continue }
+                try modeContainer.encode(action, forKey: DynamicCodingKey(stringValue: name))
+            }
         }
         try container.encodeIfPresent(extensions, forKey: .extensions)
     }
@@ -728,6 +741,19 @@ extension KeymapDefinition: Codable {
             self.prefixShiftKeys = rawKeys.compactMap(\.first)
         } else {
             self.prefixShiftKeys = nil
+        }
+        // modeKeys: {"lang2": "switchToEnglish", ...} → [HIDKeyCode: KeyAction]
+        if let modeKeysContainer = try? container.nestedContainer(
+            keyedBy: DynamicCodingKey.self, forKey: .modeKeys
+        ) {
+            var decoded: [HIDKeyCode: KeyAction] = [:]
+            for key in modeKeysContainer.allKeys {
+                guard let keyCode = HIDUsageNames.keyCode(for: key.stringValue) else { continue }
+                decoded[keyCode] = try modeKeysContainer.decode(KeyAction.self, forKey: key)
+            }
+            self.modeKeys = decoded.isEmpty ? nil : decoded
+        } else {
+            self.modeKeys = nil
         }
         self.extensions = try container.decodeIfPresent(
             [String: String].self, forKey: .extensions
