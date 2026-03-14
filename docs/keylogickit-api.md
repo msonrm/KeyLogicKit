@@ -71,6 +71,7 @@ init()  // 辞書変換エンジンを初期化
 |---|---|
 | `setInputMode(_ mode: InputMode)` | 入力モード設定 |
 | `setEditorFontSize(_ size: CGFloat)` | フォントサイズ設定 |
+| `setLeftSideContext(_ context: String)` | 左側コンテキスト設定（最大30文字、カーソル移動・ファイル開封時用） |
 | `updateInputMappings(_ mappings: [String: String]?)` | 入力テーブル設定 |
 | `recordChordKey(_ key: ChordKey)` | chord キーの QWERTY 文字を蓄積（英数候補用） |
 | `appendDirectKana(_ kana: String)` | かな文字を直接追加（trie 非経由） |

@@ -261,6 +261,18 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
             if selectionLength.wrappedValue != len {
                 selectionLength.wrappedValue = len
             }
+
+            // 非 composing 時にカーソル左側のテキストを leftSideContext に自動同期
+            guard let imeView = textView as? IMETextView,
+                  let im = imeView.inputManager,
+                  im.isEmpty else { return }
+            let start = max(0, loc - 30)
+            let range = NSRange(location: start, length: loc - start)
+            if range.length > 0,
+               let substring = textView.textStorage.attributedSubstring(from: range).string,
+               !substring.isEmpty {
+                im.setLeftSideContext(substring)
+            }
         }
     }
 }
