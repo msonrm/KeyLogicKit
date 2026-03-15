@@ -270,19 +270,33 @@ public struct KeyRouter {
     ///
     /// 文字キーは SimultaneousKeyBuffer に投入するため .chordInput を返す。
     /// シフトキーは .chordShiftDown を返す（どのキーがシフトかは shiftKeys で定義）。
-    /// 英数直接入力モードでは、キーマップにないキーの印字可能文字を .directInsert で返す。
+    /// 英数直接入力モードでは:
+    ///   - englishLookupTable がある場合: chord buffer 経由で英数テーブルを使用
+    ///   - englishLookupTable がない場合: chord buffer をバイパスし QWERTY 文字を直接挿入
+    ///   - キーマップにないキーの印字可能文字は .directInsert で返す
     private func routeChord(_ event: KeyEvent, config: KeymapDefinition.ChordConfig,
                             isComposing: Bool, state: InputManager.ConversionState,
                             isDirectEnglishMode: Bool) -> KeyAction {
         // 同時打鍵テーブルに含まれるキー → シフトキーか文字キーかを判定
         if let chordKey = config.hidToKey[event.keyCode] {
+            // 英数モードで englishLookupTable がない場合は chord buffer をバイパスし、
+            // QWERTY 文字を直接挿入する（NICOLA 等でひらがなが出力されるバグの修正）
+            if isDirectEnglishMode && config.englishLookupTable == nil {
+                let chars = event.characters
+                if chars.count == 1,
+                   let scalar = chars.unicodeScalars.first,
+                   !CharacterSet.controlCharacters.contains(scalar) {
+                    return .directInsert(chars)
+                }
+                return .pass
+            }
             if config.shiftKeys.contains(where: { $0.key == chordKey }) {
                 return .chordShiftDown(chordKey)
             }
             return .chordInput(chordKey)
         }
 
-        // 英数モード: 印字可能文字は直接挿入
+        // 英数モード: キーマップにないキーの印字可能文字は直接挿入
         // chars.count == 1 で "UIKeyInputDownArrow" 等の特殊文字列を除外
         if isDirectEnglishMode {
             let chars = event.characters
