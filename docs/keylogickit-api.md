@@ -135,8 +135,8 @@ func route(_ event: KeyEvent, isComposing: Bool, state: InputManager.ConversionS
 | `.swapSentenceDown` | 文を次の文と入れ替え（Option+↓） |
 | `.smartSelectExpand` | スマート選択拡大（Shift+Option+→） |
 | `.smartSelectShrink` | スマート選択縮小（Shift+Option+←） |
-| `.selectSentenceUp` | 文選択を縮小（Shift+Option+↑、末尾から1文除外） |
-| `.selectSentenceDown` | 文選択を下に拡張（Shift+Option+↓） |
+| `.selectSentenceUp` | 文選択を上に拡張（Shift+Option+↑、未選択なら現在の文を選択） |
+| `.selectSentenceDown` | 文選択を下に拡張（Shift+Option+↓、未選択なら現在の文を選択） |
 | `.pass` | UIKit に委任 |
 
 ## SentenceBoundary — 文境界検出ユーティリティ（enum）
@@ -237,7 +237,7 @@ init(keyCode: HIDKeyCode, characters: String, modifierFlags: KeyModifierFlags)
 |---|---|---|
 | `systemIMETriggerKeys` | `Set<HIDKeyCode>` | システム IME 切替トリガーキー（LANG1/2, CAPS LOCK, 変換/無変換, ひらがな/カタカナ） |
 
-## KeyModifierFlags — 修飾キーフラグ（OptionSet）
+## KeyModifierFlags — 修飾キーフラグ（OptionSet, Hashable）
 
 `.shift`, `.control`, `.alternate`, `.command`
 
@@ -275,7 +275,7 @@ init(keyCode: HIDKeyCode, characters: String, modifierFlags: KeyModifierFlags)
 - `InputBehavior` enum: `.sequential(characterMap: [Character: Character])`, `.chord(config: ChordConfig)`
 - `ChordConfig` struct: `hidToKey`, `lookupTable`, `specialActions`, `simultaneousWindow`, `englishLookupTable?`, `englishSpecialActions?`, `shiftKeys`
 - `ShiftKeyConfig` struct: `key: ChordKey`, `singleTapAction: KeyAction?`
-- `ModeKeyTrigger` struct: `keyCode: HIDKeyCode`, `modifiers: KeyModifierFlags`（空 = 修飾キー不問）
+- `ModeKeyTrigger` struct: `keyCode: HIDKeyCode`, `modifiers: KeyModifierFlags`（空 = 修飾キー不問）。`Hashable` 準拠
 - `SuffixRule` struct: `vowel: String`, `suffix: String`
 - `ControlBindings` struct: `emacsBindings`, `ctrlSemicolonAction?`, `ctrlColonAction?`（`static let default` あり）
 
@@ -327,10 +327,16 @@ init(configuration: KeymapManagerConfiguration)
 |---|---|---|
 | `romajiUS` | `KeymapDefinition` | 標準ローマ字（US） |
 | `romajiJIS` | `KeymapDefinition` | 標準ローマ字（JIS） |
-| `standardRomajiTable` | `[String: String]` | ベースローマ字テーブル |
-| `allKeymaps` | `[(id: String, definition: KeymapDefinition)]` | 全組み込みキーマップ |
+| `standardRomajiTable` | `[String: String]` | ベースローマ字テーブル（標準 IME 準拠、外来音・小書き含む） |
+| `allKeymaps` | `[(id: String, definition: KeymapDefinition)]` | 全組み込みキーマップ（US/JIS 各配列） |
 | `h2zMapUS` | `[Character: Character]` | 半角→全角マップ（US） |
 | `loadBundleKeymap(_ name: String) -> KeymapDefinition?` | Bundle からキーマップ読み込み |
+
+`allKeymaps` に含まれる組み込みキーマップ:
+- `builtin:romaji_us` / `builtin:romaji_jis` — ローマ字
+- `builtin:azik_us` / `builtin:azik_jis` — AZIK
+- `builtin:tsuki2-263_us` / `builtin:tsuki2-263_jis` — 月配列2-263
+- `builtin:nicola_us` / `builtin:nicola_jis` — NICOLA
 
 ## ChordKey — 同時打鍵キー識別子（enum, Codable, Hashable）
 
