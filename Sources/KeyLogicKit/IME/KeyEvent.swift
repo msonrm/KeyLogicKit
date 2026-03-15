@@ -162,7 +162,7 @@ public struct HIDKeyCode: RawRepresentable, Hashable, Sendable {
 // MARK: - KeyModifierFlags
 
 /// プラットフォーム非依存の修飾キーフラグ
-public struct KeyModifierFlags: OptionSet, Sendable {
+public struct KeyModifierFlags: OptionSet, Hashable, Sendable {
     public let rawValue: UInt32
 
     public init(rawValue: UInt32) {
