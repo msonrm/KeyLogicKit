@@ -576,8 +576,8 @@ public class IMETextView: UITextView {
             let hidCode = HIDKeyCode(key.keyCode)
             let isCtrlSpace = key.keyCode == .keyboardSpacebar
                 && key.modifierFlags.contains(.control)
-            if (HIDKeyCode.systemIMETriggerKeys.contains(hidCode) && !keymapHandles(key.keyCode))
-               || isCtrlSpace {
+            if !keymapHandles(key.keyCode)
+               && (HIDKeyCode.systemIMETriggerKeys.contains(hidCode) || isCtrlSpace) {
                 handleFullControlIMEKey(key, presses: presses, event: event)
                 return
             }
