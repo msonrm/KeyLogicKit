@@ -294,9 +294,6 @@ public class InputManager {
 
         // UserDefaults から設定を復元
         let defaults = UserDefaults.standard
-        if defaults.object(forKey: "fullControlMode") != nil {
-            fullControlMode = defaults.bool(forKey: "fullControlMode")
-        }
         if defaults.object(forKey: "simultaneousWindow") != nil {
             simultaneousWindow = defaults.double(forKey: "simultaneousWindow")
         }
