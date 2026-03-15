@@ -137,6 +137,12 @@ public class IMETextView: UITextView {
         set { smartSelectionState.blockRangeProvider = newValue }
     }
 
+    /// ブロック間のセパレータ文字列（例: "\n\n\n\n"）
+    ///
+    /// 設定されている場合、`swapBlock` で最後のブロックがスワップに関わるとき
+    /// セパレータの付け替え（正規化）を行う。nil の場合は正規化なし（後方互換）。
+    public var blockSeparator: String?
+
     /// テキスト選択のアンカー位置（SHFT+T/Y の選択起点）
     ///
     /// 標準テキストエディタでは Shift+矢印は「アンカー（固定端）」と「アクティブエンド（移動端）」で
@@ -157,7 +163,8 @@ public class IMETextView: UITextView {
     /// キーマップが処理するキーはインターセプトせず KeyRouter に委ねるために使用。
     private func keymapHandles(_ keyCode: UIKeyboardHIDUsage) -> Bool {
         let hid = HIDKeyCode(keyCode)
-        if keyRouter.definition.modeKeys?[hid] != nil { return true }
+        if let modeKeys = keyRouter.definition.modeKeys,
+           modeKeys.keys.contains(where: { $0.keyCode == hid }) { return true }
         guard case .chord(let config) = keyRouter.definition.behavior else { return false }
         return config.hidToKey[hid] != nil
     }
@@ -1307,54 +1314,61 @@ public class IMETextView: UITextView {
 
     /// 文を前後の文と入れ替える（Option+↑/↓）
     ///
-    /// 選択中の文（または現在カーソルのある文）を direction 方向の隣の文と交換する。
+    /// 選択範囲全体を1つの単位として隣接する文とスワップする。
+    /// 未選択時はカーソル位置の1文を自動選択してスワップ。
     /// - Parameter direction: -1 で前の文と、+1 で後の文と入れ替え
     private func swapSentence(direction: Int) {
         let text = fullText()
         guard !text.isEmpty, let range = selectedTextRange else { return }
 
-        let cursor = cursorStringIndex(in: text, from: range.start)
+        let selStart = cursorStringIndex(in: text, from: range.start)
+        let selEnd = cursorStringIndex(in: text, from: range.end)
 
         // スマート選択がブロックレベルならブロック単位でスワップ
         if smartSelectionState.level == .block,
            let provider = blockRangeProvider {
-            swapBlock(direction: direction, text: text, cursor: cursor, provider: provider)
+            swapBlock(direction: direction, text: text, cursor: selStart, provider: provider)
             return
         }
 
-        let currentSentence = SentenceBoundary.sentenceRange(in: text, at: cursor)
-
-        let adjacentSentence: Range<String.Index>
-        if direction < 0 {
-            // 前の文: 現在の文の開始位置より前
-            guard currentSentence.lowerBound > text.startIndex else { return }
-            let prevIdx = text.index(before: currentSentence.lowerBound)
-            adjacentSentence = SentenceBoundary.sentenceRange(in: text, at: prevIdx)
+        // 選択範囲を決定
+        let currentRange: Range<String.Index>
+        if selStart == selEnd {
+            // 未選択: カーソル位置の1文を自動選択（従来動作）
+            currentRange = SentenceBoundary.sentenceRange(in: text, at: selStart)
         } else {
-            // 後の文: 現在の文の終了位置以降
-            guard currentSentence.upperBound < text.endIndex else { return }
-            adjacentSentence = SentenceBoundary.sentenceRange(in: text, at: currentSentence.upperBound)
+            // 選択中: 選択範囲をそのまま使う
+            currentRange = selStart..<selEnd
         }
 
-        // 同じ範囲なら何もしない
-        guard currentSentence != adjacentSentence else { return }
+        // 隣接する文を探す
+        let adjacentSentence: Range<String.Index>
+        if direction < 0 {
+            guard currentRange.lowerBound > text.startIndex else { return }
+            let prevIdx = text.index(before: currentRange.lowerBound)
+            adjacentSentence = SentenceBoundary.sentenceRange(in: text, at: prevIdx)
+        } else {
+            guard currentRange.upperBound < text.endIndex else { return }
+            adjacentSentence = SentenceBoundary.sentenceRange(in: text, at: currentRange.upperBound)
+        }
 
-        // テキストを取得
-        let currentText = String(text[currentSentence])
+        guard currentRange != adjacentSentence else { return }
+
+        // テキストを取得してスワップ
+        let currentText = String(text[currentRange])
         let adjacentText = String(text[adjacentSentence])
 
-        // 後方の範囲から先に置換（前方のオフセットを壊さないため）
         let (first, second): (Range<String.Index>, Range<String.Index>)
         let (firstText, secondText): (String, String)
 
-        if currentSentence.lowerBound < adjacentSentence.lowerBound {
-            first = currentSentence
+        if currentRange.lowerBound < adjacentSentence.lowerBound {
+            first = currentRange
             second = adjacentSentence
             firstText = adjacentText
             secondText = currentText
         } else {
             first = adjacentSentence
-            second = currentSentence
+            second = currentRange
             firstText = currentText
             secondText = adjacentText
         }
@@ -1367,22 +1381,19 @@ public class IMETextView: UITextView {
         let newText = firstText + secondText
         replace(textRangeForReplace, withText: newText)
 
-        // 入れ替え後、元の文のテキストが移動した先にカーソルを設定
+        // 入れ替え後、元の選択範囲を移動先に設定
         let updatedText = fullText()
         if direction < 0 {
-            // 上方向: 元の文は先頭に移動した
-            let newCursor = updatedText.index(updatedText.startIndex,
-                                               offsetBy: text.distance(from: text.startIndex, to: first.lowerBound))
-            let newSentence = SentenceBoundary.sentenceRange(in: updatedText, at: newCursor)
-            setSelection(range: newSentence, in: updatedText)
+            let newStart = updatedText.index(updatedText.startIndex,
+                                              offsetBy: text.distance(from: text.startIndex, to: first.lowerBound))
+            let newEnd = updatedText.index(newStart, offsetBy: currentText.count)
+            setSelection(range: newStart..<newEnd, in: updatedText)
         } else {
-            // 下方向: 元の文は末尾側に移動した
             let adjacentLength = adjacentText.count
             let startOffset = text.distance(from: text.startIndex, to: first.lowerBound) + adjacentLength
-            guard startOffset < updatedText.count else { return }
-            let newCursor = updatedText.index(updatedText.startIndex, offsetBy: startOffset)
-            let newSentence = SentenceBoundary.sentenceRange(in: updatedText, at: newCursor)
-            setSelection(range: newSentence, in: updatedText)
+            let newStart = updatedText.index(updatedText.startIndex, offsetBy: startOffset)
+            let newEnd = updatedText.index(newStart, offsetBy: currentText.count)
+            setSelection(range: newStart..<newEnd, in: updatedText)
         }
     }
 
@@ -1390,6 +1401,8 @@ public class IMETextView: UITextView {
     ///
     /// `BlockRangeProvider` を使ってブロック範囲を取得し、隣接ブロックと交換する。
     /// プロバイダが返す範囲には末尾のセパレータ（空行等）を含む前提。
+    /// `blockSeparator` が設定されている場合、最後のブロックがスワップに関わるとき
+    /// セパレータの付け替え（正規化）を行う。
     private func swapBlock(direction: Int, text: String, cursor: String.Index,
                            provider: BlockRangeProvider) {
         guard let currentBlock = provider(text, cursor) else { return }
@@ -1408,8 +1421,30 @@ public class IMETextView: UITextView {
         guard let adjacent = adjacentBlock, currentBlock != adjacent else { return }
 
         // テキストを取得
-        let currentText = String(text[currentBlock])
-        let adjacentText = String(text[adjacent])
+        var currentText = String(text[currentBlock])
+        var adjacentText = String(text[adjacent])
+
+        // セパレータ正規化: 最後のブロックがスワップに関わる場合
+        if let sep = blockSeparator {
+            let isCurrentLast = currentBlock.upperBound == text.endIndex
+            let isAdjacentLast = adjacent.upperBound == text.endIndex
+
+            if isCurrentLast {
+                // 現在のブロック（最後）が移動する → セパレータを付与
+                currentText += sep
+                // 隣接ブロック（中間）が最後に来る → セパレータを除去
+                if adjacentText.hasSuffix(sep) {
+                    adjacentText = String(adjacentText.dropLast(sep.count))
+                }
+            } else if isAdjacentLast {
+                // 隣接ブロック（最後）が移動する → セパレータを付与
+                adjacentText += sep
+                // 現在のブロック（中間）が最後に来る → セパレータを除去
+                if currentText.hasSuffix(sep) {
+                    currentText = String(currentText.dropLast(sep.count))
+                }
+            }
+        }
 
         // 後方の範囲から先に置換（前方のオフセットを壊さないため）
         let (first, second): (Range<String.Index>, Range<String.Index>)
@@ -1488,10 +1523,12 @@ public class IMETextView: UITextView {
         }
     }
 
-    /// 文選択を上下に拡張する（Shift+Option+↑/↓）
+    /// 文選択を拡張・縮小する（Shift+Option+↑/↓）
     ///
-    /// 未選択なら現在の文を選択。選択中なら direction 方向の隣の文も含めて選択を拡張。
-    /// - Parameter direction: -1 で上（前の文を追加）、+1 で下（次の文を追加）
+    /// 未選択なら現在の文を選択。
+    /// 下方向（+1）: 次の文を追加して選択を拡張。
+    /// 上方向（-1）: 選択範囲の末尾側から1文分削って縮小。1文のみの選択時は何もしない。
+    /// - Parameter direction: -1 で上（縮小）、+1 で下（拡大）
     private func handleSelectSentence(direction: Int) {
         let text = fullText()
         guard !text.isEmpty, let range = selectedTextRange else { return }
@@ -1501,23 +1538,27 @@ public class IMETextView: UITextView {
         let hasSelection = selStart != selEnd
 
         if !hasSelection {
-            // 未選択: カーソル位置の文を選択
+            // 未選択: カーソル位置の文を選択（direction によらず同じ）
             let sentence = SentenceBoundary.sentenceRange(in: text, at: selStart)
             setSelection(range: sentence, in: text)
+        } else if direction > 0 {
+            // 下方向: 選択の末尾を次の文の末尾まで拡張（従来動作）
+            guard selEnd < text.endIndex else { return }
+            let nextSentence = SentenceBoundary.sentenceRange(in: text, at: selEnd)
+            setSelection(range: selStart..<nextSentence.upperBound, in: text)
         } else {
-            // 選択中: direction 方向に1文分拡張
-            if direction < 0 {
-                // 上方向: 選択の先頭を前の文の先頭まで拡張
-                guard selStart > text.startIndex else { return }
-                let prevIdx = text.index(before: selStart)
-                let prevSentence = SentenceBoundary.sentenceRange(in: text, at: prevIdx)
-                setSelection(range: prevSentence.lowerBound..<selEnd, in: text)
-            } else {
-                // 下方向: 選択の末尾を次の文の末尾まで拡張
-                guard selEnd < text.endIndex else { return }
-                let nextSentence = SentenceBoundary.sentenceRange(in: text, at: selEnd)
-                setSelection(range: selStart..<nextSentence.upperBound, in: text)
+            // 上方向: 選択範囲を末尾側から1文分縮小
+            guard selEnd > text.startIndex else { return }
+            let prevIdx = text.index(before: selEnd)
+            let lastSentence = SentenceBoundary.sentenceRange(in: text, at: prevIdx)
+
+            // 最後の文の先頭が選択先頭以前なら、1文のみ → 何もしない
+            if lastSentence.lowerBound <= selStart {
+                return
             }
+
+            // 最後の文を選択から除外
+            setSelection(range: selStart..<lastSentence.lowerBound, in: text)
         }
     }
 

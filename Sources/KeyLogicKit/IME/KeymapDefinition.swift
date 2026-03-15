@@ -79,12 +79,30 @@ public struct KeymapDefinition: Sendable {
     /// 例: 月配列2-263 では `["d", "k"]`、AZIK では `[]`
     public let prefixShiftKeys: [Character]?
 
-    /// モード切替キー（HID コード → KeyAction）
+    /// モード切替キートリガー（HID コード + 修飾キー）
+    ///
+    /// 修飾キーなし（`modifiers` が空）のトリガーは、修飾キーの状態によらずマッチする（後方互換）。
+    /// 修飾キーあり（`modifiers` が非空）のトリガーは、指定された修飾キーが押されている場合のみマッチする。
+    public struct ModeKeyTrigger: Hashable, Sendable {
+        /// 物理キーの HID コード
+        public let keyCode: HIDKeyCode
+        /// 必須修飾キー（空 = 修飾キー不問で常にマッチ）
+        public let modifiers: KeyModifierFlags
+
+        public init(keyCode: HIDKeyCode, modifiers: KeyModifierFlags = []) {
+            self.keyCode = keyCode
+            self.modifiers = modifiers
+        }
+    }
+
+    /// モード切替キー（トリガー → KeyAction）
     ///
     /// 逐次入力・同時打鍵問わず、英数直接入力モードの切替キーを定義する。
-    /// 例: LANG2 → `.switchToEnglish`、LANG1 → `.switchToJapanese`、CAPS LOCK → `.toggleInputMode`
+    /// 修飾キーなしのトリガーは修飾キーの状態によらず最優先でマッチする。
+    /// 修飾キーありのトリガーは指定の修飾キーが押されている場合のみマッチする。
+    /// 例: LANG2 → `.switchToEnglish`、Ctrl+Space → `.toggleInputMode`
     /// chord の specialActions で定義済みの F+G 等と共存可能。
-    public let modeKeys: [HIDKeyCode: KeyAction]?
+    public let modeKeys: [ModeKeyTrigger: KeyAction]?
 
     /// アプリ固有の拡張フィールド（フォーマット仕様の範囲外）
     ///
@@ -101,7 +119,7 @@ public struct KeymapDefinition: Sendable {
          inputMappings: [String: String]? = nil,
          prefixShiftKeys: [Character]? = nil,
          controlBindings: ControlBindings = .default,
-         modeKeys: [HIDKeyCode: KeyAction]? = nil,
+         modeKeys: [ModeKeyTrigger: KeyAction]? = nil,
          formatVersion: String = KeymapDefinition.currentFormatVersion,
          description: String? = nil, author: String? = nil,
          license: String? = nil, targetScript: String? = nil,

@@ -5,6 +5,10 @@ import Foundation
 /// 文の区切り（。！？!?）、句の区切り（、,）、カッコペア（「」『』（）等）を
 /// 認識し、カーソル位置に基づいた境界検出を提供する。
 /// UIKit 非依存で、String + String.Index のみで動作する。
+///
+/// カッコ内外でスキャン範囲を切り替える設計:
+/// - カッコ外: テキスト全体をスキャン。カッコ内の文末記号は無視（カッコをスキップ）
+/// - カッコ内: カッコの内側をスキャン範囲とし、閉じカッコ直前が暗黙の文末
 public enum SentenceBoundary {
 
     // MARK: - 定数
@@ -50,62 +54,67 @@ public enum SentenceBoundary {
         return dict
     }()
 
+    // MARK: - カッコマッチングヘルパー
+
+    /// 開きカッコ位置から対応する閉じカッコの位置を返す（ネスト対応）
+    private static func findMatchingClose(in text: String, from openIdx: String.Index) -> String.Index? {
+        let openChar = text[openIdx]
+        guard let closeChar = openToClose[openChar] else { return nil }
+        var depth = 0
+        var idx = text.index(after: openIdx)
+        while idx < text.endIndex {
+            let c = text[idx]
+            if c == openChar { depth += 1 }
+            else if c == closeChar {
+                if depth == 0 { return idx }
+                depth -= 1
+            }
+            idx = text.index(after: idx)
+        }
+        return nil
+    }
+
+    /// 閉じカッコ位置から対応する開きカッコの位置を返す（ネスト対応）
+    private static func findMatchingOpen(in text: String, from closeIdx: String.Index) -> String.Index? {
+        let closeChar = text[closeIdx]
+        guard let openChar = closeToOpen[closeChar] else { return nil }
+        var depth = 0
+        var idx = closeIdx
+        while idx > text.startIndex {
+            let prev = text.index(before: idx)
+            let c = text[prev]
+            if c == closeChar { depth += 1 }
+            else if c == openChar {
+                if depth == 0 { return prev }
+                depth -= 1
+            }
+            idx = prev
+        }
+        return nil
+    }
+
     // MARK: - 文境界検出
 
     /// 指定位置を含む文の範囲を返す
     ///
-    /// 文末は `。！？!?` + 後続の閉じカッコ + 後続の空白で定義される。
-    /// 文頭は文末の直後、テキスト先頭、または改行の直後。
+    /// カッコ内外でスキャン範囲を自動判定する:
+    /// - カッコ外: テキスト全体をスキャン。カッコ内の文末記号は無視
+    /// - カッコ内: カッコの内側に限定。閉じカッコ直前が暗黙の文末
     /// - Parameters:
     ///   - text: 対象テキスト全体
     ///   - position: カーソル位置
     /// - Returns: 文の範囲（末尾の空白を含む）
     public static func sentenceRange(in text: String, at position: String.Index) -> Range<String.Index> {
-        let start = sentenceStart(in: text, at: position)
-        let end = sentenceEnd(in: text, from: position)
-        return start..<end
-    }
-
-    /// 指定位置から前方の文頭を返す（現在の文の文頭）
-    ///
-    /// position がちょうど文頭にある場合はその位置を返す。
-    public static func sentenceStart(in text: String, at position: String.Index) -> String.Index {
-        guard position > text.startIndex else { return text.startIndex }
-
-        var idx = position
-        // position が文の先頭にいる可能性を考慮して1文字戻ってからスキャン
-        while idx > text.startIndex {
-            let prev = text.index(before: idx)
-            let c = text[prev]
-
-            // 改行を見つけたら、その直後が文頭
-            if c == "\n" {
-                return idx
-            }
-            // 文末記号を見つけたら、空白・閉じカッコをスキップした直後が次の文頭
-            if sentenceEnders.contains(c) {
-                // この位置は前の文の文末記号の直後
-                // position がこの文末の空白部分にいる場合も考慮
-                let afterEnd = consumeTrailingAfterEnder(in: text, from: idx)
-                if afterEnd <= position {
-                    return afterEnd
-                }
-                // position が文末記号の直後の空白の中にいた場合、前の文の文頭を探す
-                return idx
-            }
-            // 閉じカッコの後の文末記号もチェック
-            if closingBrackets.contains(c) {
-                // 閉じカッコの前に文末記号があるかチェック
-                if let enderIdx = findEnderBeforeClosingBrackets(in: text, before: idx) {
-                    let afterEnd = consumeTrailingAfterEnder(in: text, from: text.index(after: enderIdx))
-                    if afterEnd <= position {
-                        return afterEnd
-                    }
-                }
-            }
-            idx = prev
+        let scanRange: Range<String.Index>
+        if let brackets = enclosingBrackets(in: text, at: position) {
+            scanRange = brackets.inner
+        } else {
+            scanRange = text.startIndex..<text.endIndex
         }
-        return text.startIndex
+
+        let start = sentenceStart(in: text, at: position, within: scanRange)
+        let end = sentenceEnd(in: text, from: start, within: scanRange)
+        return start..<end
     }
 
     /// 指定位置より前の文頭を返す（前の文の文頭へジャンプ用）
@@ -114,18 +123,21 @@ public enum SentenceBoundary {
     public static func previousSentenceStart(in text: String, before position: String.Index) -> String.Index {
         guard position > text.startIndex else { return text.startIndex }
 
-        // まず現在の文頭を見つける
-        let currentStart = sentenceStart(in: text, at: position)
+        // スキャン範囲を決定
+        let scanRange: Range<String.Index>
+        if let brackets = enclosingBrackets(in: text, at: position) {
+            scanRange = brackets.inner
+        } else {
+            scanRange = text.startIndex..<text.endIndex
+        }
 
-        // 現在位置が文頭でなければ、現在の文頭を返す
+        let currentStart = sentenceStart(in: text, at: position, within: scanRange)
         if currentStart < position {
             return currentStart
         }
-
-        // 現在位置が文頭なので、1文字前に移動して前の文の文頭を探す
-        guard currentStart > text.startIndex else { return text.startIndex }
+        guard currentStart > scanRange.lowerBound else { return scanRange.lowerBound }
         let prevIdx = text.index(before: currentStart)
-        return sentenceStart(in: text, at: prevIdx)
+        return sentenceStart(in: text, at: prevIdx, within: scanRange)
     }
 
     /// 指定位置より後の文末を返す（次の文末へジャンプ用）
@@ -134,35 +146,91 @@ public enum SentenceBoundary {
     public static func nextSentenceEnd(in text: String, after position: String.Index) -> String.Index {
         guard position < text.endIndex else { return text.endIndex }
 
-        // まず現在の文末を見つける
-        let currentEnd = sentenceEnd(in: text, from: position)
+        let scanRange: Range<String.Index>
+        if let brackets = enclosingBrackets(in: text, at: position) {
+            scanRange = brackets.inner
+        } else {
+            scanRange = text.startIndex..<text.endIndex
+        }
 
-        // 現在位置が文末でなければ、現在の文末を返す
+        let currentEnd = sentenceEnd(in: text, from: position, within: scanRange)
         if currentEnd > position {
             return currentEnd
         }
-
-        // 現在位置が文末なので、次の文末を探す
-        guard currentEnd < text.endIndex else { return text.endIndex }
-        return sentenceEnd(in: text, from: currentEnd)
+        guard currentEnd < scanRange.upperBound else { return scanRange.upperBound }
+        return sentenceEnd(in: text, from: currentEnd, within: scanRange)
     }
 
-    /// 指定位置から後方へスキャンして文末位置を返す（空白含む）
-    private static func sentenceEnd(in text: String, from position: String.Index) -> String.Index {
+    /// 指定位置から前方の文頭を返す（スキャン範囲 + カッコスキップ）
+    private static func sentenceStart(in text: String, at position: String.Index,
+                                      within scanRange: Range<String.Index>) -> String.Index {
+        guard position > scanRange.lowerBound else { return scanRange.lowerBound }
+
         var idx = position
-        while idx < text.endIndex {
+        while idx > scanRange.lowerBound {
+            let prev = text.index(before: idx)
+            let c = text[prev]
+
+            // 改行 → その直後が文頭
+            if c == "\n" {
+                return idx
+            }
+
+            // 閉じカッコ（bracketPairs に含まれるもの）→ 対応する開きカッコまでスキップ
+            if closeToOpen[c] != nil {
+                if let openIdx = findMatchingOpen(in: text, from: prev) {
+                    // スキップ先がスキャン範囲外なら範囲の先頭を返す
+                    if openIdx < scanRange.lowerBound { return scanRange.lowerBound }
+                    idx = openIdx
+                    continue
+                }
+            }
+
+            // 文末記号 → 空白・閉じカッコをスキップした位置が文頭
+            if sentenceEnders.contains(c) {
+                let afterEnd = consumeTrailingAfterEnder(in: text, from: idx)
+                if afterEnd <= position {
+                    return afterEnd
+                }
+            }
+
+            idx = prev
+        }
+        return scanRange.lowerBound
+    }
+
+    /// 指定位置から後方へスキャンして文末位置を返す（スキャン範囲 + カッコスキップ）
+    private static func sentenceEnd(in text: String, from position: String.Index,
+                                    within scanRange: Range<String.Index>) -> String.Index {
+        var idx = position
+        while idx < scanRange.upperBound {
             let c = text[idx]
+
             // 改行は文の区切り
             if c == "\n" {
                 return text.index(after: idx)
             }
-            if sentenceEnders.contains(c) {
-                // 文末記号の後の閉じカッコと空白をスキップ
-                return consumeTrailingAfterEnder(in: text, from: text.index(after: idx))
+
+            // 開きカッコ → 対応する閉じカッコまでスキップ
+            if openToClose[c] != nil {
+                if let closeIdx = findMatchingClose(in: text, from: idx) {
+                    // スキップ先がスキャン範囲外なら範囲の上限を返す
+                    if closeIdx >= scanRange.upperBound { return scanRange.upperBound }
+                    idx = text.index(after: closeIdx)
+                    continue
+                }
             }
+
+            // 文末記号 → 後続の閉じカッコ・空白をスキップ
+            if sentenceEnders.contains(c) {
+                let consumed = consumeTrailingAfterEnder(in: text, from: text.index(after: idx))
+                return min(consumed, scanRange.upperBound)
+            }
+
             idx = text.index(after: idx)
         }
-        return text.endIndex
+        // スキャン範囲の上限に到達 → 暗黙の文末（カッコ内では閉じカッコが文末）
+        return scanRange.upperBound
     }
 
     /// 文末記号の直後から、連続文末記号・閉じカッコ・空白をスキップした位置を返す
@@ -183,23 +251,6 @@ public enum SentenceBoundary {
             idx = text.index(after: idx)
         }
         return idx
-    }
-
-    /// 指定位置の前方にある閉じカッコ列の前に文末記号があるか探す
-    private static func findEnderBeforeClosingBrackets(in text: String, before position: String.Index) -> String.Index? {
-        var idx = position
-        while idx > text.startIndex {
-            let prev = text.index(before: idx)
-            let c = text[prev]
-            if sentenceEnders.contains(c) {
-                return prev
-            }
-            if !closingBrackets.contains(c) {
-                return nil
-            }
-            idx = prev
-        }
-        return nil
     }
 
     // MARK: - 句境界検出

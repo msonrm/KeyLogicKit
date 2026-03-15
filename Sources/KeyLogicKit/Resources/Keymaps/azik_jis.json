@@ -1,9 +1,9 @@
 {
   "formatVersion": "1.0",
-  "name": "AZIK(US)",
+  "name": "AZIK(JIS)",
   "author": "木村清",
-  "description": "AZIK 拡張ローマ字入力（US キーボード）",
-  "keyboardLayout": "us",
+  "description": "AZIK 拡張ローマ字入力（JIS キーボード）",
+  "keyboardLayout": "jis",
   "targetScript": "hiragana",
   "behavior": {
     "type": "sequential",
@@ -45,6 +45,8 @@
     }
   },
   "modeKeys": {
+    "lang2": "switchToEnglish",
+    "lang1": "switchToJapanese",
     "ctrl+space": "toggleInputMode",
     "ctrl+shift+j": "switchToJapanese",
     "ctrl+shift+semicolon": "switchToEnglish"

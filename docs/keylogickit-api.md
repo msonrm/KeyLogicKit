@@ -135,13 +135,17 @@ func route(_ event: KeyEvent, isComposing: Bool, state: InputManager.ConversionS
 | `.swapSentenceDown` | 文を次の文と入れ替え（Option+↓） |
 | `.smartSelectExpand` | スマート選択拡大（Shift+Option+→） |
 | `.smartSelectShrink` | スマート選択縮小（Shift+Option+←） |
-| `.selectSentenceUp` | 文選択を上に拡張（Shift+Option+↑） |
+| `.selectSentenceUp` | 文選択を縮小（Shift+Option+↑、末尾から1文除外） |
 | `.selectSentenceDown` | 文選択を下に拡張（Shift+Option+↓） |
 | `.pass` | UIKit に委任 |
 
 ## SentenceBoundary — 文境界検出ユーティリティ（enum）
 
 日本語テキストの文・句・カッコ境界を検出する。UIKit 非依存。
+
+カッコ内外でスキャン範囲を自動切り替え:
+- カッコ外: テキスト全体をスキャン。カッコ内の文末記号は無視（カッコをスキップ）
+- カッコ内: カッコの内側に限定。閉じカッコ直前が暗黙の文末
 
 ### 定数
 
@@ -156,7 +160,6 @@ func route(_ event: KeyEvent, isComposing: Bool, state: InputManager.ConversionS
 
 ```swift
 static func sentenceRange(in text: String, at position: String.Index) -> Range<String.Index>
-static func sentenceStart(in text: String, at position: String.Index) -> String.Index
 static func previousSentenceStart(in text: String, before position: String.Index) -> String.Index
 static func nextSentenceEnd(in text: String, after position: String.Index) -> String.Index
 static func clauseRange(in text: String, at position: String.Index,
@@ -264,7 +267,7 @@ init(keyCode: HIDKeyCode, characters: String, modifierFlags: KeyModifierFlags)
 | `inputMappings` | `[String: String]?` | キーシーケンス→かなマッピング |
 | `explicitInputMappings` | `[String: String]?` | 展開前のオリジナルマッピング |
 | `prefixShiftKeys` | `[Character]?` | 前置シフトキー |
-| `modeKeys` | `[HIDKeyCode: KeyAction]?` | モード切替キー（英数/かな切替） |
+| `modeKeys` | `[ModeKeyTrigger: KeyAction]?` | モード切替キー（修飾キー付き対応、英数/かな切替） |
 | `extensions` | `[String: String]?` | アプリ固有拡張 |
 
 ### 関連型
@@ -272,6 +275,7 @@ init(keyCode: HIDKeyCode, characters: String, modifierFlags: KeyModifierFlags)
 - `InputBehavior` enum: `.sequential(characterMap: [Character: Character])`, `.chord(config: ChordConfig)`
 - `ChordConfig` struct: `hidToKey`, `lookupTable`, `specialActions`, `simultaneousWindow`, `englishLookupTable?`, `englishSpecialActions?`, `shiftKeys`
 - `ShiftKeyConfig` struct: `key: ChordKey`, `singleTapAction: KeyAction?`
+- `ModeKeyTrigger` struct: `keyCode: HIDKeyCode`, `modifiers: KeyModifierFlags`（空 = 修飾キー不問）
 - `SuffixRule` struct: `vowel: String`, `suffix: String`
 - `ControlBindings` struct: `emacsBindings`, `ctrlSemicolonAction?`, `ctrlColonAction?`（`static let default` あり）
 
@@ -322,6 +326,7 @@ init(configuration: KeymapManagerConfiguration)
 | プロパティ/メソッド | 型 | 説明 |
 |---|---|---|
 | `romajiUS` | `KeymapDefinition` | 標準ローマ字（US） |
+| `romajiJIS` | `KeymapDefinition` | 標準ローマ字（JIS） |
 | `standardRomajiTable` | `[String: String]` | ベースローマ字テーブル |
 | `allKeymaps` | `[(id: String, definition: KeymapDefinition)]` | 全組み込みキーマップ |
 | `h2zMapUS` | `[Character: Character]` | 半角→全角マップ（US） |
@@ -410,6 +415,7 @@ func setSimultaneousWindow(_ window: TimeInterval)
 | `onEnglishModeChange` | `((Bool) -> Void)?` | 英数モード変更通知 |
 | `onCaretRectChange` | `((CGRect) -> Void)?` | キャレット位置変更通知 |
 | `blockRangeProvider` | `BlockRangeProvider?` | ブロック境界検出（スマート選択用） |
+| `blockSeparator` | `String?` | ブロック間セパレータ（swapBlock のセパレータ正規化用、nil で無効） |
 
 ## IMETextViewRepresentable — SwiftUI ラッパー
 
@@ -423,7 +429,8 @@ init(inputManager: InputManager, keyRouter: KeyRouter, editorStyle: EditorStyle 
      onEnglishModeChange: ((Bool) -> Void)? = nil,
      onCaretRectChange: ((CGRect) -> Void)? = nil,
      onScrollRequest: ((IMETextView, Int) -> Void)? = nil,
-     blockRangeProvider: BlockRangeProvider? = nil)
+     blockRangeProvider: BlockRangeProvider? = nil,
+     blockSeparator: String? = nil)
 ```
 
 ## CandidatePopup — 変換候補ポップアップ（SwiftUI View）

@@ -14,13 +14,41 @@ extension Bundle {
 /// JSON ファイルのキーマップは Bundle 内から読み込む。
 public enum DefaultKeymaps {
 
+    /// US キーボード用 modeKeys（ctrl+space トグル + ctrl+shift+j/; 切替）
+    private static let usModeKeys: [KeymapDefinition.ModeKeyTrigger: KeyAction] = [
+        .init(keyCode: .keyboardSpacebar, modifiers: .control): .toggleInputMode,
+        .init(keyCode: .keyboardJ, modifiers: [.control, .shift]): .switchToJapanese,
+        .init(keyCode: .keyboardSemicolon, modifiers: [.control, .shift]): .switchToEnglish,
+    ]
+
+    /// JIS キーボード用 modeKeys（lang1/lang2 + ctrl+shift+j/; 切替）
+    private static let jisModeKeys: [KeymapDefinition.ModeKeyTrigger: KeyAction] = [
+        .init(keyCode: .keyboardLANG2): .switchToEnglish,
+        .init(keyCode: .keyboardLANG1): .switchToJapanese,
+        .init(keyCode: .keyboardSpacebar, modifiers: .control): .toggleInputMode,
+        .init(keyCode: .keyboardJ, modifiers: [.control, .shift]): .switchToJapanese,
+        .init(keyCode: .keyboardSemicolon, modifiers: [.control, .shift]): .switchToEnglish,
+    ]
+
     /// ローマ字入力（US 配列）
     public static let romajiUS = KeymapDefinition(
         name: "ローマ字(US)",
         behavior: .sequential(characterMap: h2zMapUS),
         keyboardLayout: "us",
         inputBase: "romaji",
+        modeKeys: usModeKeys,
         description: "標準ローマ字入力（US キーボード）",
+        targetScript: "hiragana"
+    )
+
+    /// ローマ字入力（JIS 配列）
+    public static let romajiJIS = KeymapDefinition(
+        name: "ローマ字(JIS)",
+        behavior: .sequential(characterMap: h2zMapUS),
+        keyboardLayout: "jis",
+        inputBase: "romaji",
+        modeKeys: jisModeKeys,
+        description: "標準ローマ字入力（JIS キーボード）",
         targetScript: "hiragana"
     )
 
@@ -62,12 +90,15 @@ public enum DefaultKeymaps {
         "ba": "ば", "bi": "び", "bu": "ぶ", "be": "べ", "bo": "ぼ",
         // ぱ行
         "pa": "ぱ", "pi": "ぴ", "pu": "ぷ", "pe": "ぺ", "po": "ぽ",
+        // や行（いぇ）
+        "ye": "いぇ",
         // 拗音（きゃ行〜）
         "kya": "きゃ", "kyu": "きゅ", "kye": "きぇ", "kyo": "きょ",
         "sya": "しゃ", "syu": "しゅ", "sye": "しぇ", "syo": "しょ",
         "sha": "しゃ", "shu": "しゅ", "she": "しぇ", "sho": "しょ",
         "tya": "ちゃ", "tyu": "ちゅ", "tye": "ちぇ", "tyo": "ちょ",
         "cha": "ちゃ", "chu": "ちゅ", "che": "ちぇ", "cho": "ちょ",
+        "cya": "ちゃ", "cyu": "ちゅ", "cye": "ちぇ", "cyo": "ちょ",
         "nya": "にゃ", "nyu": "にゅ", "nye": "にぇ", "nyo": "にょ",
         "hya": "ひゃ", "hyu": "ひゅ", "hye": "ひぇ", "hyo": "ひょ",
         "mya": "みゃ", "myu": "みゅ", "mye": "みぇ", "myo": "みょ",
@@ -75,14 +106,38 @@ public enum DefaultKeymaps {
         "gya": "ぎゃ", "gyu": "ぎゅ", "gye": "ぎぇ", "gyo": "ぎょ",
         "zya": "じゃ", "zyu": "じゅ", "zye": "じぇ", "zyo": "じょ",
         "ja": "じゃ", "ju": "じゅ", "je": "じぇ", "jo": "じょ",
+        "jya": "じゃ", "jyu": "じゅ", "jye": "じぇ", "jyo": "じょ",
         "bya": "びゃ", "byu": "びゅ", "bye": "びぇ", "byo": "びょ",
         "pya": "ぴゃ", "pyu": "ぴゅ", "pye": "ぴぇ", "pyo": "ぴょ",
-        // 外来音
+        // 拗音（ぢゃ行）
+        "dya": "ぢゃ", "dyi": "ぢぃ", "dyu": "ぢゅ", "dye": "ぢぇ", "dyo": "ぢょ",
+        // 外来音（ふ行）
         "fa": "ふぁ", "fi": "ふぃ", "fu": "ふ", "fe": "ふぇ", "fo": "ふぉ",
+        "fya": "ふゃ", "fyu": "ふゅ", "fyo": "ふょ",
+        // 外来音（ヴ行）
         "va": "ヴぁ", "vi": "ヴぃ", "vu": "ヴ", "ve": "ヴぇ", "vo": "ヴぉ",
-        "tgi": "てぃ", "tgu": "とぅ", "dci": "でぃ", "dcu": "どぅ", "wso": "うぉ",
+        "vya": "ゔゃ", "vyu": "ゔゅ", "vyo": "ゔょ",
+        // 外来音（てぃ系: th）
+        "tha": "てゃ", "thi": "てぃ", "thu": "てゅ", "the": "てぇ", "tho": "てょ",
+        // 外来音（でぃ系: dh）
+        "dha": "でゃ", "dhi": "でぃ", "dhu": "でゅ", "dhe": "でぇ", "dho": "でょ",
+        // 外来音（とぅ系: tw）
+        "twa": "とぁ", "twi": "とぃ", "twu": "とぅ", "twe": "とぇ", "two": "とぉ",
+        // 外来音（どぅ系: dw）
+        "dwa": "どぁ", "dwi": "どぃ", "dwu": "どぅ", "dwe": "どぇ", "dwo": "どぉ",
+        // 外来音（つぁ行: ts）
+        "tsa": "つぁ", "tsi": "つぃ", "tse": "つぇ", "tso": "つぉ",
+        // 外来音（うぁ行: wh）
+        "wha": "うぁ", "whi": "うぃ", "whe": "うぇ", "who": "うぉ",
+        // 外来音（くぁ行: kw/q）
+        "kwa": "くぁ", "kwi": "くぃ", "kwu": "くぅ", "kwe": "くぇ", "kwo": "くぉ",
+        "qa": "くぁ", "qi": "くぃ", "qe": "くぇ", "qo": "くぉ",
+        // 外来音（ぐぁ行: gw）
+        "gwa": "ぐぁ", "gwi": "ぐぃ", "gwu": "ぐぅ", "gwe": "ぐぇ", "gwo": "ぐぉ",
+        // 小書き（カ行）
+        "xka": "ヵ", "xke": "ヶ", "lka": "ヵ", "lke": "ヶ",
         // 撥音
-        "n": "ん", "nn": "ん",
+        "n": "ん", "nn": "ん", "n'": "ん", "xn": "ん",
         // 促音（子音重ね → っ + かな）
         // kk
         "kka": "っか", "kki": "っき", "kku": "っく", "kke": "っけ", "kko": "っこ",
@@ -127,11 +182,14 @@ public enum DefaultKeymaps {
     public static let allKeymaps: [(id: String, definition: KeymapDefinition)] = {
         var keymaps: [(id: String, definition: KeymapDefinition)] = [
             ("builtin:romaji_us", romajiUS),
+            ("builtin:romaji_jis", romajiJIS),
         ]
         // Bundle 内の JSON キーマップを読み込み
         let jsonKeymaps: [(id: String, fileName: String)] = [
             ("builtin:azik_us", "azik_us"),
+            ("builtin:azik_jis", "azik_jis"),
             ("builtin:tsuki2-263_us", "tsuki2-263_us"),
+            ("builtin:tsuki2-263_jis", "tsuki2-263_jis"),
             ("builtin:nicola_us", "nicola_us"),
             ("builtin:nicola_jis", "nicola_jis"),
         ]
