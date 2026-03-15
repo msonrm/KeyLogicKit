@@ -230,9 +230,10 @@ public struct KeyRouter {
                                  isComposing: Bool, state: InputManager.ConversionState,
                                  isDirectEnglishMode: Bool) -> KeyAction {
         // 英数直接入力モード: 印字可能文字は直接挿入
+        // chars.count == 1 で "UIKeyInputDownArrow" 等の特殊文字列を除外
         if isDirectEnglishMode {
             let chars = event.characters
-            if !chars.isEmpty,
+            if chars.count == 1,
                let scalar = chars.unicodeScalars.first,
                !CharacterSet.controlCharacters.contains(scalar) {
                 return .directInsert(chars)
@@ -282,9 +283,10 @@ public struct KeyRouter {
         }
 
         // 英数モード: 印字可能文字は直接挿入
+        // chars.count == 1 で "UIKeyInputDownArrow" 等の特殊文字列を除外
         if isDirectEnglishMode {
             let chars = event.characters
-            if !chars.isEmpty,
+            if chars.count == 1,
                let scalar = chars.unicodeScalars.first,
                !CharacterSet.controlCharacters.contains(scalar) {
                 return .directInsert(chars)
