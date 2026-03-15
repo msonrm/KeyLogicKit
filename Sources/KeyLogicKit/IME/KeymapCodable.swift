@@ -114,6 +114,66 @@ private enum HIDUsageNames {
     }()
 }
 
+// MARK: - ModeKeyTrigger エンコード/デコード
+
+/// modeKeys の文字列キーと ModeKeyTrigger の相互変換
+///
+/// 文字列フォーマット:
+/// - `"lang1"`: 修飾キーなし（修飾キー不問で常にマッチ）
+/// - `"ctrl+space"`: Ctrl + Space
+/// - `"ctrl+shift+j"`: Ctrl + Shift + J
+/// 修飾キープレフィックスは `ctrl`, `shift`, `alt` を `+` 区切りで指定する。
+private enum ModeKeyTriggerCoding {
+
+    /// 修飾キー名 → KeyModifierFlags
+    private static let modifierNames: [(String, KeyModifierFlags)] = [
+        ("ctrl", .control),
+        ("shift", .shift),
+        ("alt", .alternate),
+    ]
+
+    /// 文字列キーを ModeKeyTrigger にデコードする
+    static func decode(_ string: String) -> KeymapDefinition.ModeKeyTrigger? {
+        let parts = string.split(separator: "+").map(String.init)
+        guard !parts.isEmpty else { return nil }
+
+        var modifiers = KeyModifierFlags()
+        var keyNameIndex = 0
+
+        // 先頭から修飾キープレフィックスを消費
+        for (i, part) in parts.enumerated() {
+            if let mod = modifierNames.first(where: { $0.0 == part })?.1 {
+                modifiers.insert(mod)
+                keyNameIndex = i + 1
+            } else {
+                break
+            }
+        }
+
+        // 残りを `+` で結合してキー名とする（通常は1パート）
+        guard keyNameIndex < parts.count else { return nil }
+        let keyName = parts[keyNameIndex...].joined(separator: "+")
+
+        guard let keyCode = HIDUsageNames.keyCode(for: keyName) else { return nil }
+        return KeymapDefinition.ModeKeyTrigger(keyCode: keyCode, modifiers: modifiers)
+    }
+
+    /// ModeKeyTrigger を文字列キーにエンコードする
+    static func encode(keyName: String, modifiers: KeyModifierFlags) -> String {
+        if modifiers.isEmpty {
+            return keyName
+        }
+        var parts: [String] = []
+        for (name, flag) in modifierNames {
+            if modifiers.contains(flag) {
+                parts.append(name)
+            }
+        }
+        parts.append(keyName)
+        return parts.joined(separator: "+")
+    }
+}
+
 // MARK: - ChordKey ↔ 文字列名
 
 /// ChordKey と JSON 用文字列名の相互変換
@@ -700,13 +760,14 @@ extension KeymapDefinition: Codable {
         if let prefixShiftKeys {
             try container.encode(prefixShiftKeys.map(String.init), forKey: .prefixShiftKeys)
         }
-        // modeKeys: [HIDKeyCode: KeyAction] → {"lang2": "switchToEnglish", ...}
+        // modeKeys: [ModeKeyTrigger: KeyAction] → {"lang2": "switchToEnglish", "ctrl+space": "toggleInputMode", ...}
         if let modeKeys {
             var modeContainer = container.nestedContainer(
                 keyedBy: DynamicCodingKey.self, forKey: .modeKeys
             )
-            for (keyCode, action) in modeKeys {
-                guard let name = HIDUsageNames.name(for: keyCode) else { continue }
+            for (trigger, action) in modeKeys {
+                guard let keyName = HIDUsageNames.name(for: trigger.keyCode) else { continue }
+                let name = ModeKeyTriggerCoding.encode(keyName: keyName, modifiers: trigger.modifiers)
                 try modeContainer.encode(action, forKey: DynamicCodingKey(stringValue: name))
             }
         }
@@ -758,14 +819,14 @@ extension KeymapDefinition: Codable {
         } else {
             self.prefixShiftKeys = nil
         }
-        // modeKeys: {"lang2": "switchToEnglish", ...} → [HIDKeyCode: KeyAction]
+        // modeKeys: {"lang2": "switchToEnglish", "ctrl+space": "toggleInputMode"} → [ModeKeyTrigger: KeyAction]
         if let modeKeysContainer = try? container.nestedContainer(
             keyedBy: DynamicCodingKey.self, forKey: .modeKeys
         ) {
-            var decoded: [HIDKeyCode: KeyAction] = [:]
+            var decoded: [ModeKeyTrigger: KeyAction] = [:]
             for key in modeKeysContainer.allKeys {
-                guard let keyCode = HIDUsageNames.keyCode(for: key.stringValue) else { continue }
-                decoded[keyCode] = try modeKeysContainer.decode(KeyAction.self, forKey: key)
+                guard let trigger = ModeKeyTriggerCoding.decode(key.stringValue) else { continue }
+                decoded[trigger] = try modeKeysContainer.decode(KeyAction.self, forKey: key)
             }
             self.modeKeys = decoded.isEmpty ? nil : decoded
         } else {

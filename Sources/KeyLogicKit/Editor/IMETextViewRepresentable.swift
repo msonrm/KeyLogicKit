@@ -47,6 +47,12 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
     /// ブロック境界検出の外部注入（スマート選択の最上位レベル）
     public var blockRangeProvider: BlockRangeProvider?
 
+    /// ブロック間のセパレータ文字列（例: "\n\n\n\n"）
+    ///
+    /// 設定されている場合、swapBlock で最後のブロックがスワップに関わるとき
+    /// セパレータの付け替え（正規化）を行う。nil の場合は正規化なし。
+    public var blockSeparator: String?
+
     /// 明示的な公開イニシャライザ（public struct のメンバワイズ init は internal のため）
     public init(
         inputManager: InputManager,
@@ -62,7 +68,8 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         onEnglishModeChange: ((Bool) -> Void)? = nil,
         onCaretRectChange: ((CGRect) -> Void)? = nil,
         onScrollRequest: ((IMETextView, Int) -> Void)? = nil,
-        blockRangeProvider: BlockRangeProvider? = nil
+        blockRangeProvider: BlockRangeProvider? = nil,
+        blockSeparator: String? = nil
     ) {
         self.inputManager = inputManager
         self.keyRouter = keyRouter
@@ -78,6 +85,7 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         self.onCaretRectChange = onCaretRectChange
         self.onScrollRequest = onScrollRequest
         self.blockRangeProvider = blockRangeProvider
+        self.blockSeparator = blockSeparator
     }
 
     public func makeCoordinator() -> Coordinator {
@@ -124,6 +132,7 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         textView.onEnglishModeChange = onEnglishModeChange
         textView.onCaretRectChange = onCaretRectChange
         textView.blockRangeProvider = blockRangeProvider
+        textView.blockSeparator = blockSeparator
 
         // エディタのフォントサイズを InputManager に反映
         inputManager.setEditorFontSize(editorStyle.font.pointSize)
@@ -152,6 +161,7 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         uiView.onEnglishModeChange = onEnglishModeChange
         uiView.onCaretRectChange = onCaretRectChange
         uiView.blockRangeProvider = blockRangeProvider
+        uiView.blockSeparator = blockSeparator
         uiView.setSimultaneousWindow(inputManager.simultaneousWindow)
 
         // EditorStyle の変更を検知して再設定

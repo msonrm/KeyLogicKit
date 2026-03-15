@@ -60,25 +60,40 @@
 ## modeKeys: モード切替キー（任意）
 
 逐次入力・同時打鍵問わず、英数直接入力モードの切替キーを定義する。
-HID キー名をキー、アクション名を値とするオブジェクト。
+キー名（修飾キープレフィックス付き可）をキー、アクション名を値とするオブジェクト。
 
 ```json
 {
   "modeKeys": {
     "lang2": "switchToEnglish",
     "lang1": "switchToJapanese",
-    "capsLock": "toggleInputMode"
+    "ctrl+space": "toggleInputMode",
+    "ctrl+shift+j": "switchToJapanese",
+    "ctrl+shift+semicolon": "switchToEnglish"
   }
 }
 ```
 
-使用可能なアクション:
+### キー名フォーマット
+
+- **修飾キーなし**（例: `"lang2"`）: 物理キー単体でマッチ。修飾キーの状態は問わない
+- **修飾キー付き**（例: `"ctrl+space"`, `"ctrl+shift+j"`）: 指定された修飾キーが押されている場合のみマッチ
+
+修飾キープレフィックス（`+` 区切りで複数指定可）:
+- `ctrl`: Control キー
+- `shift`: Shift キー
+- `alt`: Option/Alt キー
+
+修飾キー付きトリガーが優先的にマッチし、修飾キーなしトリガーはフォールバック。
+
+### 使用可能なアクション
+
 - `"switchToEnglish"`: 英数直接入力に切替（composing 中は確定してから切替）
 - `"switchToJapanese"`: 日本語入力に復帰
 - `"toggleInputMode"`: 日本語↔英数をトグル
 
 chord の `specialActions`（F+G 等の同時押し）と共存可能。
-`modeKeys` は単一の物理キーによるモード切替、`specialActions` は同時押しによるモード切替として使い分ける。
+`modeKeys` は物理キー（+ 修飾キー）によるモード切替、`specialActions` は同時押しによるモード切替として使い分ける。
 
 ## behavior: 入力方式定義
 

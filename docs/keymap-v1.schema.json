@@ -86,8 +86,8 @@
     "modeKeys": {
       "type": "object",
       "additionalProperties": { "$ref": "#/$defs/keyActionString" },
-      "propertyNames": { "$ref": "#/$defs/keyName" },
-      "description": "モード切替キー（HID キー名 → アクション名）。逐次入力・同時打鍵問わず、英数直接入力モードの切替キーを定義する。"
+      "propertyNames": { "$ref": "#/$defs/modeKeyName" },
+      "description": "モード切替キー（キー名 → アクション名）。修飾キープレフィックス（ctrl+, shift+, alt+）付きも可。逐次入力・同時打鍵問わず、英数直接入力モードの切替キーを定義する。"
     },
     "extensions": {
       "type": "object",
@@ -232,6 +232,11 @@
         "rightAlt"
       ],
       "description": "物理キー名（フォーマット独自命名、USB HID Keyboard/Keypad Page に対応）"
+    },
+    "modeKeyName": {
+      "type": "string",
+      "pattern": "^((ctrl|shift|alt)\\+)*(a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|[0-9]|enter|escape|backspace|delete|tab|space|capsLock|hyphen|equal|bracketLeft|bracketRight|backslash|semicolon|quote|backquote|comma|period|slash|arrowRight|arrowLeft|arrowDown|arrowUp|home|end|pageUp|pageDown|f[0-9]+|international[1-5]|lang[12]|rightAlt)$",
+      "description": "モード切替キー名。修飾キープレフィックス（ctrl+, shift+, alt+）付き可。例: \"lang1\", \"ctrl+space\", \"ctrl+shift+j\""
     },
     "bitmaskString": {
       "type": "string",

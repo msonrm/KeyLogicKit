@@ -5,6 +5,11 @@
   "description": "NICOLA 親指シフト入力（JIS キーボード）",
   "keyboardLayout": "jis",
   "targetScript": "hiragana",
+  "modeKeys": {
+    "ctrl+space": "toggleInputMode",
+    "ctrl+shift+j": "switchToJapanese",
+    "ctrl+shift+semicolon": "switchToEnglish"
+  },
   "behavior": {
     "type": "chord",
     "config": {

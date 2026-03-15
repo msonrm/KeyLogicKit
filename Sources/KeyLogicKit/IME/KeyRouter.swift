@@ -37,7 +37,7 @@ public struct KeyRouter {
                state: InputManager.ConversionState,
                isDirectEnglishMode: Bool = false) -> KeyAction {
         // modeKeys: モード切替キー（最優先）
-        if let action = definition.modeKeys?[event.keyCode] {
+        if let action = matchModeKey(event) {
             return action
         }
 
@@ -79,6 +79,29 @@ public struct KeyRouter {
             return routeChord(event, config: config, isComposing: isComposing, state: state,
                               isDirectEnglishMode: isDirectEnglishMode)
         }
+    }
+
+    // MARK: - modeKeys マッチング
+
+    /// modeKeys からイベントにマッチするアクションを検索する
+    ///
+    /// 修飾キーありのトリガーを優先的にマッチさせ、次に修飾キーなし（修飾キー不問）をマッチさせる。
+    private func matchModeKey(_ event: KeyEvent) -> KeyAction? {
+        guard let modeKeys = definition.modeKeys else { return nil }
+
+        let eventMods = event.modifierFlags.intersection([.shift, .control, .alternate])
+
+        // 修飾キー付きトリガーを優先チェック
+        if !eventMods.isEmpty {
+            let trigger = KeymapDefinition.ModeKeyTrigger(keyCode: event.keyCode, modifiers: eventMods)
+            if let action = modeKeys[trigger] {
+                return action
+            }
+        }
+
+        // 修飾キーなしトリガー（修飾キー不問で常にマッチ）
+        let bareTrigger = KeymapDefinition.ModeKeyTrigger(keyCode: event.keyCode)
+        return modeKeys[bareTrigger]
     }
 
     // MARK: - Ctrl+キー（Emacs バインド）
