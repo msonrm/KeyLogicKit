@@ -192,6 +192,8 @@ public enum DefaultKeymaps {
             ("builtin:tsuki2-263_jis", "tsuki2-263_jis"),
             ("builtin:nicola_us", "nicola_us"),
             ("builtin:nicola_jis", "nicola_jis"),
+            ("builtin:romaji_colemak_us", "romaji_colemak_us"),
+            ("builtin:romaji_colemak_jis", "romaji_colemak_jis"),
         ]
         for (id, name) in jsonKeymaps {
             if let def = loadBundleKeymap(name) {

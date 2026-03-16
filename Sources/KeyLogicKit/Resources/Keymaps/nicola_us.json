@@ -49,7 +49,7 @@
       },
       "shiftKeys": [
         { "key": "leftThumb", "singleTapAction": "convert" },
-        { "key": "rightThumb", "singleTapAction": "convert" }
+        { "key": "rightThumb" }
       ],
       "lookupTable": {
         "Q": "。",

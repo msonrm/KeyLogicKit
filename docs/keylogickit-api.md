@@ -337,6 +337,7 @@ init(configuration: KeymapManagerConfiguration)
 - `builtin:azik_us` / `builtin:azik_jis` — AZIK
 - `builtin:tsuki2-263_us` / `builtin:tsuki2-263_jis` — 月配列2-263
 - `builtin:nicola_us` / `builtin:nicola_jis` — NICOLA
+- `builtin:romaji_colemak_us` / `builtin:romaji_colemak_jis` — ローマ字(Colemak)
 
 ## ChordKey — 同時打鍵キー識別子（enum, Codable, Hashable）
 
