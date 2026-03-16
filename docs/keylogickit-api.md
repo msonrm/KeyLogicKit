@@ -396,16 +396,18 @@ init(reading: String, annotation: String, resolve: @escaping @Sendable () -> Str
 init(font: UIFont = .monospacedSystemFont(ofSize: 18, weight: .regular),
      lineSpacing: CGFloat = 0,
      textAlignment: NSTextAlignment = .natural,
-     showInvisibles: Bool = false)
+     showInvisibles: Bool = false,
+     scrollOffLines: Int = 5)
 ```
 
-| プロパティ | 型 | デフォルト |
-|---|---|---|
-| `font` | `UIFont` | monospacedSystemFont 18pt |
-| `lineSpacing` | `CGFloat` | `0` |
-| `textAlignment` | `NSTextAlignment` | `.natural` |
-| `showInvisibles` | `Bool` | `false` |
-| `typingAttributes` | `[NSAttributedString.Key: Any]` | 計算プロパティ |
+| プロパティ | 型 | デフォルト | 説明 |
+|---|---|---|---|
+| `font` | `UIFont` | monospacedSystemFont 18pt | |
+| `lineSpacing` | `CGFloat` | `0` | |
+| `textAlignment` | `NSTextAlignment` | `.natural` | |
+| `showInvisibles` | `Bool` | `false` | |
+| `scrollOffLines` | `Int` | `5` | Vim の scrolloff 相当。カーソルが上端・下端からこの行数以内に入らないようスクロールを自動調整 |
+| `typingAttributes` | `[NSAttributedString.Key: Any]` | 計算プロパティ | |
 
 ## IMETextView — UITextView サブクラス
 
@@ -438,7 +440,7 @@ init(inputManager: InputManager, keyRouter: KeyRouter, editorStyle: EditorStyle 
      onKeyUp: ((HIDKeyCode, Date) -> Void)? = nil,
      onEnglishModeChange: ((Bool) -> Void)? = nil,
      onCaretRectChange: ((CGRect) -> Void)? = nil,
-     onScrollRequest: ((IMETextView, Int) -> Void)? = nil,
+     onScrollRequest: ((IMETextView, Int) -> Void)? = nil,  // deprecated: scrolloff が自動適用
      blockRangeProvider: BlockRangeProvider? = nil,
      blockSeparator: String? = nil)
 ```

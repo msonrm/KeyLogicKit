@@ -1631,5 +1631,50 @@ public class IMETextView: UITextView {
             timestamp: Date()
         ))
     }
+
+    // MARK: - Scrolloff（スクロールマージン）
+
+    override public func scrollRangeToVisible(_ range: NSRange) {
+        super.scrollRangeToVisible(range)
+        enforceScrolloff()
+    }
+
+    /// カーソルが上端・下端から scrollOffLines 行以内に入らないようスクロール位置を調整する
+    func enforceScrolloff() {
+        let lineHeight = editorStyle.font.lineHeight + editorStyle.lineSpacing
+        let margin = lineHeight * CGFloat(editorStyle.scrollOffLines)
+
+        // カーソル位置を取得
+        let cursorRange = selectedRange
+        guard cursorRange.location != NSNotFound else { return }
+        layoutManager.ensureLayout(for: textContainer)
+        let glyphRange = layoutManager.glyphRange(
+            forCharacterRange: NSRange(location: cursorRange.location, length: 0),
+            actualCharacterRange: nil
+        )
+        let cursorRect = layoutManager.boundingRect(
+            forGlyphRange: glyphRange, in: textContainer
+        )
+        let cursorY = cursorRect.origin.y + textContainerInset.top
+
+        // カーソルの画面上の Y 座標
+        let visibleY = cursorY - contentOffset.y
+
+        // 上端マージン違反: カーソルが上から margin 以内
+        if visibleY < margin {
+            let targetOffsetY = cursorY - margin
+            let clampedY = max(0, targetOffsetY)
+            setContentOffset(CGPoint(x: 0, y: clampedY), animated: false)
+        }
+
+        // 下端マージン違反: カーソルが下から margin 以内
+        let bottomThreshold = bounds.height - margin
+        if visibleY > bottomThreshold {
+            let targetOffsetY = cursorY - bottomThreshold
+            let maxY = contentSize.height - bounds.height
+            let clampedY = min(targetOffsetY, max(0, maxY))
+            setContentOffset(CGPoint(x: 0, y: clampedY), animated: false)
+        }
+    }
 }
 

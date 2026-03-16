@@ -42,6 +42,7 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
 
     /// プログラム的なカーソル移動後のスクロール要求コールバック
     /// カーソル位置の UTF-16 オフセットを渡す。スクロール方法はアプリ側が決定する。
+    @available(*, deprecated, message: "scrolloff が IMETextView 内で自動適用されるため不要")
     public var onScrollRequest: ((IMETextView, Int) -> Void)?
 
     /// ブロック境界検出の外部注入（スマート選択の最上位レベル）
@@ -210,11 +211,9 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
             }
             uiView.selectedRange = NSRange(location: safeLoc, length: safeLen)
 
-            // スクロール要求をアプリ側に委譲
-            if let onScrollRequest = onScrollRequest {
-                DispatchQueue.main.async {
-                    onScrollRequest(uiView, safeLoc)
-                }
+            // scrolloff 付きでカーソル位置にスクロール
+            DispatchQueue.main.async {
+                uiView.scrollRangeToVisible(NSRange(location: safeLoc, length: 0))
             }
 
             coordinator.appliedCursorLocation = safeLoc
@@ -290,6 +289,11 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
                 if !substring.isEmpty {
                     im.setLeftSideContext(substring)
                 }
+            }
+
+            // scrolloff を適用
+            DispatchQueue.main.async {
+                imeView.enforceScrolloff()
             }
         }
     }
