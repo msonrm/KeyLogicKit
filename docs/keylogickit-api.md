@@ -50,6 +50,7 @@ init()  // 辞書変換エンジンを初期化
 | `editorFontSize` | `CGFloat` | エディタフォントサイズ |
 | `leftSideContext` | `String` | 直前の確定テキスト（文脈用） |
 | `predictionCandidates` | `[PredictionItem]` | 予測候補 |
+| `selectedPredictionIndex` | `Int?` | Tab で巡回選択中の予測候補インデックス |
 | `activeInputMappings` | `[String: String]?` | アクティブな入力テーブル |
 | `pendingBufferText` | `String` | 逐次バッファの仮解決テキスト |
 
@@ -92,6 +93,8 @@ init()  // 辞書変換エンジンを初期化
 | `confirmConversion() -> String` | 選択中の候補を確定 |
 | `confirmAll() -> String` | 全文確定 |
 | `confirmWithForm(_ form: ConversionForm) -> String` | 指定形式で確定（Ctrl+J/K/L/;/:） |
+| `selectNextPrediction()` | 予測候補を Tab で巡回選択 |
+| `acceptPrediction(at: Int) -> String?` | 予測候補を確定（Enter） |
 | `cancelConversion()` | 変換キャンセル（全リセット） |
 | `returnToComposing()` | composing に戻る（Escape） |
 
@@ -464,12 +467,13 @@ init(additionalCandidates: [InputManager.AdditionalCandidate],
 ## PredictionPopup — 予測候補ポップアップ（SwiftUI View）
 
 ```swift
-init(predictions: [PredictionItem], font: Font,
-     anchor: CGRect? = nil, bounds: CGSize? = nil)
+init(predictions: [PredictionItem], selectedIndex: Int? = nil,
+     font: Font, anchor: CGRect? = nil, bounds: CGSize? = nil)
 ```
 
 | パラメータ | 型 | 説明 |
 |---|---|---|
+| `selectedIndex` | `Int?` | Tab で巡回選択中の候補インデックス。nil = 未選択 |
 | `anchor` | `CGRect?` | カーソル矩形（配置のアンカー）。`bounds` と共に指定すると自動配置が有効になる |
 | `bounds` | `CGSize?` | 表示領域のサイズ（overlay の親ビューサイズ） |
 

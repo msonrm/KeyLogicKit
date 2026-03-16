@@ -17,6 +17,9 @@ public struct PredictionPopup: View {
     /// 予測候補テキストのリスト
     public let predictions: [PredictionItem]
 
+    /// Tab で巡回選択中のインデックス（nil = 未選択）
+    public let selectedIndex: Int?
+
     /// 表示フォント
     public var font: Font
 
@@ -28,8 +31,10 @@ public struct PredictionPopup: View {
     /// ポップアップ自身のサイズ（onGeometryChange で測定）
     @State private var popupSize: CGSize = .zero
 
-    public init(predictions: [PredictionItem], font: Font, anchor: CGRect? = nil, bounds: CGSize? = nil) {
+    public init(predictions: [PredictionItem], selectedIndex: Int? = nil,
+                font: Font, anchor: CGRect? = nil, bounds: CGSize? = nil) {
         self.predictions = predictions
+        self.selectedIndex = selectedIndex
         self.font = font
         self.anchor = anchor
         self.bounds = bounds
@@ -74,11 +79,12 @@ public struct PredictionPopup: View {
 
     private var popupContent: some View {
         VStack(alignment: .leading, spacing: 0) {
-            ForEach(Array(predictions.enumerated()), id: \.offset) { _, item in
+            ForEach(Array(predictions.enumerated()), id: \.offset) { index, item in
+                let isSelected = selectedIndex == index
                 HStack(spacing: 6) {
                     Image(systemName: "arrow.turn.down.right")
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(isSelected ? .primary : .secondary)
                     Text(item.text)
                         .font(font)
                     if let annotation = item.annotation {
@@ -89,6 +95,8 @@ public struct PredictionPopup: View {
                 }
                 .padding(.horizontal, 8)
                 .padding(.vertical, 3)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(isSelected ? Color.accentColor.opacity(0.15) : Color.clear)
             }
         }
         .padding(.vertical, 2)
