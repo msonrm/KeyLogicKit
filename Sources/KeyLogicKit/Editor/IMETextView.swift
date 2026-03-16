@@ -737,8 +737,13 @@ public class IMETextView: UITextView {
             // Tab キー + 予測候補あり → 予測候補を確定
             if key.keyCode == .keyboardTab,
                im.state == .composing,
-               !im.predictionCandidates.isEmpty,
-               let text = im.acceptPrediction() {
+               !im.predictionCandidates.isEmpty {
+                // Tab + 予測候補あり → 巡回選択（macOS 標準 IME 準拠）
+                im.selectNextPrediction()
+            } else if im.state == .composing,
+                      let selectedIdx = im.selectedPredictionIndex,
+                      let text = im.acceptPrediction(at: selectedIdx) {
+                // Enter + 予測候補選択中 → 選択中の予測候補を確定
                 commitText(text)
                 logEvent("prediction-accept", detail: text)
             } else {
@@ -1283,6 +1288,7 @@ public class IMETextView: UITextView {
         guard let start = position(from: beginningOfDocument, offset: nsRange.location),
               let end = position(from: beginningOfDocument, offset: nsRange.location + nsRange.length) else { return }
         selectedTextRange = textRange(from: start, to: end)
+        scrollRangeToVisible(nsRange)
     }
 
     /// String.Index を UITextPosition に変換してカーソルを設定する

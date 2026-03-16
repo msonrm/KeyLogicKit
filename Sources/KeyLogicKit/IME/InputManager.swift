@@ -229,6 +229,9 @@ public class InputManager {
     /// 予測候補（composing 中に表示。変換候補とは別に管理）
     public private(set) var predictionCandidates: [PredictionItem] = []
 
+    /// Tab キーで巡回選択中の予測候補インデックス（nil = 未選択）
+    public private(set) var selectedPredictionIndex: Int?
+
     /// 動的ショートカットのレジストリ（日時展開等）
     public var dynamicShortcuts: [DynamicShortcut] = BuiltInShortcuts.dateTimeShortcuts
 
@@ -1239,6 +1242,24 @@ public class InputManager {
         }
 
         predictionCandidates = Array(items.prefix(Self.maxPredictions))
+        selectedPredictionIndex = nil
+    }
+
+    /// 予測候補を Tab で巡回選択する
+    ///
+    /// 未選択 → 0 → 1 → 2 → nil（選択解除）→ 0 と巡回する。
+    public func selectNextPrediction() {
+        guard !predictionCandidates.isEmpty else { return }
+        if let current = selectedPredictionIndex {
+            let next = current + 1
+            if next >= predictionCandidates.count {
+                selectedPredictionIndex = nil  // 末尾を超えたら選択解除
+            } else {
+                selectedPredictionIndex = next
+            }
+        } else {
+            selectedPredictionIndex = 0
+        }
     }
 
     /// 予測候補を確定する

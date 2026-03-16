@@ -148,6 +148,14 @@ public struct SmartSelectionState: Sendable {
             return brackets.outer
 
         case .sentence:
+            // origin がカッコ内にある場合、カッコの開始位置で外側コンテキストの文を検索する。
+            // カッコが文中に埋め込まれている場合（前後が文末でない場合）は、
+            // カッコを含む文全体が返される。
+            // カッコが独立した文の場合は includingBrackets と同じ範囲になり、
+            // expand() のスキップ判定で自動的にスキップされる。
+            if let brackets = SentenceBoundary.enclosingBrackets(in: text, at: origin) {
+                return SentenceBoundary.sentenceRange(in: text, at: brackets.outer.lowerBound)
+            }
             return SentenceBoundary.sentenceRange(in: text, at: origin)
 
         case .block:
