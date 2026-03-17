@@ -162,8 +162,8 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
                     in: textContainer
                 ) { rect, _ in
                     var adjusted = rect
-                    adjusted.origin.x += textView.textContainerInset.left
-                    adjusted.origin.y += textView.textContainerInset.top
+                    adjusted.origin.x += textView.textContainerInset.left - textView.contentOffset.x
+                    adjusted.origin.y += textView.textContainerInset.top - textView.contentOffset.y
                     rects.append(adjusted)
                 }
                 return rects

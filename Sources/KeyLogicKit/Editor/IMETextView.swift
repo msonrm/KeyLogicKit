@@ -1336,8 +1336,8 @@ public class IMETextView: UITextView {
             in: textContainer
         ) { rect, _ in
             var adjusted = rect
-            adjusted.origin.x += self.textContainerInset.left
-            adjusted.origin.y += self.textContainerInset.top
+            adjusted.origin.x += self.textContainerInset.left - self.contentOffset.x
+            adjusted.origin.y += self.textContainerInset.top - self.contentOffset.y
             rects.append(adjusted)
         }
         callback(nsRange, rects)
