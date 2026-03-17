@@ -54,6 +54,14 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
     /// セパレータの付け替え（正規化）を行う。nil の場合は正規化なし。
     public var blockSeparator: String?
 
+    /// opt+左右 による文ナビゲーション時に呼ばれるコールバック
+    /// - sentenceRange: 移動先の文の NSRange（UTF-16）
+    /// - rects: 文の視覚的な矩形配列（複数行にまたがる場合は行ごとに1つ）
+    public var onSentenceNavigation: ((_ sentenceRange: NSRange, _ rects: [CGRect]) -> Void)?
+
+    /// テキスト範囲の rect を問い合わせるプロバイダ（nil で無効）
+    public var textRangeRectsProvider: TextRangeRectsProvider?
+
     /// 明示的な公開イニシャライザ（public struct のメンバワイズ init は internal のため）
     public init(
         inputManager: InputManager,
@@ -70,7 +78,9 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         onCaretRectChange: ((CGRect) -> Void)? = nil,
         onScrollRequest: ((IMETextView, Int) -> Void)? = nil,
         blockRangeProvider: BlockRangeProvider? = nil,
-        blockSeparator: String? = nil
+        blockSeparator: String? = nil,
+        onSentenceNavigation: ((_ sentenceRange: NSRange, _ rects: [CGRect]) -> Void)? = nil,
+        textRangeRectsProvider: TextRangeRectsProvider? = nil
     ) {
         self.inputManager = inputManager
         self.keyRouter = keyRouter
@@ -87,6 +97,8 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         self.onScrollRequest = onScrollRequest
         self.blockRangeProvider = blockRangeProvider
         self.blockSeparator = blockSeparator
+        self.onSentenceNavigation = onSentenceNavigation
+        self.textRangeRectsProvider = textRangeRectsProvider
     }
 
     public func makeCoordinator() -> Coordinator {
@@ -134,6 +146,29 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         textView.onCaretRectChange = onCaretRectChange
         textView.blockRangeProvider = blockRangeProvider
         textView.blockSeparator = blockSeparator
+        textView.onSentenceNavigation = onSentenceNavigation
+
+        // TextRangeRectsProvider にクロージャを設定
+        if let provider = textRangeRectsProvider {
+            provider.getRects = { [weak textView] range in
+                guard let textView else { return [] }
+                let layoutManager = textView.layoutManager
+                let textContainer = textView.textContainer
+                let glyphRange = layoutManager.glyphRange(forCharacterRange: range, actualCharacterRange: nil)
+                var rects: [CGRect] = []
+                layoutManager.enumerateEnclosingRects(
+                    forGlyphRange: glyphRange,
+                    withinSelectedGlyphRange: NSRange(location: NSNotFound, length: 0),
+                    in: textContainer
+                ) { rect, _ in
+                    var adjusted = rect
+                    adjusted.origin.x += textView.textContainerInset.left
+                    adjusted.origin.y += textView.textContainerInset.top
+                    rects.append(adjusted)
+                }
+                return rects
+            }
+        }
 
         // エディタのフォントサイズを InputManager に反映
         inputManager.setEditorFontSize(editorStyle.font.pointSize)
@@ -163,6 +198,7 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         uiView.onCaretRectChange = onCaretRectChange
         uiView.blockRangeProvider = blockRangeProvider
         uiView.blockSeparator = blockSeparator
+        uiView.onSentenceNavigation = onSentenceNavigation
         uiView.setSimultaneousWindow(inputManager.simultaneousWindow)
 
         // EditorStyle の変更を検知して再設定

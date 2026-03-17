@@ -426,6 +426,7 @@ func setSimultaneousWindow(_ window: TimeInterval)
 | `onKeyUp` | `((HIDKeyCode, Date) -> Void)?` | キーアップ通知 |
 | `onEnglishModeChange` | `((Bool) -> Void)?` | 英数モード変更通知 |
 | `onCaretRectChange` | `((CGRect) -> Void)?` | キャレット位置変更通知 |
+| `onSentenceNavigation` | `((NSRange, [CGRect]) -> Void)?` | 文ナビゲーション通知（フォーカスモード用） |
 | `blockRangeProvider` | `BlockRangeProvider?` | ブロック境界検出（スマート選択用） |
 | `blockSeparator` | `String?` | ブロック間セパレータ（swapBlock のセパレータ正規化用、nil で無効） |
 
@@ -442,8 +443,23 @@ init(inputManager: InputManager, keyRouter: KeyRouter, editorStyle: EditorStyle 
      onCaretRectChange: ((CGRect) -> Void)? = nil,
      onScrollRequest: ((IMETextView, Int) -> Void)? = nil,  // deprecated: scrolloff が自動適用
      blockRangeProvider: BlockRangeProvider? = nil,
-     blockSeparator: String? = nil)
+     blockSeparator: String? = nil,
+     onSentenceNavigation: ((_ sentenceRange: NSRange, _ rects: [CGRect]) -> Void)? = nil,
+     textRangeRectsProvider: TextRangeRectsProvider? = nil)
 ```
+
+## TextRangeRectsProvider — テキスト範囲 rect プロバイダ（クラス）
+
+テキスト範囲の視覚 rect を任意のタイミングで問い合わせるためのプロバイダ。
+IMETextViewRepresentable が makeUIView で内部のクロージャを設定する。
+
+```swift
+init()
+```
+
+| プロパティ | 型 | 説明 |
+|---|---|---|
+| `getRects` | `@MainActor (NSRange) -> [CGRect]` | 指定 NSRange の視覚 rect 配列を返す。未設定時は空配列 |
 
 ## CandidatePopup — 変換候補ポップアップ（SwiftUI View）
 
