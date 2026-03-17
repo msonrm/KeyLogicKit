@@ -98,6 +98,9 @@ public class IMETextView: UITextView {
     /// カーソル位置変更通知（候補ポップアップの配置用）
     public var onCaretRectChange: ((CGRect) -> Void)?
 
+    /// 文ナビゲーション通知（フォーカスモード用）
+    public var onSentenceNavigation: ((_ sentenceRange: NSRange, _ rects: [CGRect]) -> Void)?
+
     /// 現在のキールーター（入力方式・キーボードレイアウトの切替で差し替え）
     public var keyRouter = KeyRouter(definition: DefaultKeymaps.romajiUS) {
         didSet {
@@ -1306,6 +1309,7 @@ public class IMETextView: UITextView {
         let cursor = cursorStringIndex(in: text, from: range.start)
         let target = SentenceBoundary.previousSentenceStart(in: text, before: cursor)
         setCursor(at: target, in: text)
+        notifySentenceNavigation(at: target, in: text)
     }
 
     /// 文末へカーソルを移動する（Option+→）
@@ -1316,6 +1320,27 @@ public class IMETextView: UITextView {
         let cursor = cursorStringIndex(in: text, from: range.end)
         let target = SentenceBoundary.nextSentenceEnd(in: text, after: cursor)
         setCursor(at: target, in: text)
+        notifySentenceNavigation(at: target, in: text)
+    }
+
+    /// 文ナビゲーション後にコールバックを発火する
+    private func notifySentenceNavigation(at position: String.Index, in text: String) {
+        guard let callback = onSentenceNavigation else { return }
+        let sentenceRange = SentenceBoundary.sentenceRange(in: text, at: position)
+        let nsRange = NSRange(sentenceRange, in: text)
+        let glyphRange = layoutManager.glyphRange(forCharacterRange: nsRange, actualCharacterRange: nil)
+        var rects: [CGRect] = []
+        layoutManager.enumerateEnclosingRects(
+            forGlyphRange: glyphRange,
+            withinSelectedGlyphRange: NSRange(location: NSNotFound, length: 0),
+            in: textContainer
+        ) { rect, _ in
+            var adjusted = rect
+            adjusted.origin.x += self.textContainerInset.left
+            adjusted.origin.y += self.textContainerInset.top
+            rects.append(adjusted)
+        }
+        callback(nsRange, rects)
     }
 
     /// 文を前後の文と入れ替える（Option+↑/↓）
