@@ -1309,6 +1309,9 @@ public class IMETextView: UITextView {
         let cursor = cursorStringIndex(in: text, from: range.start)
         let target = SentenceBoundary.previousSentenceStart(in: text, before: cursor)
         setCursor(at: target, in: text)
+        // スクロールを先に確定させてから rect を計算する
+        let nsRange = NSRange(target..<target, in: text)
+        scrollRangeToVisible(nsRange)
         notifySentenceNavigation(at: target, in: text)
     }
 
@@ -1320,6 +1323,9 @@ public class IMETextView: UITextView {
         let cursor = cursorStringIndex(in: text, from: range.end)
         let target = SentenceBoundary.nextSentenceEnd(in: text, after: cursor)
         setCursor(at: target, in: text)
+        // スクロールを先に確定させてから rect を計算する
+        let nsRange = NSRange(target..<target, in: text)
+        scrollRangeToVisible(nsRange)
         notifySentenceNavigation(at: target, in: text)
     }
 
