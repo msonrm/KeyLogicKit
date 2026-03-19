@@ -252,10 +252,11 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
             cursorLocation = safeLoc
             selectionLength = safeLen
 
-            // リクエストをクリア（現在の updateUIView サイクル内での再トリガーを防ぐ）
-            DispatchQueue.main.async {
-                self.undoableEdit = nil
-            }
+            // リクエストをクリア
+            // 注意: 非同期にすると、insertText → textViewDidChange → Binding 更新 → 次の
+            // updateUIView が先に走り undoableEdit がまだ非 nil で無限ループになる。
+            // 同期クリアなら、次の updateUIView 時点で nil になっておりループしない。
+            undoableEdit = nil
 
             coordinator.appliedCursorLocation = safeLoc
             coordinator.appliedSelectionLength = safeLen
