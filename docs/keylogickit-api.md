@@ -430,12 +430,22 @@ func setSimultaneousWindow(_ window: TimeInterval)
 | `blockRangeProvider` | `BlockRangeProvider?` | ブロック境界検出（スマート選択用） |
 | `blockSeparator` | `String?` | ブロック間セパレータ（swapBlock のセパレータ正規化用、nil で無効） |
 
+## ScrollAlignment — スクロール配置方法（enum）
+
+`scrollRevision` によるプログラム的スクロール時のカーソル配置方法。
+
+| ケース | 説明 |
+|---|---|
+| `.minimal` | 最小限のスクロール（デフォルト、`scrollRangeToVisible` + `enforceScrolloff`） |
+| `.top` | カーソルを上端から `scrollOffLines` 行目に配置 |
+
 ## IMETextViewRepresentable — SwiftUI ラッパー
 
 ```swift
 init(inputManager: InputManager, keyRouter: KeyRouter, editorStyle: EditorStyle = .init(),
      text: Binding<String> = .constant(""), cursorLocation: Binding<Int> = .constant(0),
      selectionLength: Binding<Int> = .constant(0), scrollRevision: Int = 0,
+     scrollAlignment: ScrollAlignment = .minimal,
      onKeyEvent: ((IMETextView.KeyEventInfo) -> Void)? = nil,
      onKeyDown: ((HIDKeyCode, Date) -> Void)? = nil,
      onKeyUp: ((HIDKeyCode, Date) -> Void)? = nil,
