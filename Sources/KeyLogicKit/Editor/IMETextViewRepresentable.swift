@@ -25,6 +25,9 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
     /// スクロール強制リクエスト（値が変わるたびにカーソル位置が同じでもスクロール実行）
     public var scrollRevision: Int
 
+    /// スクロール時のカーソル配置方法（デフォルト: `.minimal`）
+    public var scrollAlignment: ScrollAlignment
+
     /// キーイベントログの追加コールバック
     public var onKeyEvent: ((IMETextView.KeyEventInfo) -> Void)?
 
@@ -71,6 +74,7 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         cursorLocation: Binding<Int> = .constant(0),
         selectionLength: Binding<Int> = .constant(0),
         scrollRevision: Int = 0,
+        scrollAlignment: ScrollAlignment = .minimal,
         onKeyEvent: ((IMETextView.KeyEventInfo) -> Void)? = nil,
         onKeyDown: ((HIDKeyCode, Date) -> Void)? = nil,
         onKeyUp: ((HIDKeyCode, Date) -> Void)? = nil,
@@ -89,6 +93,7 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         self._cursorLocation = cursorLocation
         self._selectionLength = selectionLength
         self.scrollRevision = scrollRevision
+        self.scrollAlignment = scrollAlignment
         self.onKeyEvent = onKeyEvent
         self.onKeyDown = onKeyDown
         self.onKeyUp = onKeyUp
@@ -249,7 +254,24 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
 
             // scrolloff 付きでカーソル位置にスクロール
             DispatchQueue.main.async {
-                uiView.scrollRangeToVisible(NSRange(location: safeLoc, length: 0))
+                if scrollAlignment == .top {
+                    // カーソルを上端から scrollOffLines 行目に直接配置
+                    let cursorRange = NSRange(location: safeLoc, length: 0)
+                    uiView.layoutManager.ensureLayout(for: uiView.textContainer)
+                    let glyphRange = uiView.layoutManager.glyphRange(
+                        forCharacterRange: cursorRange, actualCharacterRange: nil)
+                    let cursorRect = uiView.layoutManager.boundingRect(
+                        forGlyphRange: glyphRange, in: uiView.textContainer)
+                    let cursorY = cursorRect.origin.y + uiView.textContainerInset.top
+                    let lineHeight = uiView.editorStyle.font.lineHeight
+                        + uiView.editorStyle.lineSpacing
+                    let margin = lineHeight * CGFloat(uiView.editorStyle.scrollOffLines)
+                    let targetOffsetY = max(0, cursorY - margin)
+                    uiView.setContentOffset(
+                        CGPoint(x: 0, y: targetOffsetY), animated: false)
+                } else {
+                    uiView.scrollRangeToVisible(NSRange(location: safeLoc, length: 0))
+                }
             }
 
             coordinator.appliedCursorLocation = safeLoc
