@@ -65,6 +65,12 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
     /// テキスト範囲の rect を問い合わせるプロバイダ（nil で無効）
     public var textRangeRectsProvider: TextRangeRectsProvider?
 
+    /// アンドゥ可能な外部テキスト変更（Optional Binding）
+    ///
+    /// 値がセットされると `updateUIView` でアンドゥ対応でテキストを適用し、nil にクリアする。
+    /// App Intent 等からのプログラム的変更専用。通常のユーザー入力には `text` Binding を使う。
+    @Binding public var undoableEdit: UndoableEdit?
+
     /// 明示的な公開イニシャライザ（public struct のメンバワイズ init は internal のため）
     public init(
         inputManager: InputManager,
@@ -84,7 +90,8 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         blockRangeProvider: BlockRangeProvider? = nil,
         blockSeparator: String? = nil,
         onSentenceNavigation: ((_ sentenceRange: NSRange, _ rects: [CGRect]) -> Void)? = nil,
-        textRangeRectsProvider: TextRangeRectsProvider? = nil
+        textRangeRectsProvider: TextRangeRectsProvider? = nil,
+        undoableEdit: Binding<UndoableEdit?> = .constant(nil)
     ) {
         self.inputManager = inputManager
         self.keyRouter = keyRouter
@@ -104,6 +111,7 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         self.blockSeparator = blockSeparator
         self.onSentenceNavigation = onSentenceNavigation
         self.textRangeRectsProvider = textRangeRectsProvider
+        self._undoableEdit = undoableEdit
     }
 
     public func makeCoordinator() -> Coordinator {
@@ -225,6 +233,34 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
 
         // composing 中は InputManager がテキスト管理しているため外部同期をスキップ
         guard inputManager.isEmpty else { return }
+
+        // アンドゥ可能な外部編集の適用
+        if let edit = undoableEdit {
+            // 全選択してから insertText で置換（undoManager に登録される）
+            uiView.selectedRange = NSRange(location: 0, length: (uiView.text as NSString).length)
+            uiView.insertText(edit.text)
+
+            // カーソル位置を設定
+            let textLength = (uiView.text as NSString).length
+            let safeLoc = min(edit.cursorLocation, textLength)
+            let safeLen = min(edit.selectionLength, textLength - safeLoc)
+            uiView.selectedRange = NSRange(location: safeLoc, length: safeLen)
+
+            // Binding を同期（通常のテキスト同期パスでの二重適用を防ぐ）
+            coordinator.lastTextFromUIKit = uiView.text
+            text = uiView.text
+            cursorLocation = safeLoc
+            selectionLength = safeLen
+
+            // リクエストをクリア（現在の updateUIView サイクル内での再トリガーを防ぐ）
+            DispatchQueue.main.async {
+                self.undoableEdit = nil
+            }
+
+            coordinator.appliedCursorLocation = safeLoc
+            coordinator.appliedSelectionLength = safeLen
+            return
+        }
 
         // テキスト同期（SwiftUI → UIKit）
         // UIKit 起源の変更（undo/redo 含む）がフィードバックで戻ってきた場合は
