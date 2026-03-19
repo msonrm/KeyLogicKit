@@ -1371,8 +1371,23 @@ public class IMETextView: UITextView {
         // 選択範囲を決定
         let currentRange: Range<String.Index>
         if selStart == selEnd {
-            // 未選択: カーソル位置の1文を自動選択（従来動作）
-            currentRange = SentenceBoundary.sentenceRange(in: text, at: selStart)
+            // カッコ内にカーソルがある場合は、カッコを含む外側の文を対象にする
+            // （カッコ内部の文だけをスワップすると範囲が重複してテキストが破壊される）
+            if let brackets = SentenceBoundary.enclosingBrackets(in: text, at: selStart) {
+                var pos = brackets.outer.lowerBound
+                // 開きカッコの1つ前の位置でさらに外側のカッコを探す
+                while pos > text.startIndex {
+                    let before = text.index(before: pos)
+                    if let outer = SentenceBoundary.enclosingBrackets(in: text, at: before) {
+                        pos = outer.outer.lowerBound
+                    } else {
+                        break
+                    }
+                }
+                currentRange = SentenceBoundary.sentenceRange(in: text, at: pos)
+            } else {
+                currentRange = SentenceBoundary.sentenceRange(in: text, at: selStart)
+            }
         } else {
             // 選択中: 選択範囲をそのまま使う
             currentRange = selStart..<selEnd
