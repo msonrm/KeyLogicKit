@@ -439,6 +439,21 @@ func setSimultaneousWindow(_ window: TimeInterval)
 | `.minimal` | 最小限のスクロール（デフォルト、`scrollRangeToVisible` + `enforceScrolloff`） |
 | `.top` | カーソルを上端から `scrollOffLines` 行目に配置 |
 
+## UndoableEdit — アンドゥ可能な外部テキスト編集リクエスト（struct）
+
+App Intent 等からプログラム的にテキストを変更する際、`IMETextViewRepresentable` の
+`undoableEdit` Binding にセットすると `undoManager` に登録され Cmd+Z で元に戻せる。
+
+```swift
+init(text: String, cursorLocation: Int, selectionLength: Int = 0)
+```
+
+| プロパティ | 型 | 説明 |
+|---|---|---|
+| `text` | `String` | 変更後のテキスト全体 |
+| `cursorLocation` | `Int` | 変更後のカーソル位置（UTF-16 offset） |
+| `selectionLength` | `Int` | 変更後の選択長（UTF-16 単位、通常 0） |
+
 ## IMETextViewRepresentable — SwiftUI ラッパー
 
 ```swift
@@ -455,7 +470,8 @@ init(inputManager: InputManager, keyRouter: KeyRouter, editorStyle: EditorStyle 
      blockRangeProvider: BlockRangeProvider? = nil,
      blockSeparator: String? = nil,
      onSentenceNavigation: ((_ sentenceRange: NSRange, _ rects: [CGRect]) -> Void)? = nil,
-     textRangeRectsProvider: TextRangeRectsProvider? = nil)
+     textRangeRectsProvider: TextRangeRectsProvider? = nil,
+     undoableEdit: Binding<UndoableEdit?> = .constant(nil))
 ```
 
 ## TextRangeRectsProvider — テキスト範囲 rect プロバイダ（クラス）
