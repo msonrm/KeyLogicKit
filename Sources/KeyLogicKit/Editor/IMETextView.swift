@@ -1361,11 +1361,21 @@ public class IMETextView: UITextView {
         let selStart = cursorStringIndex(in: text, from: range.start)
         let selEnd = cursorStringIndex(in: text, from: range.end)
 
-        // スマート選択がブロックレベルならブロック単位でスワップ
-        if smartSelectionState.level == .block,
-           let provider = blockRangeProvider {
-            swapBlock(direction: direction, text: text, cursor: selStart, provider: provider)
-            return
+        // ブロック単位でのスワップ判定:
+        // (1) smartSelectionState がブロックレベル、または
+        // (2) 選択範囲がブロック範囲に一致する場合
+        if let provider = blockRangeProvider {
+            if smartSelectionState.level == .block {
+                swapBlock(direction: direction, text: text, cursor: selStart, provider: provider)
+                return
+            }
+            // 選択中かつ選択範囲がブロックに一致する場合もブロックスワップ
+            if selStart != selEnd,
+               let block = provider(text, selStart),
+               block.lowerBound == selStart && block.upperBound == selEnd {
+                swapBlock(direction: direction, text: text, cursor: selStart, provider: provider)
+                return
+            }
         }
 
         // 選択範囲を決定
