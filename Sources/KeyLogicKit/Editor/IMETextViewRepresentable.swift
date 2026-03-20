@@ -236,9 +236,10 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
 
         // アンドゥ可能な外部編集の適用
         if let edit = undoableEdit {
-            // 全選択してから insertText で置換（undoManager に登録される）
-            uiView.selectedRange = NSRange(location: 0, length: (uiView.text as NSString).length)
-            uiView.insertText(edit.text)
+            // replace で置換（undoManager に登録され、アンドゥ時に元のカーソル位置が復元される）
+            if let fullRange = uiView.textRange(from: uiView.beginningOfDocument, to: uiView.endOfDocument) {
+                uiView.replace(fullRange, withText: edit.text)
+            }
 
             // カーソル位置を設定
             let textLength = (uiView.text as NSString).length
