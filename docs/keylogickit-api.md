@@ -429,6 +429,7 @@ func setSimultaneousWindow(_ window: TimeInterval)
 | `onSentenceNavigation` | `((NSRange, [CGRect]) -> Void)?` | 文ナビゲーション通知（フォーカスモード用） |
 | `blockRangeProvider` | `BlockRangeProvider?` | ブロック境界検出（スマート選択用） |
 | `blockSeparator` | `String?` | ブロック間セパレータ（swapBlock のセパレータ正規化用、nil で無効） |
+| `isFindInteractionEnabled` | `Bool` | UIFindInteraction による検索置換 UI を有効にする（iOS 16+、デフォルト `false`） |
 
 ## ScrollAlignment — スクロール配置方法（enum）
 
@@ -471,6 +472,7 @@ init(inputManager: InputManager, keyRouter: KeyRouter, editorStyle: EditorStyle 
      blockSeparator: String? = nil,
      onSentenceNavigation: ((_ sentenceRange: NSRange, _ rects: [CGRect]) -> Void)? = nil,
      textRangeRectsProvider: TextRangeRectsProvider? = nil,
+     isFindInteractionEnabled: Bool = false,
      undoableEdit: Binding<UndoableEdit?> = .constant(nil))
 ```
 
