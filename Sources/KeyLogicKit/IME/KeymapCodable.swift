@@ -336,6 +336,8 @@ extension KeyAction: Codable {
             try container.encode("chordInput:\(ChordKeyNames.name(for: key))")
         case .directInsert(let s):
             try container.encode("directInsert:\(s)")
+        case .insertSpace(let shifted):
+            try container.encode(shifted ? "insertSpace:shifted" : "insertSpace")
         }
     }
 
@@ -420,6 +422,9 @@ extension KeyAction: Codable {
                 )
             }
             self = .directInsert(parts[1])
+        case "insertSpace":
+            let shifted = parts.count == 2 && parts[1] == "shifted"
+            self = .insertSpace(shifted: shifted)
         default:
             // x- プレフィックスのアプリ固有アクションは無視（pass にフォールバック）
             if parts[0].hasPrefix("x-") {

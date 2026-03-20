@@ -93,6 +93,14 @@ public enum KeyAction: Sendable {
     /// 日本語↔英数モードをトグル（CAPS LOCK 等に割当可能）
     case toggleInputMode
 
+    // MARK: - スペース挿入（idle 時、半角/全角対応）
+
+    /// 確定スペースを直接挿入（composing なし時のスペースキー）
+    ///
+    /// `shifted` が true の場合、設定と逆の幅のスペースを挿入する。
+    /// 例: 日本語モードのデフォルトが全角なら、Shift+Space で半角。
+    case insertSpace(shifted: Bool)
+
     // MARK: - 英数直接入力
 
     /// 英数モードの印字可能文字を直接挿入
