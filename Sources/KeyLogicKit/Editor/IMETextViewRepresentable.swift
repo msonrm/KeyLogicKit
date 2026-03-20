@@ -65,6 +65,9 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
     /// テキスト範囲の rect を問い合わせるプロバイダ（nil で無効）
     public var textRangeRectsProvider: TextRangeRectsProvider?
 
+    /// UIFindInteraction による検索置換 UI を有効にする（iOS 16+）
+    public var isFindInteractionEnabled: Bool = false
+
     /// アンドゥ可能な外部テキスト変更（Optional Binding）
     ///
     /// 値がセットされると `updateUIView` でアンドゥ対応でテキストを適用し、nil にクリアする。
@@ -91,6 +94,7 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         blockSeparator: String? = nil,
         onSentenceNavigation: ((_ sentenceRange: NSRange, _ rects: [CGRect]) -> Void)? = nil,
         textRangeRectsProvider: TextRangeRectsProvider? = nil,
+        isFindInteractionEnabled: Bool = false,
         undoableEdit: Binding<UndoableEdit?> = .constant(nil)
     ) {
         self.inputManager = inputManager
@@ -111,6 +115,7 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         self.blockSeparator = blockSeparator
         self.onSentenceNavigation = onSentenceNavigation
         self.textRangeRectsProvider = textRangeRectsProvider
+        self.isFindInteractionEnabled = isFindInteractionEnabled
         self._undoableEdit = undoableEdit
     }
 
@@ -182,6 +187,9 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
                 return rects
             }
         }
+
+        // 検索置換 UI（UIFindInteraction）の有効化
+        textView.isFindInteractionEnabled = isFindInteractionEnabled
 
         // エディタのフォントサイズを InputManager に反映
         inputManager.setEditorFontSize(editorStyle.font.pointSize)
