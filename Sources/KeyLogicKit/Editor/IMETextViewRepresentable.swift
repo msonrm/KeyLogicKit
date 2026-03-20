@@ -236,9 +236,36 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
 
         // アンドゥ可能な外部編集の適用
         if let edit = undoableEdit {
-            // replace で置換（undoManager に登録され、アンドゥ時に元のカーソル位置が復元される）
-            if let fullRange = uiView.textRange(from: uiView.beginningOfDocument, to: uiView.endOfDocument) {
-                uiView.replace(fullRange, withText: edit.text)
+            let oldNS = uiView.text as NSString
+            let newNS = edit.text as NSString
+
+            if oldNS as String != newNS as String {
+                // 共通接頭辞の長さ（UTF-16 単位）
+                let minLen = min(oldNS.length, newNS.length)
+                var prefixLen = 0
+                while prefixLen < minLen && oldNS.character(at: prefixLen) == newNS.character(at: prefixLen) {
+                    prefixLen += 1
+                }
+
+                // 共通接尾辞の長さ（UTF-16 単位、接頭辞と重ならないようガード）
+                let maxSuffixLen = minLen - prefixLen
+                var suffixLen = 0
+                while suffixLen < maxSuffixLen
+                    && oldNS.character(at: oldNS.length - 1 - suffixLen) == newNS.character(at: newNS.length - 1 - suffixLen)
+                {
+                    suffixLen += 1
+                }
+
+                // 差分範囲のみ置換
+                let replaceRange = NSRange(location: prefixLen, length: oldNS.length - prefixLen - suffixLen)
+                let replacement = newNS.substring(with: NSRange(location: prefixLen, length: newNS.length - prefixLen - suffixLen))
+
+                if let start = uiView.position(from: uiView.beginningOfDocument, offset: replaceRange.location),
+                   let end = uiView.position(from: start, offset: replaceRange.length),
+                   let textRange = uiView.textRange(from: start, to: end)
+                {
+                    uiView.replace(textRange, withText: replacement)
+                }
             }
 
             // カーソル位置を設定
