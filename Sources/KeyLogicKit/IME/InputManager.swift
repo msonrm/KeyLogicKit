@@ -51,6 +51,22 @@ public class InputManager {
         }
     }
 
+    /// 日本語モード時のスペース幅
+    public enum SpaceWidth: String, CaseIterable, Sendable {
+        /// 全角スペース（U+3000）
+        case fullWidth
+        /// 半角スペース（U+0020）
+        case halfWidth
+
+        /// 表示用ラベル
+        public var label: String {
+            switch self {
+            case .fullWidth: return "全角"
+            case .halfWidth: return "半角"
+            }
+        }
+    }
+
     /// markedText の表示セグメント
     public enum DisplaySegmentFocus {
         /// 部分確定済み（細下線、黒）
@@ -89,6 +105,23 @@ public class InputManager {
 
     /// 現在の日本語入力方式（UserDefaults に永続化）
     public var inputMethod: InputMethod = .sequential
+
+    /// 日本語モード時のスペース幅（デフォルト: 全角）
+    public var japaneseSpaceWidth: SpaceWidth = .fullWidth
+
+    /// 現在のモードと Shift 状態に応じたスペース文字を返す
+    ///
+    /// - 日本語モード: `japaneseSpaceWidth` に従う。Shift で逆転。
+    /// - 英数モード: 常に半角。Shift で全角。
+    public func spaceCharacter(shifted: Bool) -> String {
+        let useFullWidth: Bool
+        if inputMethod == .directEnglish {
+            useFullWidth = shifted
+        } else {
+            useFullWidth = shifted ? (japaneseSpaceWidth != .fullWidth) : (japaneseSpaceWidth == .fullWidth)
+        }
+        return useFullWidth ? "\u{3000}" : " "
+    }
 
     /// markedText に表示するセグメント配列
     ///
@@ -302,6 +335,10 @@ public class InputManager {
         }
         if let chordName = defaults.string(forKey: "chordKeymapName") {
             inputMethod = .chord(name: chordName)
+        }
+        if let spaceWidthRaw = defaults.string(forKey: "japaneseSpaceWidth"),
+           let width = SpaceWidth(rawValue: spaceWidthRaw) {
+            japaneseSpaceWidth = width
         }
     }
 

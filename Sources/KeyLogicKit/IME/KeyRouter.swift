@@ -70,6 +70,12 @@ public struct KeyRouter {
             return action
         }
 
+        // idle 時のスペースキー → 確定スペース挿入（半角/全角は InputManager で制御）
+        // 英数直接入力モードでは super に委譲（通常の半角スペース）
+        if !isComposing && !isDirectEnglishMode && event.keyCode == .keyboardSpacebar {
+            return .insertSpace(shifted: event.modifierFlags.contains(.shift))
+        }
+
         // behavior に応じた文字キー処理
         switch definition.behavior {
         case .sequential(let characterMap):
@@ -256,9 +262,11 @@ public struct KeyRouter {
             return .printable(c)
         }
         // inputMappings がある場合、全ての非制御文字を IME に渡す
+        // スペースは除外（idle 時は .insertSpace、composing 時は .convert で処理済み）
         if definition.inputMappings != nil,
            let scalar = c.unicodeScalars.first,
-           !CharacterSet.controlCharacters.contains(scalar) {
+           !CharacterSet.controlCharacters.contains(scalar),
+           c != " " {
             return .printable(c)
         }
         return .pass

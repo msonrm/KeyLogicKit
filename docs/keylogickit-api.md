@@ -17,6 +17,7 @@ KeyLogicKit を外部アプリから利用する際の公開 API 一覧。
 | `DisplaySegment` struct | `text: String`, `focus: DisplaySegmentFocus` |
 | `AdditionalCandidate` struct | `text: String`, `annotation: String` |
 | `ConversionForm` enum | `.hiragana`, `.katakana`, `.halfWidthKatakana`, `.fullWidthRoman`, `.halfWidthRoman` |
+| `SpaceWidth` enum | `.fullWidth`, `.halfWidth`（`CaseIterable`, `label: String` 付き） |
 | `DeleteResult` enum | `.deleted`, `.empty`（composing テキストが空になった場合） |
 | `ConfirmResult` struct | `text: String`, `isFullyConfirmed: Bool` |
 
@@ -63,6 +64,7 @@ init()  // 辞書変換エンジンを初期化
 | `predictionEnabled` | `Bool` | `false` | 予測変換 |
 | `dynamicShortcuts` | `[DynamicShortcut]` | 日時ショートカット | 動的ショートカット |
 | `dynamicShortcutsEnabled` | `Bool` | `true` | 動的ショートカット有効化 |
+| `japaneseSpaceWidth` | `SpaceWidth` | `.fullWidth` | 日本語モード時のスペース幅 |
 | `simultaneousWindow` | `TimeInterval` | `0.080` | 同時打鍵判定窓（秒） |
 | `fullControlMode` | `Bool` | `true` | キー入力完全制御モード（システム IME 切替を無効化） |
 | `zenzaiWeightURL` | `URL?` | `nil` | Zenzai モデル URL（DI） |
@@ -71,6 +73,7 @@ init()  // 辞書変換エンジンを初期化
 
 | メソッド | 説明 |
 |---|---|
+| `spaceCharacter(shifted: Bool) -> String` | 現在のモード+設定に応じたスペース文字（日本語=設定に従い全角/半角、Shift で逆転） |
 | `setInputMode(_ mode: InputMode)` | 入力モード設定 |
 | `setEditorFontSize(_ size: CGFloat)` | フォントサイズ設定 |
 | `setLeftSideContext(_ context: String)` | 左側コンテキスト設定（最大30文字、カーソル移動・ファイル開封時用） |
@@ -131,6 +134,7 @@ func route(_ event: KeyEvent, isComposing: Bool, state: InputManager.ConversionS
 | `.switchToEnglish` | 英数直接入力に切替 |
 | `.switchToJapanese` | 日本語入力に復帰 |
 | `.toggleInputMode` | 日本語↔英数トグル |
+| `.insertSpace(shifted: Bool)` | 確定スペース挿入（idle 時、半角/全角は InputManager 設定に従う。Shift で逆転） |
 | `.directInsert(String)` | 英数直接挿入 |
 | `.moveSentenceStart` | 文頭へ移動（Option+←） |
 | `.moveSentenceEnd` | 文末へ移動（Option+→） |

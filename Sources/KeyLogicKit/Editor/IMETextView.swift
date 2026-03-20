@@ -275,7 +275,7 @@ public class IMETextView: UITextView {
             if isComposing {
                 handleSpace(im)
             } else {
-                insertText(" ")
+                rawInsertText(im.spaceCharacter(shifted: false))
             }
         case .deleteBack:
             selectionAnchor = nil
@@ -545,7 +545,7 @@ public class IMETextView: UITextView {
            let scalar = c.unicodeScalars.first,
            !CharacterSet.controlCharacters.contains(scalar) {
             let logical = remap?[String(c)]?.first ?? c
-            guard characterMap[logical] != nil || logical.isLetter || hasCustomTable else {
+            guard characterMap[logical] != nil || logical.isLetter || (hasCustomTable && logical != " ") else {
                 super.insertText(text)
                 return
             }
@@ -933,6 +933,12 @@ public class IMETextView: UITextView {
         case .directInsert(let text):
             interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
             rawInsertText(text)
+            logKeyEvent(phase: "began", key: key, handled: true)
+
+        case .insertSpace(let shifted):
+            interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
+            selectionAnchor = nil
+            rawInsertText(im.spaceCharacter(shifted: shifted))
             logKeyEvent(phase: "began", key: key, handled: true)
 
         case .switchToEnglish:
