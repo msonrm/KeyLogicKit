@@ -128,7 +128,7 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
     }
 
     public func makeUIView(context: Context) -> IMETextView {
-        let textView = IMETextView(useInvisibleCharLayout: editorStyle.showInvisibles)
+        let textView = IMETextView(useInvisibleCharLayout: true)
 
         // システム IME の干渉を無効化
         textView.autocorrectionType = .no
@@ -150,6 +150,9 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
 
         // EditorStyle を IMETextView に保持（markedText 属性のベースとして使う）
         textView.editorStyle = editorStyle
+
+        // 不可視文字の初期表示状態を反映
+        textView.invisibleLayoutManager?.showInvisibles = editorStyle.showInvisibles
 
         // UITextViewDelegate を接続
         textView.delegate = context.coordinator
