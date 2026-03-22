@@ -101,6 +101,9 @@ public class IMETextView: UITextView {
     /// 文ナビゲーション通知（フォーカスモード用）
     public var onSentenceNavigation: ((_ sentenceRange: NSRange, _ rects: [CGRect]) -> Void)?
 
+    /// ユーザーのタッチ操作によるスクロール時に呼ばれるコールバック
+    public var onUserScroll: (() -> Void)?
+
     /// 現在のキールーター（入力方式・キーボードレイアウトの切替で差し替え）
     public var keyRouter = KeyRouter(definition: DefaultKeymaps.romajiUS) {
         didSet {
@@ -226,6 +229,15 @@ public class IMETextView: UITextView {
         inputModeDidChange()
         // 同時打鍵バッファのコールバック設定
         setupChordBuffer()
+        // ユーザースクロール検出用
+        panGestureRecognizer.addTarget(self, action: #selector(handlePanForUserScroll(_:)))
+    }
+
+    /// ユーザーのタッチドラッグによるスクロール開始を検出する
+    @objc private func handlePanForUserScroll(_ gesture: UIPanGestureRecognizer) {
+        if gesture.state == .began {
+            onUserScroll?()
+        }
     }
 
     /// 同時打鍵バッファのコールバックを設定する
