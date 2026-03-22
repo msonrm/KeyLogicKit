@@ -431,6 +431,7 @@ func setSimultaneousWindow(_ window: TimeInterval)
 | `onEnglishModeChange` | `((Bool) -> Void)?` | 英数モード変更通知 |
 | `onCaretRectChange` | `((CGRect) -> Void)?` | キャレット位置変更通知 |
 | `onSentenceNavigation` | `((NSRange, [CGRect]) -> Void)?` | 文ナビゲーション通知（フォーカスモード用） |
+| `onUserScroll` | `(() -> Void)?` | ユーザーのタッチスクロール時コールバック（フォーカスモード解除用） |
 | `blockRangeProvider` | `BlockRangeProvider?` | ブロック境界検出（スマート選択用） |
 | `blockSeparator` | `String?` | ブロック間セパレータ（swapBlock のセパレータ正規化用、nil で無効） |
 | `isFindInteractionEnabled` | `Bool` | UIFindInteraction による検索置換 UI を有効にする（iOS 16+、デフォルト `false`） |
@@ -475,8 +476,13 @@ init(inputManager: InputManager, keyRouter: KeyRouter, editorStyle: EditorStyle 
      blockRangeProvider: BlockRangeProvider? = nil,
      blockSeparator: String? = nil,
      onSentenceNavigation: ((_ sentenceRange: NSRange, _ rects: [CGRect]) -> Void)? = nil,
+     onUserScroll: (() -> Void)? = nil,
      textRangeRectsProvider: TextRangeRectsProvider? = nil,
      isFindInteractionEnabled: Bool = false,
+     invisibleSpaceColor: UIColor? = nil,
+     invisibleFullWidthSpaceColor: UIColor? = nil,
+     invisibleTabColor: UIColor? = nil,
+     invisibleNewlineColor: UIColor? = nil,
      undoableEdit: Binding<UndoableEdit?> = .constant(nil))
 ```
 

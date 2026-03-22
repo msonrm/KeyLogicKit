@@ -9,6 +9,17 @@ class InvisibleCharLayoutManager: NSLayoutManager {
     /// 不可視文字の表示 ON/OFF
     var showInvisibles = false
 
+    // MARK: - 不可視文字の描画色設定
+
+    /// 半角スペースの描画色
+    var spaceColor: UIColor = UIColor.label.withAlphaComponent(0.2)
+    /// 全角スペースの描画色（赤系で区別）
+    var fullWidthSpaceColor: UIColor = UIColor.systemRed.withAlphaComponent(0.3)
+    /// タブの描画色
+    var tabColor: UIColor = UIColor.label.withAlphaComponent(0.2)
+    /// 改行の描画色
+    var newlineColor: UIColor = UIColor.label.withAlphaComponent(0.2)
+
     // MARK: - 不可視文字の記号定義
 
     /// 半角スペース (U+0020) → 中黒ドット
@@ -74,13 +85,13 @@ class InvisibleCharLayoutManager: NSLayoutManager {
     private func symbolAndColor(for char: unichar) -> (NSString, UIColor)? {
         switch char {
         case 0x0020: // 半角スペース
-            return (Self.halfWidthSpaceSymbol, UIColor.label.withAlphaComponent(0.2))
+            return (Self.halfWidthSpaceSymbol, spaceColor)
         case 0x3000: // 全角スペース（赤系で区別）
-            return (Self.fullWidthSpaceSymbol, UIColor.systemRed.withAlphaComponent(0.3))
+            return (Self.fullWidthSpaceSymbol, fullWidthSpaceColor)
         case 0x0009: // タブ
-            return (Self.tabSymbol, UIColor.label.withAlphaComponent(0.2))
+            return (Self.tabSymbol, tabColor)
         case 0x000A: // 改行
-            return (Self.newlineSymbol, UIColor.label.withAlphaComponent(0.2))
+            return (Self.newlineSymbol, newlineColor)
         default:
             return nil
         }

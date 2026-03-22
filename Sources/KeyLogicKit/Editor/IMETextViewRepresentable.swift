@@ -62,11 +62,23 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
     /// - rects: 文の視覚的な矩形配列（複数行にまたがる場合は行ごとに1つ）
     public var onSentenceNavigation: ((_ sentenceRange: NSRange, _ rects: [CGRect]) -> Void)?
 
+    /// ユーザーのタッチ操作によるスクロール時に呼ばれるコールバック（フォーカスモード解除用）
+    public var onUserScroll: (() -> Void)?
+
     /// テキスト範囲の rect を問い合わせるプロバイダ（nil で無効）
     public var textRangeRectsProvider: TextRangeRectsProvider?
 
     /// UIFindInteraction による検索置換 UI を有効にする（iOS 16+）
     public var isFindInteractionEnabled: Bool = false
+
+    /// 不可視文字の描画色（半角スペース）。nil の場合はデフォルト色
+    public var invisibleSpaceColor: UIColor?
+    /// 不可視文字の描画色（全角スペース）。nil の場合はデフォルト色
+    public var invisibleFullWidthSpaceColor: UIColor?
+    /// 不可視文字の描画色（タブ）。nil の場合はデフォルト色
+    public var invisibleTabColor: UIColor?
+    /// 不可視文字の描画色（改行）。nil の場合はデフォルト色
+    public var invisibleNewlineColor: UIColor?
 
     /// アンドゥ可能な外部テキスト変更（Optional Binding）
     ///
@@ -93,8 +105,13 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         blockRangeProvider: BlockRangeProvider? = nil,
         blockSeparator: String? = nil,
         onSentenceNavigation: ((_ sentenceRange: NSRange, _ rects: [CGRect]) -> Void)? = nil,
+        onUserScroll: (() -> Void)? = nil,
         textRangeRectsProvider: TextRangeRectsProvider? = nil,
         isFindInteractionEnabled: Bool = false,
+        invisibleSpaceColor: UIColor? = nil,
+        invisibleFullWidthSpaceColor: UIColor? = nil,
+        invisibleTabColor: UIColor? = nil,
+        invisibleNewlineColor: UIColor? = nil,
         undoableEdit: Binding<UndoableEdit?> = .constant(nil)
     ) {
         self.inputManager = inputManager
@@ -114,8 +131,13 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         self.blockRangeProvider = blockRangeProvider
         self.blockSeparator = blockSeparator
         self.onSentenceNavigation = onSentenceNavigation
+        self.onUserScroll = onUserScroll
         self.textRangeRectsProvider = textRangeRectsProvider
         self.isFindInteractionEnabled = isFindInteractionEnabled
+        self.invisibleSpaceColor = invisibleSpaceColor
+        self.invisibleFullWidthSpaceColor = invisibleFullWidthSpaceColor
+        self.invisibleTabColor = invisibleTabColor
+        self.invisibleNewlineColor = invisibleNewlineColor
         self._undoableEdit = undoableEdit
     }
 
@@ -154,6 +176,14 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         // 不可視文字の初期表示状態を反映
         textView.invisibleLayoutManager?.showInvisibles = editorStyle.showInvisibles
 
+        // 不可視文字の描画色を反映
+        if let lm = textView.invisibleLayoutManager {
+            if let color = invisibleSpaceColor { lm.spaceColor = color }
+            if let color = invisibleFullWidthSpaceColor { lm.fullWidthSpaceColor = color }
+            if let color = invisibleTabColor { lm.tabColor = color }
+            if let color = invisibleNewlineColor { lm.newlineColor = color }
+        }
+
         // UITextViewDelegate を接続
         textView.delegate = context.coordinator
 
@@ -168,6 +198,7 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         textView.blockRangeProvider = blockRangeProvider
         textView.blockSeparator = blockSeparator
         textView.onSentenceNavigation = onSentenceNavigation
+        textView.onUserScroll = onUserScroll
 
         // TextRangeRectsProvider にクロージャを設定
         if let provider = textRangeRectsProvider {
@@ -238,6 +269,26 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
             // 不可視文字表示の ON/OFF を反映
             if let lm = uiView.invisibleLayoutManager, lm.showInvisibles != editorStyle.showInvisibles {
                 lm.showInvisibles = editorStyle.showInvisibles
+                lm.invalidateDisplay(forCharacterRange: NSRange(location: 0, length: uiView.textStorage.length))
+            }
+        }
+
+        // 不可視文字の描画色を反映
+        if let lm = uiView.invisibleLayoutManager {
+            var colorChanged = false
+            if let color = invisibleSpaceColor, lm.spaceColor != color {
+                lm.spaceColor = color; colorChanged = true
+            }
+            if let color = invisibleFullWidthSpaceColor, lm.fullWidthSpaceColor != color {
+                lm.fullWidthSpaceColor = color; colorChanged = true
+            }
+            if let color = invisibleTabColor, lm.tabColor != color {
+                lm.tabColor = color; colorChanged = true
+            }
+            if let color = invisibleNewlineColor, lm.newlineColor != color {
+                lm.newlineColor = color; colorChanged = true
+            }
+            if colorChanged && lm.showInvisibles {
                 lm.invalidateDisplay(forCharacterRange: NSRange(location: 0, length: uiView.textStorage.length))
             }
         }
