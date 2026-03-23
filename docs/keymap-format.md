@@ -21,7 +21,9 @@
   "formatVersion": "1.0",
   "name": "キーマップ名",
   "description": "説明（任意）",
-  "author": "作者名（任意）",
+  "author": "原作者名（任意）",
+  "contributor": "派生版作者名（任意）",
+  "basedOn": "派生元の配列名（任意）",
   "license": "SPDX-License-Identifier（任意）",
   "keyboardLayout": "us",
   "targetScript": "hiragana（任意）",
@@ -46,7 +48,9 @@
 | フィールド | 型 | 説明 |
 |---|---|---|
 | `description` | string | 入力方式の説明 |
-| `author` | string | 作者名 |
+| `author` | string | 配列の原作者名 |
+| `contributor` | string / array | 派生版の改変者（後述） |
+| `basedOn` | string | 派生元の配列名（後述） |
 | `license` | string | ライセンス識別子（[SPDX](https://spdx.org/licenses/) 推奨） |
 | `targetScript` | string | 出力文字体系（`"hiragana"`, `"katakana"` 等） |
 | `controlBindings` | object | Emacs 風制御キーバインド（省略時はデフォルト） |
@@ -56,6 +60,60 @@
 | `bufferDisplayMap` | object | 逐次入力バッファの表示変換（OS 文字 → 表示文字） |
 | `modeKeys` | object | モード切替キー（HID キー名 → アクション名） |
 | `extensions` | object | アプリ固有の拡張フィールド |
+
+## author / contributor / basedOn: 作者と派生情報
+
+`author` は配列の原作者（＝配列そのものを設計した人）を記載する。
+派生版を作る場合は、`basedOn` に派生元の配列名、`contributor` に改変者を記載する。
+
+### 使い分け
+
+| ケース | `author` | `contributor` | `basedOn` |
+|---|---|---|---|
+| オリジナル配列 | 配列の設計者 | — | — |
+| 忠実な移植（JSON 化のみ） | 原作者 | — | — |
+| 小カスタム（句読点変更等） | 原作者 | 改変者 | 原作配列名 |
+| 大幅改変（配列を再設計） | 改変者 | — | 原作配列名 |
+
+### 例
+
+オリジナル配列:
+```json
+{
+  "name": "薙刀式(US)",
+  "author": "大岡俊彦"
+}
+```
+
+小カスタム（句読点を変更した派生版）:
+```json
+{
+  "name": "薙刀式カスタム(US)",
+  "author": "大岡俊彦",
+  "contributor": "山田太郎",
+  "basedOn": "薙刀式"
+}
+```
+
+複数人が関わった派生版（`contributor` は配列も可）:
+```json
+{
+  "name": "薙刀式改(US)",
+  "author": "大岡俊彦",
+  "contributor": ["山田太郎", "鈴木花子"],
+  "basedOn": "薙刀式"
+}
+```
+
+大幅改変（もはや別配列）:
+```json
+{
+  "name": "新配列X(US)",
+  "author": "田中一郎",
+  "basedOn": "薙刀式",
+  "description": "薙刀式をベースに中段配置を全面的に再設計した配列"
+}
+```
 
 ## modeKeys: モード切替キー（任意）
 

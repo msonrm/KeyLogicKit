@@ -258,7 +258,9 @@ init(keyCode: HIDKeyCode, characters: String, modifierFlags: KeyModifierFlags)
 | `formatVersion` | `String` | フォーマットバージョン（`"1.0"`） |
 | `name` | `String` | 表示名 |
 | `description` | `String?` | 説明 |
-| `author` | `String?` | 作者 |
+| `author` | `String?` | 配列の原作者 |
+| `contributor` | `[String]?` | 派生版の改変者 |
+| `basedOn` | `String?` | 派生元の配列名 |
 | `license` | `String?` | SPDX ライセンス識別子 |
 | `keyboardLayout` | `String` | 物理配列（`"us"`, `"jis"`） |
 | `targetScript` | `String?` | 出力スクリプト |

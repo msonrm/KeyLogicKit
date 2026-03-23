@@ -750,6 +750,8 @@ extension KeymapDefinition: Codable {
         case name
         case description
         case author
+        case contributor
+        case basedOn
         case license
         case keyboardLayout
         case targetScript
@@ -771,6 +773,14 @@ extension KeymapDefinition: Codable {
         try container.encode(name, forKey: .name)
         try container.encodeIfPresent(description, forKey: .description)
         try container.encodeIfPresent(author, forKey: .author)
+        if let contributor {
+            if contributor.count == 1 {
+                try container.encode(contributor[0], forKey: .contributor)
+            } else {
+                try container.encode(contributor, forKey: .contributor)
+            }
+        }
+        try container.encodeIfPresent(basedOn, forKey: .basedOn)
         try container.encodeIfPresent(license, forKey: .license)
         try container.encode(keyboardLayout, forKey: .keyboardLayout)
         try container.encodeIfPresent(targetScript, forKey: .targetScript)
@@ -810,6 +820,15 @@ extension KeymapDefinition: Codable {
         self.name = try container.decode(String.self, forKey: .name)
         self.description = try container.decodeIfPresent(String.self, forKey: .description)
         self.author = try container.decodeIfPresent(String.self, forKey: .author)
+        // contributor: 文字列または文字列配列を受け付ける
+        if let array = try? container.decodeIfPresent([String].self, forKey: .contributor) {
+            self.contributor = array
+        } else if let single = try? container.decodeIfPresent(String.self, forKey: .contributor) {
+            self.contributor = [single]
+        } else {
+            self.contributor = nil
+        }
+        self.basedOn = try container.decodeIfPresent(String.self, forKey: .basedOn)
         self.license = try container.decodeIfPresent(String.self, forKey: .license)
         self.keyboardLayout = try container.decode(String.self, forKey: .keyboardLayout)
         self.targetScript = try container.decodeIfPresent(String.self, forKey: .targetScript)

@@ -22,7 +22,18 @@
     },
     "author": {
       "type": "string",
-      "description": "作者名"
+      "description": "配列の原作者名"
+    },
+    "contributor": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "array", "items": { "type": "string" } }
+      ],
+      "description": "派生版の改変者。文字列または文字列の配列。"
+    },
+    "basedOn": {
+      "type": "string",
+      "description": "派生元の配列名（例: \"薙刀式\"）"
     },
     "license": {
       "type": "string",
