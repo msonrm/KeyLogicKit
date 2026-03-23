@@ -123,7 +123,14 @@ private enum HIDUsageNames {
 /// - `"ctrl+space"`: Ctrl + Space
 /// - `"ctrl+shift+j"`: Ctrl + Shift + J
 /// 修飾キープレフィックスは `ctrl`, `shift`, `alt` を `+` 区切りで指定する。
-private enum ModeKeyTriggerCoding {
+/// ModeKeyTrigger と `"ctrl+space"` 形式文字列の相互変換
+///
+/// JSON キーマップの `modeKeys` フィールドで使用される文字列表現と
+/// `ModeKeyTrigger` 構造体の間を変換する。
+///
+/// 文字列形式: `"修飾キー+...+キー名"`（修飾キーは `ctrl`, `shift`, `alt`）
+/// 例: `"ctrl+space"`, `"lang2"`, `"shift+alt+a"`
+public enum ModeKeyTriggerCoding {
 
     /// 修飾キー名 → KeyModifierFlags
     private static let modifierNames: [(String, KeyModifierFlags)] = [
@@ -132,7 +139,24 @@ private enum ModeKeyTriggerCoding {
         ("alt", .alternate),
     ]
 
-    /// 文字列キーを ModeKeyTrigger にデコードする
+    /// `"ctrl+space"` 形式の文字列から `ModeKeyTrigger` をパースする
+    ///
+    /// - Parameter string: モードキー文字列（例: `"ctrl+space"`, `"lang2"`）
+    /// - Returns: パース結果。キー名が不明な場合は nil
+    public static func parse(_ string: String) -> KeymapDefinition.ModeKeyTrigger? {
+        decode(string)
+    }
+
+    /// `ModeKeyTrigger` を `"ctrl+space"` 形式の文字列に変換する
+    ///
+    /// - Parameter trigger: 変換対象のトリガー
+    /// - Returns: 文字列表現。HID キーコードが不明な場合は nil
+    public static func format(_ trigger: KeymapDefinition.ModeKeyTrigger) -> String? {
+        guard let keyName = HIDUsageNames.name(for: trigger.keyCode) else { return nil }
+        return encode(keyName: keyName, modifiers: trigger.modifiers)
+    }
+
+    /// 文字列キーを ModeKeyTrigger にデコードする（内部用）
     static func decode(_ string: String) -> KeymapDefinition.ModeKeyTrigger? {
         let parts = string.split(separator: "+").map(String.init)
         guard !parts.isEmpty else { return nil }
@@ -158,7 +182,7 @@ private enum ModeKeyTriggerCoding {
         return KeymapDefinition.ModeKeyTrigger(keyCode: keyCode, modifiers: modifiers)
     }
 
-    /// ModeKeyTrigger を文字列キーにエンコードする
+    /// ModeKeyTrigger を文字列キーにエンコードする（内部用）
     static func encode(keyName: String, modifiers: KeyModifierFlags) -> String {
         if modifiers.isEmpty {
             return keyName
@@ -817,7 +841,13 @@ extension KeymapDefinition: Codable {
             )
         } else {
             self.explicitInputMappings = nil
-            self.inputMappings = rawInputMappings
+            // _comment プレフィックスのキーはコメントとして除外
+            if let raw = rawInputMappings {
+                let filtered = raw.filter { !$0.key.hasPrefix("_comment") }
+                self.inputMappings = filtered.isEmpty ? nil : filtered
+            } else {
+                self.inputMappings = nil
+            }
         }
         if let rawKeys = try container.decodeIfPresent([String].self, forKey: .prefixShiftKeys) {
             self.prefixShiftKeys = rawKeys.compactMap(\.first)

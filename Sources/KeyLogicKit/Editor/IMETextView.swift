@@ -76,7 +76,7 @@ public class IMETextView: UITextView {
     public var inputManager: InputManager? {
         didSet {
             guard inputManager !== oldValue else { return }
-            inputManager?.updateInputMappings(keyRouter.definition.inputMappings)
+            inputManager?.updateKeymap(ExpandedKeymap(definition: keyRouter.definition))
         }
     }
 
@@ -110,7 +110,7 @@ public class IMETextView: UITextView {
             syncChordBufferTables()
             // キーマップ切替時に入力マッピングを同期（同一定義の再代入はスキップ）
             if keyRouter.definition.name != oldValue.definition.name {
-                inputManager?.updateInputMappings(keyRouter.definition.inputMappings)
+                inputManager?.updateKeymap(ExpandedKeymap(definition: keyRouter.definition))
             }
         }
     }
@@ -1089,7 +1089,7 @@ public class IMETextView: UITextView {
 
         if let mapped = characterMap[logical] {
             im.appendDirectKana(String(mapped))
-        } else if im.activeInputMappings != nil {
+        } else if im.activeKeymap?.inputMappings != nil {
             im.handleSequentialInput(String(logical))
         } else {
             im.appendDirectKana(String(logical))
