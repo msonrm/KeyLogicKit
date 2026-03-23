@@ -42,7 +42,9 @@ public class SimultaneousKeyBuffer {
         /// `charCount` は ComposingText に追加済みの **文字数**。
         /// `insertAtCursorPosition` は1文字=1入力ピースのため、
         /// 差し替え時は `charCount` 個の入力ピースを削除する。
-        case waitingThird(bufferedKeys: Set<ChordKey>, bits: UInt64, charCount: Int)
+        /// `pendingAction` は 2キー specialAction の遅延発火用。
+        /// 3キー chord が成立すれば破棄し、タイマー満了時に発火する。
+        case waitingThird(bufferedKeys: Set<ChordKey>, bits: UInt64, charCount: Int, pendingAction: KeyAction? = nil)
         /// シフトキーホールド中（タイマー経過後もシフトキーが押されている）
         ///
         /// `shiftKey` はホールド中のシフトキーの識別子。
@@ -132,8 +134,8 @@ public class SimultaneousKeyBuffer {
         case .waiting(let firstKey, let firstOutput):
             handleSecondKey(key, firstKey: firstKey, firstOutput: firstOutput)
 
-        case .waitingThird(let bufferedKeys, let bits, let charCount):
-            handleThirdKey(key, bufferedKeys: bufferedKeys, existingBits: bits, charCount: charCount)
+        case .waitingThird(let bufferedKeys, let bits, let charCount, let pendingAction):
+            handleThirdKey(key, bufferedKeys: bufferedKeys, existingBits: bits, charCount: charCount, pendingAction: pendingAction)
 
         case .shiftHeld(let shiftKey, let used):
             handleShiftHeldKey(key, shiftKey: shiftKey, used: used)
@@ -213,14 +215,18 @@ public class SimultaneousKeyBuffer {
         let combined = firstKey.bit | key.bit
         let firstCharCount = firstOutput?.count ?? 0
 
-        // 特殊アクションの判定（V+M=Enter, SHFT+V=、, SHFT+M=。）
-        if let action = specialActionFunction(combined) {
+        // 特殊アクションの判定（V+M=Enter, H+J=switchToJapanese 等）
+        // 3キー chord と競合する可能性があるため、即発火せず waitingThird に遅延する。
+        // 3キー目が来れば chord 優先、タイマー満了で specialAction を発火する。
+        let pendingAction = specialActionFunction(combined)
+        if let pendingAction {
             if firstCharCount > 0 {
                 // 先行出力を巻き戻し
                 onOutput?("", firstCharCount)
             }
-            onSpecialAction?(action)
-            state = .idle
+            let keys: Set<ChordKey> = [firstKey, key]
+            state = .waitingThird(bufferedKeys: keys, bits: combined, charCount: 0, pendingAction: pendingAction)
+            startTimer()
             return
         }
 
@@ -273,11 +279,14 @@ public class SimultaneousKeyBuffer {
     /// 異なるキーなら3キー同時打鍵テーブルを検索し、マッチすれば既存出力を差し替える。
     /// `charCount` 文字（入力ピース）を削除して3キー結果に置換する。
     /// マッチしなければ既存出力は確定済みとし、3キー目を新規の1キー目とする。
-    private func handleThirdKey(_ key: ChordKey, bufferedKeys: Set<ChordKey>, existingBits: UInt64, charCount: Int) {
+    private func handleThirdKey(_ key: ChordKey, bufferedKeys: Set<ChordKey>, existingBits: UInt64, charCount: Int, pendingAction: KeyAction? = nil) {
         cancelTimer()
 
-        // 同じキーの再打鍵 → 同時打鍵ではない。バッファを確定し新規入力として処理
+        // 同じキーの再打鍵 → 同時打鍵ではない。遅延アクションがあれば発火してからバッファ確定
         if bufferedKeys.contains(key) {
+            if let pendingAction {
+                onSpecialAction?(pendingAction)
+            }
             state = .idle
             handleFirstKey(key)
             return
@@ -288,11 +297,15 @@ public class SimultaneousKeyBuffer {
         // 3キー同時打鍵テーブルを検索
         let lookupTriple = physicalShift ? (ChordKey.space.bit | tripleKeys) : tripleKeys
         if let tripleResult = lookupFunction(lookupTriple) ?? (physicalShift ? lookupFunction(tripleKeys) : nil) {
-            // 3キー同時打鍵成立 → 既存出力を差し替え
+            // 3キー同時打鍵成立 → 既存出力を差し替え（遅延 specialAction は破棄）
             onOutput?(tripleResult, charCount)
             state = .idle
         } else {
-            // 3キー同時打鍵なし → 既存出力は確定済み（先行出力済み）
+            // 3キー同時打鍵なし → 遅延 specialAction があれば発火
+            if let pendingAction {
+                onSpecialAction?(pendingAction)
+            }
+            // 既存出力は確定済み（先行出力済み）
             // 3キー目を新規の1キー目として処理
             state = .idle
             handleFirstKey(key)
@@ -373,8 +386,12 @@ public class SimultaneousKeyBuffer {
                 state = .idle
             }
 
-        case .waitingThird:
+        case .waitingThird(_, _, _, let pendingAction):
             // 先行出力済みの結果をそのまま確定
+            // 遅延 specialAction があれば発火（H+J=switchToJapanese 等）
+            if let pendingAction {
+                onSpecialAction?(pendingAction)
+            }
             state = .idle
 
         default:
