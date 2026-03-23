@@ -2,6 +2,7 @@
   "formatVersion": "1.0",
   "name": "ローマ字(Colemak JIS)",
   "author": "Shai Coleman",
+  "license": "Unlicense",
   "description": "Colemak 配列でのローマ字入力（JIS キーボード）。iPadOS が Colemak をサポートしないため、アプリ側で QWERTY→Colemak キーリマップを行う。",
   "keyboardLayout": "jis",
   "targetScript": "hiragana",
