@@ -72,8 +72,15 @@ public struct KeyRouter {
 
         // idle 時のスペースキー → 確定スペース挿入（半角/全角は InputManager で制御）
         // 英数直接入力モードでは super に委譲（通常の半角スペース）
+        // chord 方式でスペースがシフトキーの場合は除外（SandS: chord buffer に委ねる）
         if !isComposing && !isDirectEnglishMode && event.keyCode == .keyboardSpacebar {
-            return .insertSpace(shifted: event.modifierFlags.contains(.shift))
+            if case .chord(let config) = definition.behavior,
+               let chordKey = config.hidToKey[event.keyCode],
+               config.shiftKeys.contains(where: { $0.key == chordKey }) {
+                // chord シフトキー → routeChord に委譲（SandS の単打/長押し判定を行う）
+            } else {
+                return .insertSpace(shifted: event.modifierFlags.contains(.shift))
+            }
         }
 
         // behavior に応じた文字キー処理

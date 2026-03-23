@@ -139,6 +139,7 @@ chord の `specialActions`（F+G 等の同時押し）と共存可能。
   - 例: `"dq": "ぁ"`（D前置+Q）, `"sl": "が"`（S+L後置濁音）
   - greedy longest-match で解決される
   - `inputBase` / `suffixRules` と併用時は、自動生成されない固有エントリのみ記述すればよい
+  - `_comment` で始まるキーはコメントとして無視される（例: `"_comment_base": "単打（上段）"`）
 - `prefixShiftKeys`: 前置シフトキーの明示指定（1文字の文字列の配列）
   - 指定されたキーのみシフトキーとして扱い、⇧ ラベル + シフトレイヤーを可視化パネルに生成する
   - 月配列2-263 等の前置シフト方式: `"prefixShiftKeys": ["d", "k"]`

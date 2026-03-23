@@ -294,15 +294,11 @@ public class InputManager {
     /// 非フォールバック（マッピング解決）の挿入が起きると無効化される。
     private var fallbackFlushedKeys: [String] = []
 
-    /// アクティブなカスタム入力マッピング（nil = カスタムテーブルなし → AzooKey trie を使用）
-    public private(set) var activeInputMappings: [String: String]?
+    /// 事前展開済みキーマップ（nil = カスタムテーブルなし → AzooKey trie を使用）
+    public private(set) var activeKeymap: ExpandedKeymap?
 
-
-    /// マッピングの strict プレフィクスセット（高速判定用）
-    ///
-    /// 全マッピングキーの全 strict プレフィクスを含む。
-    /// 例: "ql" のプレフィクス "q"、"dwl" のプレフィクス "d", "dw" など。
-    private var inputMappingPrefixes: Set<String> = []
+    /// アクティブなカスタム入力マッピング（`activeKeymap` から導出）
+    public var activeInputMappings: [String: String]? { activeKeymap?.inputMappings }
 
     // MARK: - Private Properties
 
@@ -362,30 +358,14 @@ public class InputManager {
         leftSideContext = String(context.suffix(30))
     }
 
-    /// 入力マッピングを設定する
+    /// 事前展開済みキーマップを設定する
     ///
-    /// 入力テーブル（ローマ字・月配列等）がある場合は `activeInputMappings` に保存し、
-    /// 逐次入力バッファ（`handleSequentialInput`）で greedy longest-match 解決する。
+    /// `ExpandedKeymap` の事前計算済みデータ（マッピング + プレフィックスセット）を
+    /// そのまま適用する。ランタイムでのフィルタリングやプレフィックスセット構築が不要。
     ///
-    /// - Parameter inputMappings: 入力テーブルのマッピング。
-    ///   nil でない場合は自前バッファ用のデータとして保持する。
-    public func updateInputMappings(_ inputMappings: [String: String]?) {
-        if let mappings = inputMappings {
-            let filtered = mappings.filter { !$0.key.hasPrefix("_comment") }
-            activeInputMappings = filtered
-            // strict プレフィクスセットを構築
-            // "ql" のキーから "q" を、"dwl" から "d", "dw" を登録、等
-            var prefixes: Set<String> = []
-            for key in filtered.keys {
-                for len in 1..<key.count {
-                    prefixes.insert(String(key.prefix(len)))
-                }
-            }
-            inputMappingPrefixes = prefixes
-        } else {
-            activeInputMappings = nil
-            inputMappingPrefixes = []
-        }
+    /// - Parameter keymap: 事前展開済みキーマップ。nil でカスタムテーブルをクリア。
+    public func updateKeymap(_ keymap: ExpandedKeymap?) {
+        activeKeymap = keymap
         // バッファクリア（キーマップ切替時）
         sequentialBuffer = ""
         fallbackFlushedKeys.removeAll()
@@ -444,7 +424,7 @@ public class InputManager {
     /// バッファにたまっているキーシーケンスを inputMappings で仮解決した結果を返す。
     /// 月配列では全単打キーにマッピングがあるため、常にかな文字が返る。
     public var pendingBufferText: String {
-        guard !sequentialBuffer.isEmpty, let mappings = activeInputMappings else { return "" }
+        guard !sequentialBuffer.isEmpty, let mappings = activeKeymap?.inputMappings else { return "" }
         if let kana = mappings[sequentialBuffer] { return kana }
         // バッファ全体にマッチがない場合、最長マッチで再帰的に解決
         var result = ""
@@ -475,12 +455,11 @@ public class InputManager {
     /// - バッファがプレフィクスに一致 → 次のキーを待つ（例: "d" は "dq" のプレフィクス）
     /// - どちらでもない → バックトラック（先頭から最長マッチを探して解決、残りを再処理）
     private func drainSequentialBuffer() {
-        guard activeInputMappings != nil else { return }
-        let mappings = activeInputMappings!
+        guard let keymap = activeKeymap, let mappings = keymap.inputMappings else { return }
 
         while !sequentialBuffer.isEmpty {
             let hasMatch = mappings[sequentialBuffer] != nil
-            let isPrefix = inputMappingPrefixes.contains(sequentialBuffer)
+            let isPrefix = keymap.prefixSet.contains(sequentialBuffer)
 
             if hasMatch && !isPrefix {
                 // 一意マッチ → 即座に解決
@@ -519,7 +498,7 @@ public class InputManager {
     /// バッファに残っているキーシーケンスを最善の解決方法で ComposingText に追加する。
     /// 確定操作の前に呼び出して、バッファの内容を composingText に反映させる。
     private func flushSequentialBuffer() {
-        guard !sequentialBuffer.isEmpty, let mappings = activeInputMappings else { return }
+        guard !sequentialBuffer.isEmpty, let mappings = activeKeymap?.inputMappings else { return }
         // バッファ全体がマッピングにあればそのまま解決
         if let kana = mappings[sequentialBuffer] {
             composingText.insertAtCursorPosition(kana, inputStyle: .direct)
@@ -565,7 +544,7 @@ public class InputManager {
             // BS でバッファが空になった場合、フォールバックでフラッシュされた
             // 生キーを引き戻してバッファに復元する
             if sequentialBuffer.isEmpty, let lastRaw = fallbackFlushedKeys.last,
-               inputMappingPrefixes.contains(lastRaw) {
+               activeKeymap?.prefixSet.contains(lastRaw) == true {
                 fallbackFlushedKeys.removeLast()
                 composingText.deleteBackwardFromCursorPosition(count: 1)
                 sequentialBuffer = lastRaw

@@ -52,7 +52,8 @@ init()  // 辞書変換エンジンを初期化
 | `leftSideContext` | `String` | 直前の確定テキスト（文脈用） |
 | `predictionCandidates` | `[PredictionItem]` | 予測候補 |
 | `selectedPredictionIndex` | `Int?` | Tab で巡回選択中の予測候補インデックス |
-| `activeInputMappings` | `[String: String]?` | アクティブな入力テーブル |
+| `activeKeymap` | `ExpandedKeymap?` | 事前展開済みキーマップ |
+| `activeInputMappings` | `[String: String]?` | アクティブな入力テーブル（`activeKeymap` から導出） |
 | `pendingBufferText` | `String` | 逐次バッファの仮解決テキスト |
 
 ### 設定プロパティ（読み書き）
@@ -77,7 +78,7 @@ init()  // 辞書変換エンジンを初期化
 | `setInputMode(_ mode: InputMode)` | 入力モード設定 |
 | `setEditorFontSize(_ size: CGFloat)` | フォントサイズ設定 |
 | `setLeftSideContext(_ context: String)` | 左側コンテキスト設定（最大30文字、カーソル移動・ファイル開封時用） |
-| `updateInputMappings(_ mappings: [String: String]?)` | 入力テーブル設定 |
+| `updateKeymap(_ keymap: ExpandedKeymap?)` | 事前展開済みキーマップ設定（nil でクリア） |
 | `recordChordKey(_ key: ChordKey)` | chord キーの QWERTY 文字を蓄積（英数候補用） |
 | `appendDirectKana(_ kana: String)` | かな文字を直接追加（trie 非経由） |
 | `handleSequentialInput(_ character: String)` | 逐次入力（greedy longest-match） |
@@ -292,6 +293,50 @@ init(keyCode: HIDKeyCode, characters: String, modifierFlags: KeyModifierFlags)
 static func expandInputMappings(inputBase:suffixRules:explicitMappings:) -> [String: String]?
 static let currentFormatVersion = "1.0"
 ```
+
+## ExpandedKeymap — 事前展開済みキーマップ（struct, Sendable）
+
+`KeymapDefinition` から一度だけ構築し、`InputManager.updateKeymap()` で適用する。
+ランタイムでのプレフィックスセット構築や `_comment` フィルタリングを排除する。
+
+```swift
+init(definition: KeymapDefinition)
+```
+
+| プロパティ | 型 | 説明 |
+|---|---|---|
+| `definition` | `KeymapDefinition` | 元のキーマップ定義 |
+| `inputMappings` | `[String: String]?` | マージ済み入力マッピング（`_comment` フィルタ済み） |
+| `prefixSet` | `Set<String>` | greedy longest-match 用プレフィックス集合 |
+| `characterMap` | `[Character: Character]` | 半角→全角変換テーブル（sequential のみ） |
+| `keyRemap` | `[Character: Character]` | キーリマップ（物理→論理） |
+| `chordData` | `ExpandedChordData?` | Chord 事前展開データ（chord のみ） |
+
+## ExpandedChordData — Chord 事前展開データ（struct, Sendable）
+
+`ChordConfig` から構築される Chord 配列のルックアップデータ。
+
+| プロパティ | 型 | 説明 |
+|---|---|---|
+| `hidToChordKey` | `[HIDKeyCode: ChordKey]` | HID→ChordKey 変換 |
+| `lookupTable` | `[UInt64: String]` | ビットマスク→出力文字列 |
+| `specialActions` | `[UInt64: KeyAction]` | ビットマスク→特殊アクション |
+| `shiftKeyConfigs` | `[ChordKey: KeyAction?]` | シフトキー→単打時アクション |
+| `simultaneousWindow` | `TimeInterval` | 同時打鍵判定窓（秒） |
+| `englishLookupTable` | `[UInt64: String]?` | 英語モード用ルックアップ |
+| `englishSpecialActions` | `[UInt64: KeyAction]?` | 英語モード用特殊アクション |
+
+## ModeKeyTriggerCoding — モードキー文字列変換（enum）
+
+`ModeKeyTrigger` と `"ctrl+space"` 形式文字列の相互変換。
+
+```swift
+static func parse(_ string: String) -> KeymapDefinition.ModeKeyTrigger?
+static func format(_ trigger: KeymapDefinition.ModeKeyTrigger) -> String?
+```
+
+- `parse("ctrl+space")` → `ModeKeyTrigger(keyCode: .keyboardSpacebar, modifiers: .control)`
+- `format(trigger)` → `"ctrl+space"`
 
 ## KeymapStore — ファイル I/O（enum）
 
