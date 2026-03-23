@@ -17,8 +17,14 @@ public struct KeymapDefinition: Sendable {
     /// 入力方式の説明（任意）
     public let description: String?
 
-    /// 作者名（任意）
+    /// 配列の原作者名（任意）
     public let author: String?
+
+    /// 派生版の改変者（任意）
+    public let contributor: [String]?
+
+    /// 派生元の配列名（任意、例: "薙刀式"）
+    public let basedOn: String?
 
     /// ライセンス識別子（SPDX 形式、任意）
     public let license: String?
@@ -122,12 +128,15 @@ public struct KeymapDefinition: Sendable {
          modeKeys: [ModeKeyTrigger: KeyAction]? = nil,
          formatVersion: String = KeymapDefinition.currentFormatVersion,
          description: String? = nil, author: String? = nil,
+         contributor: [String]? = nil, basedOn: String? = nil,
          license: String? = nil, targetScript: String? = nil,
          extensions: [String: String]? = nil) {
         self.formatVersion = formatVersion
         self.name = name
         self.description = description
         self.author = author
+        self.contributor = contributor
+        self.basedOn = basedOn
         self.license = license
         self.keyboardLayout = keyboardLayout
         self.targetScript = targetScript
