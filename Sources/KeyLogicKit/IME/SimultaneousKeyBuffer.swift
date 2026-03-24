@@ -1,9 +1,14 @@
 import Foundation
 
-/// 同時打鍵バッファ（pressesEnded ベース）
+/// 同時打鍵バッファ（pressesEnded ベース + idle ゲーティング）
 ///
-/// 押下中キーの集合（heldKeys）で同時打鍵を判定する。タイマー不要。
+/// 押下中キーの集合（heldKeys）で同時打鍵を判定する。
+/// ロールオーバー（高速逐次打鍵でのキー重なり）と意図的な同時打鍵を区別するため、
+/// ZMK の `require-prior-idle-ms` 相当の idle ゲーティングを備える。
 ///
+/// - **idle ゲーティング**: 直前の確定から `simultaneousWindow` 以内に新しいキーが来た場合、
+///   タイピングストリーク中とみなし chord 判定をスキップ。全キーを即単打出力する。
+///   十分な間（idle）があった場合のみ chord 判定が有効になる。
 /// - **単打**: keyDown → 待機、keyUp（全キーリリース）→ 出力
 /// - **2キー chord**: 2キー目の keyDown で即出力（差し替えなし）
 /// - **3キー chord**: 3キー目の keyDown で即出力（2キー結果を差し替え）
@@ -25,6 +30,11 @@ public class SimultaneousKeyBuffer {
     private enum Phase {
         /// キー入力蓄積中（chord グループ形成中）
         case accumulating
+        /// タイピングストリーク中（chord 判定スキップ、全キー即単打出力）
+        ///
+        /// 直前の確定から `simultaneousWindow` 以内に新しいキーが押された場合に遷移。
+        /// ロールオーバーによる誤 chord 判定を防ぐ。
+        case passthrough
         /// シフトキーホールド中（chord 確定後、シフトキーのみ残存）
         ///
         /// `used` が true の場合、シフト面の文字が出力済みなので
@@ -54,10 +64,15 @@ public class SimultaneousKeyBuffer {
     /// 現在のフェーズ
     private var phase: Phase = .accumulating
 
+    /// 直前の chord グループが確定した時刻（idle ゲーティング用）
+    private var lastFinalizedTime: CFAbsoluteTime = 0
+
     /// 同時打鍵判定ウィンドウ（秒）
     ///
-    /// pressesEnded ベースではタイマーを使用しないため内部では未使用。
-    /// キーマップ定義との互換性のために保持する。
+    /// idle ゲーティングの閾値として使用する。
+    /// 直前の確定からこの時間以内に新しいキーが押された場合、
+    /// タイピングストリーク中とみなし chord 判定をスキップする
+    /// （ZMK の `require-prior-idle-ms` 相当）。
     public var simultaneousWindow: TimeInterval = 0.080
 
     /// 物理 Shift キーが押されているか（英数モードでの大文字入力用）
@@ -86,6 +101,15 @@ public class SimultaneousKeyBuffer {
     /// 指定されたキーがシフトキーかどうか
     private func isShiftKey(_ key: ChordKey) -> Bool {
         shiftKeyConfigs.keys.contains(key)
+    }
+
+    /// タイピングストリーク中かどうか
+    ///
+    /// 直前の確定から `simultaneousWindow` 以内であれば true。
+    /// ストリーク中は chord 判定をスキップし、ロールオーバーの誤判定を防ぐ。
+    private var isInTypingStreak: Bool {
+        lastFinalizedTime > 0
+            && (CFAbsoluteTimeGetCurrent() - lastFinalizedTime) < simultaneousWindow
     }
 
     // MARK: - コールバック
@@ -117,10 +141,20 @@ public class SimultaneousKeyBuffer {
 
         switch phase {
         case .accumulating:
+            // idle ゲーティング: 新しい chord グループの開始時にストリーク判定
+            if chordGroup.isEmpty && isInTypingStreak {
+                phase = .passthrough
+                handleSingleTap(key)
+                return
+            }
             chordGroup.insert(key)
             if chordGroup.count >= 2 {
                 evaluateChord()
             }
+
+        case .passthrough:
+            // ストリーク中は全キーを即単打出力
+            handleSingleTap(key)
 
         case .shiftMode(let shiftKey, _):
             guard key != shiftKey else { return } // シフトキーの重複ダウン → 無視
@@ -147,6 +181,12 @@ public class SimultaneousKeyBuffer {
                 }
                 resetChordState()
                 phase = .shiftMode(shiftKey: remaining, used: wasUsed)
+            }
+
+        case .passthrough:
+            // ストリーク中は出力済み。全キーリリースでリセット
+            if heldKeys.isEmpty {
+                resetAll()
             }
 
         case .shiftMode(let shiftKey, let used):
@@ -290,6 +330,7 @@ public class SimultaneousKeyBuffer {
 
     /// 全状態をリセット
     private func resetAll() {
+        lastFinalizedTime = CFAbsoluteTimeGetCurrent()
         heldKeys.removeAll()
         resetChordState()
         phase = .accumulating

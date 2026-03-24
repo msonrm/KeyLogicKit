@@ -423,7 +423,7 @@ func reset()
 
 | プロパティ | 型 | 説明 |
 |---|---|---|
-| `simultaneousWindow` | `TimeInterval` | 互換性のため保持（内部では未使用） |
+| `simultaneousWindow` | `TimeInterval` | idle ゲーティング閾値（秒）。直前の確定からこの時間以内のキーは chord 判定をスキップ（ZMK `require-prior-idle-ms` 相当） |
 | `physicalShift` | `Bool` | 物理 Shift フラグ（英数大文字用） |
 | `lookupFunction` | `(UInt64) -> String?` | 文字出力テーブル |
 | `specialActionFunction` | `(UInt64) -> KeyAction?` | 特殊アクションテーブル |
