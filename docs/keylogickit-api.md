@@ -407,7 +407,12 @@ init(configuration: KeymapManagerConfiguration)
 
 静的プロパティ: `topRow`, `middleRow`, `bottomRow`, `fromCharacter: [Character: ChordKey]`
 
-## SimultaneousKeyBuffer — 同時打鍵バッファ（@MainActor クラス）
+## SimultaneousKeyBuffer — 同時打鍵バッファ（@MainActor クラス、pressesEnded ベース）
+
+押下中キーの集合（heldKeys）で同時打鍵を判定する。タイマー不要。
+- 単打: keyUp（全キーリリース）で出力
+- chord: 2/3キー目の keyDown で即出力
+- シフトホールド: chord 確定後にシフトキーのみ残存 → shiftMode に自動遷移
 
 ```swift
 init()
@@ -418,7 +423,7 @@ func reset()
 
 | プロパティ | 型 | 説明 |
 |---|---|---|
-| `simultaneousWindow` | `TimeInterval` | 判定窓（秒、デフォルト 0.080） |
+| `simultaneousWindow` | `TimeInterval` | 互換性のため保持（内部では未使用） |
 | `physicalShift` | `Bool` | 物理 Shift フラグ（英数大文字用） |
 | `lookupFunction` | `(UInt64) -> String?` | 文字出力テーブル |
 | `specialActionFunction` | `(UInt64) -> KeyAction?` | 特殊アクションテーブル |
