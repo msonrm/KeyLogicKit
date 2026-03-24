@@ -32,7 +32,7 @@ public enum DefaultKeymaps {
 
     /// ローマ字入力（US 配列）
     public static let romajiUS = KeymapDefinition(
-        name: "ローマ字(US)",
+        name: "ローマ字(QWERTY US)",
         behavior: .sequential(characterMap: h2zMapUS),
         keyboardLayout: "us",
         inputBase: "romaji",
@@ -43,7 +43,7 @@ public enum DefaultKeymaps {
 
     /// ローマ字入力（JIS 配列）
     public static let romajiJIS = KeymapDefinition(
-        name: "ローマ字(JIS)",
+        name: "ローマ字(QWERTY JIS)",
         behavior: .sequential(characterMap: h2zMapUS),
         keyboardLayout: "jis",
         inputBase: "romaji",
@@ -231,6 +231,10 @@ public enum DefaultKeymaps {
             ("builtin:nicola_jis", "nicola_jis"),
             ("builtin:romaji_colemak_us", "romaji_colemak_us"),
             ("builtin:romaji_colemak_jis", "romaji_colemak_jis"),
+            ("builtin:shingeta_us", "shingeta_us"),
+            ("builtin:shingeta_jis", "shingeta_jis"),
+            ("builtin:tsubame_us", "tsubame_us"),
+            ("builtin:tsubame_jis", "tsubame_jis"),
         ]
         for (id, name) in jsonKeymaps {
             if let def = loadBundleKeymap(name) {
