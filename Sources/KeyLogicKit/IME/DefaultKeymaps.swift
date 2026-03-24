@@ -143,31 +143,54 @@ public enum DefaultKeymaps {
         "kka": "っか", "kki": "っき", "kku": "っく", "kke": "っけ", "kko": "っこ",
         // ss
         "ssa": "っさ", "ssi": "っし", "ssu": "っす", "sse": "っせ", "sso": "っそ",
+        "ssha": "っしゃ", "sshi": "っし", "sshu": "っしゅ", "sshe": "っしぇ", "ssho": "っしょ",
+        "ssya": "っしゃ", "ssyu": "っしゅ", "ssye": "っしぇ", "ssyo": "っしょ",
         // tt
         "tta": "った", "tti": "っち", "ttu": "っつ", "tte": "って", "tto": "っと",
+        "ttya": "っちゃ", "ttyu": "っちゅ", "ttye": "っちぇ", "ttyo": "っちょ",
+        "tcha": "っちゃ", "tchi": "っち", "tchu": "っちゅ", "tche": "っちぇ", "tcho": "っちょ",
+        "ttsa": "っつぁ", "ttsi": "っつぃ", "ttse": "っつぇ", "ttso": "っつぉ",
+        "ttha": "ってゃ", "tthi": "ってぃ", "tthu": "ってゅ", "tthe": "ってぇ", "ttho": "ってょ",
         // hh
         "hha": "っは", "hhi": "っひ", "hhu": "っふ", "hhe": "っへ", "hho": "っほ",
+        "hhya": "っひゃ", "hhyu": "っひゅ", "hhye": "っひぇ", "hhyo": "っひょ",
         // mm
         "mma": "っま", "mmi": "っみ", "mmu": "っむ", "mme": "っめ", "mmo": "っも",
+        "mmya": "っみゃ", "mmyu": "っみゅ", "mmye": "っみぇ", "mmyo": "っみょ",
         // rr
         "rra": "っら", "rri": "っり", "rru": "っる", "rre": "っれ", "rro": "っろ",
+        "rrya": "っりゃ", "rryu": "っりゅ", "rrye": "っりぇ", "rryo": "っりょ",
         // gg
         "gga": "っが", "ggi": "っぎ", "ggu": "っぐ", "gge": "っげ", "ggo": "っご",
+        "ggya": "っぎゃ", "ggyu": "っぎゅ", "ggye": "っぎぇ", "ggyo": "っぎょ",
+        "ggwa": "っぐぁ", "ggwi": "っぐぃ", "ggwu": "っぐぅ", "ggwe": "っぐぇ", "ggwo": "っぐぉ",
         // zz
         "zza": "っざ", "zzi": "っじ", "zzu": "っず", "zze": "っぜ", "zzo": "っぞ",
+        "zzya": "っじゃ", "zzyu": "っじゅ", "zzye": "っじぇ", "zzyo": "っじょ",
         // dd
         "dda": "っだ", "ddi": "っぢ", "ddu": "っづ", "dde": "っで", "ddo": "っど",
+        "ddya": "っぢゃ", "ddyi": "っぢぃ", "ddyu": "っぢゅ", "ddye": "っぢぇ", "ddyo": "っぢょ",
+        "ddha": "っでゃ", "ddhi": "っでぃ", "ddhu": "っでゅ", "ddhe": "っでぇ", "ddho": "っでょ",
+        "ddwa": "っどぁ", "ddwi": "っどぃ", "ddwu": "っどぅ", "ddwe": "っどぇ", "ddwo": "っどぉ",
         // bb
         "bba": "っば", "bbi": "っび", "bbu": "っぶ", "bbe": "っべ", "bbo": "っぼ",
+        "bbya": "っびゃ", "bbyu": "っびゅ", "bbye": "っびぇ", "bbyo": "っびょ",
         // pp
         "ppa": "っぱ", "ppi": "っぴ", "ppu": "っぷ", "ppe": "っぺ", "ppo": "っぽ",
+        "ppya": "っぴゃ", "ppyu": "っぴゅ", "ppye": "っぴぇ", "ppyo": "っぴょ",
         // ff
         "ffa": "っふぁ", "ffi": "っふぃ", "ffu": "っふ", "ffe": "っふぇ", "ffo": "っふぉ",
+        "ffya": "っふゃ", "ffyu": "っふゅ", "ffyo": "っふょ",
         // jj
         "jja": "っじゃ", "jji": "っじ", "jju": "っじゅ", "jje": "っじぇ", "jjo": "っじょ",
+        "jjya": "っじゃ", "jjyu": "っじゅ", "jjye": "っじぇ", "jjyo": "っじょ",
         // cc
         "cca": "っか", "cci": "っち", "ccu": "っく", "cce": "っけ", "cco": "っこ",
         "ccha": "っちゃ", "cchi": "っち", "cchu": "っちゅ", "cche": "っちぇ", "ccho": "っちょ",
+        "ccya": "っちゃ", "ccyu": "っちゅ", "ccye": "っちぇ", "ccyo": "っちょ",
+        // kk + 拗音
+        "kkya": "っきゃ", "kkyu": "っきゅ", "kkye": "っきぇ", "kkyo": "っきょ",
+        "kkwa": "っくぁ", "kkwi": "っくぃ", "kkwu": "っくぅ", "kkwe": "っくぇ", "kkwo": "っくぉ",
         // 小書き x-series
         "xa": "ぁ", "xi": "ぃ", "xu": "ぅ", "xe": "ぇ", "xo": "ぉ",
         "xya": "ゃ", "xyu": "ゅ", "xyo": "ょ", "xtu": "っ", "xtsu": "っ", "xwa": "ゎ",
