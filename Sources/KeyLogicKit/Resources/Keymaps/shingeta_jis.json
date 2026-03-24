@@ -1,6 +1,6 @@
 {
   "formatVersion": "1.0",
-  "name": "新下駄(JIS)",
+  "name": "新下駄配列(JIS)",
   "author": "kouy",
   "description": "新下駄配列 同時打鍵方式（JIS キーボード）。単打＋中指シフト＋薬指シフト＋拗音同時押し。",
   "keyboardLayout": "jis",

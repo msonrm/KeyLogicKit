@@ -1,6 +1,6 @@
 {
   "formatVersion": "1.0",
-  "name": "つばめ(JIS)",
+  "name": "つばめ配列(JIS)",
   "author": "mikado",
   "description": "つばめ配列 2.0 行段系逐次入力（JIS キーボード）。ホームポジション10キーで50音を入力。交互打鍵＝清音、同手打鍵＝濁音。",
   "keyboardLayout": "jis",
