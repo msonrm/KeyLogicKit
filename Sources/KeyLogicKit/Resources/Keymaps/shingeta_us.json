@@ -1,6 +1,6 @@
 {
   "formatVersion": "1.0",
-  "name": "新下駄(US)",
+  "name": "新下駄配列(US)",
   "author": "kouy",
   "description": "新下駄配列 同時打鍵方式（US キーボード）。単打＋中指シフト＋薬指シフト＋拗音同時押し。",
   "keyboardLayout": "us",
