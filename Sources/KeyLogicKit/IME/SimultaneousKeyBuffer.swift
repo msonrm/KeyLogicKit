@@ -1,14 +1,18 @@
 import Foundation
 
-/// 同時打鍵バッファ（pressesEnded ベース + idle ゲーティング）
+/// 同時打鍵バッファ（pressesEnded ベース + inter-key timing + idle ゲーティング）
 ///
 /// 押下中キーの集合（heldKeys）で同時打鍵を判定する。
 /// ロールオーバー（高速逐次打鍵でのキー重なり）と意図的な同時打鍵を区別するため、
-/// ZMK の `require-prior-idle-ms` 相当の idle ゲーティングを備える。
+/// 2段階のロールオーバー防止機構を備える。
 ///
-/// - **idle ゲーティング**: 直前の確定から `simultaneousWindow` 以内に新しいキーが来た場合、
-///   タイピングストリーク中とみなし chord 判定をスキップ。全キーを即単打出力する。
-///   十分な間（idle）があった場合のみ chord 判定が有効になる。
+/// - **inter-key timing**: chord グループ内の keyDown 間隔を計測し、
+///   `simultaneousWindow` 以内に2キー目が押された場合のみ chord として評価する。
+///   間隔が超過した場合はロールオーバーと判定し、先行キーを単打出力して新グループを開始する。
+///   シフトキー（SandS 等）が絡む場合はホールド操作のため timing チェックをスキップする。
+/// - **idle ゲーティング**: 直前の確定から短時間（`simultaneousWindow` × 2）以内に
+///   新しいキーが来た場合、タイピングストリーク中とみなし chord 判定をスキップ。
+///   全キーを即単打出力する（ZMK の `require-prior-idle-ms` 相当）。
 /// - **単打**: keyDown → 待機、keyUp（全キーリリース）→ 出力
 /// - **2キー chord**: 2キー目の keyDown で即出力（差し替えなし）
 /// - **3キー chord**: 3キー目の keyDown で即出力（2キー結果を差し替え）
@@ -64,16 +68,19 @@ public class SimultaneousKeyBuffer {
     /// 現在のフェーズ
     private var phase: Phase = .accumulating
 
+    /// 現在の chord グループの最初のキーダウン時刻（inter-key timing 用）
+    private var firstKeyDownTime: CFAbsoluteTime = 0
+
     /// 直前の chord グループが確定した時刻（idle ゲーティング用）
     private var lastFinalizedTime: CFAbsoluteTime = 0
 
     /// 同時打鍵判定ウィンドウ（秒）
     ///
-    /// idle ゲーティングの閾値として使用する。
-    /// 直前の確定からこの時間以内に新しいキーが押された場合、
-    /// タイピングストリーク中とみなし chord 判定をスキップする
-    /// （ZMK の `require-prior-idle-ms` 相当）。
-    public var simultaneousWindow: TimeInterval = 0.080
+    /// chord グループ内の inter-key timing 閾値として使用する。
+    /// 1キー目の keyDown からこの時間以内に2キー目が押された場合のみ chord として評価する。
+    /// 超過した場合はロールオーバーと判定し、先行キーを単打出力して新グループを開始する。
+    /// idle ゲーティングにはこの値の2倍を閾値として使用する。
+    public var simultaneousWindow: TimeInterval = 0.050
 
     /// 物理 Shift キーが押されているか（英数モードでの大文字入力用）
     ///
@@ -105,11 +112,11 @@ public class SimultaneousKeyBuffer {
 
     /// タイピングストリーク中かどうか
     ///
-    /// 直前の確定から `simultaneousWindow` 以内であれば true。
-    /// ストリーク中は chord 判定をスキップし、ロールオーバーの誤判定を防ぐ。
+    /// 直前の確定から `simultaneousWindow * 2` 以内であれば true。
+    /// ストリーク中は chord 判定をスキップし、即座に単打出力する（レイテンシ最適化）。
     private var isInTypingStreak: Bool {
         lastFinalizedTime > 0
-            && (CFAbsoluteTimeGetCurrent() - lastFinalizedTime) < simultaneousWindow
+            && (CFAbsoluteTimeGetCurrent() - lastFinalizedTime) < simultaneousWindow * 2
     }
 
     // MARK: - コールバック
@@ -147,9 +154,38 @@ public class SimultaneousKeyBuffer {
                 handleSingleTap(key)
                 return
             }
-            chordGroup.insert(key)
-            if chordGroup.count >= 2 {
-                evaluateChord()
+
+            if chordGroup.isEmpty {
+                // 新しい chord グループの開始
+                firstKeyDownTime = CFAbsoluteTimeGetCurrent()
+                chordGroup.insert(key)
+            } else {
+                // 2キー目以降: inter-key timing でロールオーバー判定
+                let delta = CFAbsoluteTimeGetCurrent() - firstKeyDownTime
+                let hasShift = chordGroup.contains(where: { isShiftKey($0) }) || isShiftKey(key)
+
+                if !hasShift && delta >= simultaneousWindow {
+                    // ロールオーバー検出: シフトキーなし + 間隔超過
+                    if chordOutputted {
+                        // chord 出力済み（2キー chord 後の遅延3キー目）→ 新グループ開始のみ
+                        if let action = pendingSpecialAction {
+                            onSpecialAction?(action)
+                        }
+                    } else {
+                        // chord 未出力 → 蓄積中のキーを個別に単打出力
+                        for k in chordGroup {
+                            handleSingleTap(k)
+                        }
+                    }
+                    resetChordState()
+                    firstKeyDownTime = CFAbsoluteTimeGetCurrent()
+                    chordGroup.insert(key)
+                } else {
+                    chordGroup.insert(key)
+                    if chordGroup.count >= 2 {
+                        evaluateChord()
+                    }
+                }
             }
 
         case .passthrough:
@@ -280,6 +316,8 @@ public class SimultaneousKeyBuffer {
     ///
     /// 全キーがリリースされた時に呼ばれる。
     /// 単打は keyUp 時にここで出力される。chord は既に keyDown 時に出力済み。
+    /// chord が不一致だった場合（chordOutputted == false かつ pendingSpecialAction == nil）は
+    /// 安全策として各キーを個別に単打出力する。
     private func finalize() {
         defer { resetAll() }
 
@@ -287,9 +325,14 @@ public class SimultaneousKeyBuffer {
             // 単打
             handleSingleTap(key)
         } else if chordGroup.count >= 2 {
-            // 複数キー: 遅延中の特殊アクションを発火
             if let action = pendingSpecialAction {
+                // 遅延中の特殊アクションを発火
                 onSpecialAction?(action)
+            } else if !chordOutputted {
+                // chord 不一致 → 各キーを単打にフォールバック
+                for key in chordGroup {
+                    handleSingleTap(key)
+                }
             }
         }
     }
@@ -320,12 +363,13 @@ public class SimultaneousKeyBuffer {
 
     // MARK: - リセット
 
-    /// chord グループの状態のみリセット（shiftMode 遷移時に使用）
+    /// chord グループの状態のみリセット（shiftMode 遷移時・ロールオーバー検出時に使用）
     private func resetChordState() {
         chordGroup.removeAll()
         outputCharCount = 0
         pendingSpecialAction = nil
         chordOutputted = false
+        firstKeyDownTime = 0
     }
 
     /// 全状態をリセット
