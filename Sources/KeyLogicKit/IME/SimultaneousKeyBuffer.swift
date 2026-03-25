@@ -211,7 +211,7 @@ public class SimultaneousKeyBuffer {
                       let remaining = heldKeys.first,
                       isShiftKey(remaining) {
                 // chord 評価後にシフトキーだけ残っている → シフトモードに遷移
-                let wasUsed = chordOutputted
+                let wasUsed = chordOutputted || pendingSpecialAction != nil
                 if let action = pendingSpecialAction {
                     onSpecialAction?(action)
                 }

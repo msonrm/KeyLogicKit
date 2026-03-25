@@ -50,9 +50,11 @@ public struct KeyRouter {
         if isComposing {
             // chord 方式: シフトキー（Space 等）は selecting 以外では
             // 同時打鍵バッファに委ねる（singleTapAction で .convert が発火する）
+            // ただし物理 Shift+Space は .convertPrev なので chord より優先
             let isChordShiftKey: Bool
             if case .chord(let config) = definition.behavior,
                state != .selecting,
+               !event.modifierFlags.contains(.shift),
                let chordKey = config.hidToKey[event.keyCode],
                config.shiftKeys.contains(where: { $0.key == chordKey }) {
                 isChordShiftKey = true
@@ -73,13 +75,17 @@ public struct KeyRouter {
         // idle 時のスペースキー → 確定スペース挿入（半角/全角は InputManager で制御）
         // 英数直接入力モードでは super に委譲（通常の半角スペース）
         // chord 方式でスペースがシフトキーの場合は除外（SandS: chord buffer に委ねる）
+        // ただし物理 Shift+Space は空白幅切替なので chord より優先
         if !isComposing && !isDirectEnglishMode && event.keyCode == .keyboardSpacebar {
+            if event.modifierFlags.contains(.shift) {
+                return .insertSpace(shifted: true)
+            }
             if case .chord(let config) = definition.behavior,
                let chordKey = config.hidToKey[event.keyCode],
                config.shiftKeys.contains(where: { $0.key == chordKey }) {
                 // chord シフトキー → routeChord に委譲（SandS の単打/長押し判定を行う）
             } else {
-                return .insertSpace(shifted: event.modifierFlags.contains(.shift))
+                return .insertSpace(shifted: false)
             }
         }
 

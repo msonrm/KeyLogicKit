@@ -106,7 +106,7 @@ public class InputManager {
     /// 現在の日本語入力方式（UserDefaults に永続化）
     public var inputMethod: InputMethod = .sequential
 
-    /// 日本語モード時のスペース幅（デフォルト: 全角）
+    /// 日本語モード時のスペース幅（デフォルト: 全角、Shift+Space で逆転）
     public var japaneseSpaceWidth: SpaceWidth = .fullWidth
 
     /// 現在のモードと Shift 状態に応じたスペース文字を返す
@@ -331,10 +331,6 @@ public class InputManager {
         }
         if let chordName = defaults.string(forKey: "chordKeymapName") {
             inputMethod = .chord(name: chordName)
-        }
-        if let spaceWidthRaw = defaults.string(forKey: "japaneseSpaceWidth"),
-           let width = SpaceWidth(rawValue: spaceWidthRaw) {
-            japaneseSpaceWidth = width
         }
     }
 
