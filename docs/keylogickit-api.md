@@ -484,6 +484,7 @@ func setSimultaneousWindow(_ window: TimeInterval)
 | `onKeyUp` | `((HIDKeyCode, Date) -> Void)?` | キーアップ通知 |
 | `onEnglishModeChange` | `((Bool) -> Void)?` | 英数モード変更通知 |
 | `onCaretRectChange` | `((CGRect) -> Void)?` | キャレット位置変更通知 |
+| `onFittingCharsPerLineChange` | `((Int) -> Void)?` | テキストコンテナに1行で収まる全角文字数の変化通知（コンテナ幅・フォント変更時に発火） |
 | `onSentenceNavigation` | `((NSRange, [CGRect]) -> Void)?` | 文ナビゲーション通知（フォーカスモード用） |
 | `onUserScroll` | `(() -> Void)?` | ユーザーのタッチスクロール時コールバック（フォーカスモード解除用） |
 | `blockRangeProvider` | `BlockRangeProvider?` | ブロック境界検出（スマート選択用） |
@@ -526,6 +527,7 @@ init(inputManager: InputManager, keyRouter: KeyRouter, editorStyle: EditorStyle 
      onKeyUp: ((HIDKeyCode, Date) -> Void)? = nil,
      onEnglishModeChange: ((Bool) -> Void)? = nil,
      onCaretRectChange: ((CGRect) -> Void)? = nil,
+     onFittingCharsPerLineChange: ((_ count: Int) -> Void)? = nil,
      onScrollRequest: ((IMETextView, Int) -> Void)? = nil,  // deprecated: scrolloff が自動適用
      blockRangeProvider: BlockRangeProvider? = nil,
      blockSeparator: String? = nil,

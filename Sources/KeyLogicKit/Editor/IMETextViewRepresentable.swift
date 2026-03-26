@@ -43,6 +43,9 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
     /// カーソル位置変更通知（候補ポップアップの配置用）
     public var onCaretRectChange: ((CGRect) -> Void)?
 
+    /// テキストコンテナに1行で収まる全角文字数が変化した際に呼ばれるコールバック
+    public var onFittingCharsPerLineChange: ((_ count: Int) -> Void)?
+
     /// プログラム的なカーソル移動後のスクロール要求コールバック
     /// カーソル位置の UTF-16 オフセットを渡す。スクロール方法はアプリ側が決定する。
     @available(*, deprecated, message: "scrolloff が IMETextView 内で自動適用されるため不要")
@@ -101,6 +104,7 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         onKeyUp: ((HIDKeyCode, Date) -> Void)? = nil,
         onEnglishModeChange: ((Bool) -> Void)? = nil,
         onCaretRectChange: ((CGRect) -> Void)? = nil,
+        onFittingCharsPerLineChange: ((_ count: Int) -> Void)? = nil,
         onScrollRequest: ((IMETextView, Int) -> Void)? = nil,
         blockRangeProvider: BlockRangeProvider? = nil,
         blockSeparator: String? = nil,
@@ -127,6 +131,7 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         self.onKeyUp = onKeyUp
         self.onEnglishModeChange = onEnglishModeChange
         self.onCaretRectChange = onCaretRectChange
+        self.onFittingCharsPerLineChange = onFittingCharsPerLineChange
         self.onScrollRequest = onScrollRequest
         self.blockRangeProvider = blockRangeProvider
         self.blockSeparator = blockSeparator
@@ -195,6 +200,7 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         textView.onKeyUp = onKeyUp
         textView.onEnglishModeChange = onEnglishModeChange
         textView.onCaretRectChange = onCaretRectChange
+        textView.onFittingCharsPerLineChange = onFittingCharsPerLineChange
         textView.blockRangeProvider = blockRangeProvider
         textView.blockSeparator = blockSeparator
         textView.onSentenceNavigation = onSentenceNavigation
@@ -251,6 +257,7 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         uiView.onKeyUp = onKeyUp
         uiView.onEnglishModeChange = onEnglishModeChange
         uiView.onCaretRectChange = onCaretRectChange
+        uiView.onFittingCharsPerLineChange = onFittingCharsPerLineChange
         uiView.blockRangeProvider = blockRangeProvider
         uiView.blockSeparator = blockSeparator
         uiView.onSentenceNavigation = onSentenceNavigation
