@@ -485,6 +485,12 @@ func setSimultaneousWindow(_ window: TimeInterval)
 | `onEnglishModeChange` | `((Bool) -> Void)?` | 英数モード変更通知 |
 | `onCaretRectChange` | `((CGRect) -> Void)?` | キャレット位置変更通知 |
 | `onFittingCharsPerLineChange` | `((Int) -> Void)?` | テキストコンテナに1行で収まる全角文字数の変化通知（コンテナ幅・フォント変更時に発火） |
+
+### 静的メソッド
+
+| メソッド | 戻り値 | 説明 |
+|---|---|---|
+| `frameWidth(forCharsPerLine:font:)` | `CGFloat` | 指定した全角文字数が1行にちょうど収まる UITextView のフレーム幅を返す（`lineFragmentPadding` 込み）。SwiftUI の `.frame(maxWidth:)` に渡す用途。`onFittingCharsPerLineChange` と対になる API |
 | `onSentenceNavigation` | `((NSRange, [CGRect]) -> Void)?` | 文ナビゲーション通知（フォーカスモード用） |
 | `onUserScroll` | `(() -> Void)?` | ユーザーのタッチスクロール時コールバック（フォーカスモード解除用） |
 | `blockRangeProvider` | `BlockRangeProvider?` | ブロック境界検出（スマート選択用） |

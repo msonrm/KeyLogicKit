@@ -205,6 +205,51 @@ public class IMETextView: UITextView {
         }
     }
 
+    /// 指定した全角文字数が1行にちょうど収まる UITextView のフレーム幅を返す
+    ///
+    /// テスト用 NSLayoutManager でレイアウトを行い、`lineFragmentPadding` を含む
+    /// 正確なフレーム幅を算出する。SwiftUI の `.frame(maxWidth:)` に渡す用途。
+    ///
+    /// - Parameters:
+    ///   - count: 1行に収めたい全角文字数
+    ///   - font: エディタで使用するフォント
+    /// - Returns: 必要なフレーム幅（ポイント）
+    public static func frameWidth(forCharsPerLine count: Int, font: UIFont) -> CGFloat {
+        let padding = NSTextContainer().lineFragmentPadding
+        let charWidth = ("あ" as NSString).size(withAttributes: [.font: font]).width
+        var low = charWidth * CGFloat(count)
+        var high = low + padding * 2 + charWidth
+
+        while high - low > 0.5 {
+            let mid = (low + high) / 2
+            let fitting = fittingChars(frameWidth: mid, padding: padding, font: font)
+            if fitting >= count {
+                high = mid
+            } else {
+                low = mid
+            }
+        }
+        return ceil(high)
+    }
+
+    /// 指定したフレーム幅で1行に収まる全角文字数を算出する
+    private static func fittingChars(frameWidth: CGFloat, padding: CGFloat, font: UIFont) -> Int {
+        let testString = String(repeating: "あ", count: 200)
+        let storage = NSTextStorage(string: testString, attributes: [.font: font])
+        let lm = NSLayoutManager()
+        storage.addLayoutManager(lm)
+        let tc = NSTextContainer(
+            size: CGSize(width: frameWidth, height: .greatestFiniteMagnitude)
+        )
+        tc.lineFragmentPadding = padding
+        lm.addTextContainer(tc)
+        lm.ensureLayout(for: tc)
+
+        var range = NSRange()
+        lm.lineFragmentRect(forGlyphAt: 0, effectiveRange: &range)
+        return lm.characterRange(forGlyphRange: range, actualGlyphRange: nil).length
+    }
+
     /// NSLayoutManager で全角文字列を実際にレイアウトし、1行目に収まる文字数を取得する
     private func measureFittingCharsPerLine() -> Int {
         let testString = String(repeating: "あ", count: 200)
