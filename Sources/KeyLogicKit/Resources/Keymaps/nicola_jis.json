@@ -48,7 +48,7 @@
         "lang1": "rightThumb"
       },
       "shiftKeys": [
-        { "key": "leftThumb", "singleTapAction": "convert" },
+        { "key": "leftThumb" },
         { "key": "rightThumb" }
       ],
       "lookupTable": {
