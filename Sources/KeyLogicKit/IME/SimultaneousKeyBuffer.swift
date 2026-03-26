@@ -56,6 +56,9 @@ public class SimultaneousKeyBuffer {
     /// heldKeys が空→非空になった時点で開始し、再び空になった時点で確定する。
     private var chordGroup: Set<ChordKey> = []
 
+    /// chord グループへのキー追加順序（単打フォールバック時の出力順序を保証）
+    private var chordGroupOrder: [ChordKey] = []
+
     /// 現在の chord グループで出力済みの文字数（差し替え用）
     private var outputCharCount: Int = 0
 
@@ -158,7 +161,9 @@ public class SimultaneousKeyBuffer {
             if chordGroup.isEmpty {
                 // 新しい chord グループの開始
                 firstKeyDownTime = CFAbsoluteTimeGetCurrent()
-                chordGroup.insert(key)
+                if chordGroup.insert(key).inserted {
+                    chordGroupOrder.append(key)
+                }
             } else {
                 // 2キー目以降: inter-key timing でロールオーバー判定
                 let delta = CFAbsoluteTimeGetCurrent() - firstKeyDownTime
@@ -172,16 +177,20 @@ public class SimultaneousKeyBuffer {
                             onSpecialAction?(action)
                         }
                     } else {
-                        // chord 未出力 → 蓄積中のキーを個別に単打出力
-                        for k in chordGroup {
+                        // chord 未出力 → 蓄積中のキーを押下順に単打出力
+                        for k in chordGroupOrder {
                             handleSingleTap(k)
                         }
                     }
                     resetChordState()
                     firstKeyDownTime = CFAbsoluteTimeGetCurrent()
-                    chordGroup.insert(key)
+                    if chordGroup.insert(key).inserted {
+                        chordGroupOrder.append(key)
+                    }
                 } else {
-                    chordGroup.insert(key)
+                    if chordGroup.insert(key).inserted {
+                        chordGroupOrder.append(key)
+                    }
                     if chordGroup.count >= 2 {
                         evaluateChord()
                     }
@@ -304,6 +313,7 @@ public class SimultaneousKeyBuffer {
         // シフトモード解除、新しい accumulating グループを開始
         // （シフトキーはまだ heldKeys にあるが chordGroup には含めない）
         chordGroup = [key]
+        chordGroupOrder = [key]
         outputCharCount = 0
         pendingSpecialAction = nil
         chordOutputted = false
@@ -329,8 +339,8 @@ public class SimultaneousKeyBuffer {
                 // 遅延中の特殊アクションを発火
                 onSpecialAction?(action)
             } else if !chordOutputted {
-                // chord 不一致 → 各キーを単打にフォールバック
-                for key in chordGroup {
+                // chord 不一致 → 各キーを押下順に単打フォールバック
+                for key in chordGroupOrder {
                     handleSingleTap(key)
                 }
             }
@@ -366,6 +376,7 @@ public class SimultaneousKeyBuffer {
     /// chord グループの状態のみリセット（shiftMode 遷移時・ロールオーバー検出時に使用）
     private func resetChordState() {
         chordGroup.removeAll()
+        chordGroupOrder.removeAll()
         outputCharCount = 0
         pendingSpecialAction = nil
         chordOutputted = false
