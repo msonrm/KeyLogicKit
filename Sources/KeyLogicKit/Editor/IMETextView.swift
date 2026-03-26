@@ -98,6 +98,10 @@ public class IMETextView: UITextView {
     /// カーソル位置変更通知（候補ポップアップの配置用）
     public var onCaretRectChange: ((CGRect) -> Void)?
 
+    /// テキストコンテナに1行で収まる全角文字数が変化した際に呼ばれるコールバック
+    /// - count: 現在のフォント・コンテナ幅で1行に収まる全角（"あ"）文字数
+    public var onFittingCharsPerLineChange: ((_ count: Int) -> Void)?
+
     /// 文ナビゲーション通知（フォーカスモード用）
     public var onSentenceNavigation: ((_ sentenceRange: NSRange, _ rects: [CGRect]) -> Void)?
 
@@ -119,6 +123,12 @@ public class IMETextView: UITextView {
     public func setSimultaneousWindow(_ window: TimeInterval) {
         chordBuffer.simultaneousWindow = window
     }
+
+    /// 前回のテキストコンテナ幅（変化検知用）
+    private var lastContainerWidth: CGFloat = 0
+
+    /// 前回報告した1行あたり全角文字数
+    private var lastReportedFittingChars: Int = 0
 
     /// pressesBegan で super をブロックしたキーコードを追跡
     ///
@@ -179,6 +189,50 @@ public class IMETextView: UITextView {
     private var isComposing: Bool {
         guard let im = inputManager else { return false }
         return !im.isEmpty
+    }
+
+    // MARK: - Layout
+
+    public override func layoutSubviews() {
+        super.layoutSubviews()
+        let currentWidth = textContainer.size.width
+        guard abs(currentWidth - lastContainerWidth) > 0.5 else { return }
+        lastContainerWidth = currentWidth
+        let fitting = measureFittingCharsPerLine()
+        if fitting != lastReportedFittingChars {
+            lastReportedFittingChars = fitting
+            onFittingCharsPerLineChange?(fitting)
+        }
+    }
+
+    /// NSLayoutManager で全角文字列を実際にレイアウトし、1行目に収まる文字数を取得する
+    private func measureFittingCharsPerLine() -> Int {
+        let testString = String(repeating: "あ", count: 200)
+        let testStorage = NSTextStorage(
+            string: testString,
+            attributes: [.font: editorStyle.font]
+        )
+        let testLayoutManager = NSLayoutManager()
+        testStorage.addLayoutManager(testLayoutManager)
+
+        let testContainer = NSTextContainer(
+            size: CGSize(
+                width: textContainer.size.width,
+                height: .greatestFiniteMagnitude
+            )
+        )
+        testContainer.lineFragmentPadding = textContainer.lineFragmentPadding
+        testLayoutManager.addTextContainer(testContainer)
+        testLayoutManager.ensureLayout(for: testContainer)
+
+        var firstLineGlyphRange = NSRange()
+        testLayoutManager.lineFragmentRect(
+            forGlyphAt: 0, effectiveRange: &firstLineGlyphRange
+        )
+        let firstLineCharRange = testLayoutManager.characterRange(
+            forGlyphRange: firstLineGlyphRange, actualGlyphRange: nil
+        )
+        return firstLineCharRange.length
     }
 
     // MARK: - Key Event Info
