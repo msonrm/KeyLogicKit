@@ -118,7 +118,12 @@ public class SimultaneousKeyBuffer {
     /// 直前の確定から `simultaneousWindow * 2` 以内であれば true。
     /// ストリーク中は chord 判定をスキップし、即座に単打出力する（レイテンシ最適化）。
     private var isInTypingStreak: Bool {
-        lastFinalizedTime > 0
+        // chord 方式（シフトキーあり）では idle ゲーティングを無効化。
+        // シフトキーを使う配列（NICOLA 等）では、高速打鍵時にシフトキーが
+        // passthrough で単打扱いされ chord 判定がスキップされる問題を防ぐ。
+        // ロールオーバー防止は inter-key timing で十分。
+        guard shiftKeyConfigs.isEmpty else { return false }
+        return lastFinalizedTime > 0
             && (CFAbsoluteTimeGetCurrent() - lastFinalizedTime) < simultaneousWindow * 2
     }
 
@@ -215,6 +220,22 @@ public class SimultaneousKeyBuffer {
         case .accumulating:
             if heldKeys.isEmpty {
                 finalize()
+            } else if isShiftKey(key) && chordGroup.contains(key) && chordOutputted {
+                // 使用済みシフトキーがリリースされた → chord グループから除去し、
+                // 別のシフトキーが押されていれば差し替えて再評価。
+                // これにより R ホールド中に出力された R+g を、R リリース→L 到着で L+g に修正できる。
+                chordGroup.remove(key)
+                if let idx = chordGroupOrder.firstIndex(of: key) {
+                    chordGroupOrder.remove(at: idx)
+                }
+                if let newShift = heldKeys.first(where: { isShiftKey($0) }) {
+                    if chordGroup.insert(newShift).inserted {
+                        chordGroupOrder.insert(newShift, at: 0)
+                    }
+                    if chordGroup.count >= 2 {
+                        evaluateChord()
+                    }
+                }
             } else if chordGroup.count >= 2,
                       heldKeys.count == 1,
                       let remaining = heldKeys.first,
@@ -286,21 +307,30 @@ public class SimultaneousKeyBuffer {
 
     /// シフトキーホールド中のキーダウン処理
     ///
-    /// シフト面の文字を出力し、used フラグを立てる。
+    /// シフト面の文字がある場合は accumulating に遷移して chord 評価を行う。
+    /// これにより、後続の別シフトキー到着時に chord の差し替えが可能になる。
+    /// （例: R ホールド中に g が来て R+g を出力後、R リリース→L 到着で L+g に差し替え）
     private func handleShiftModeKey(_ key: ChordKey, shiftKey: ChordKey) {
         let bits = shiftKey.bit | key.bit
 
-        // 特殊アクション（SHFT+V=、, SHFT+M=。 等）
+        // 特殊アクション（SHFT+V=、, SHFT+M=。 等）は即発火、shiftMode 継続
         if let action = specialActionFunction(bits) {
             onSpecialAction?(action)
             phase = .shiftMode(shiftKey: shiftKey, used: true)
             return
         }
 
-        // シフト面の文字
-        if let text = lookupFunction(bits) {
-            onOutput?(text, 0)
-            phase = .shiftMode(shiftKey: shiftKey, used: true)
+        // シフト面の文字がある場合:
+        // accumulating に遷移して chord 評価（後続の別シフトキーによる差し替えを可能にする）
+        if lookupFunction(bits) != nil {
+            chordGroup = [shiftKey, key]
+            chordGroupOrder = [shiftKey, key]
+            outputCharCount = 0
+            pendingSpecialAction = nil
+            chordOutputted = false
+            firstKeyDownTime = CFAbsoluteTimeGetCurrent()
+            phase = .accumulating
+            evaluateChord()
             return
         }
 
@@ -317,6 +347,7 @@ public class SimultaneousKeyBuffer {
         outputCharCount = 0
         pendingSpecialAction = nil
         chordOutputted = false
+        firstKeyDownTime = CFAbsoluteTimeGetCurrent()
         phase = .accumulating
     }
 
@@ -332,8 +363,12 @@ public class SimultaneousKeyBuffer {
         defer { resetAll() }
 
         if chordGroup.count == 1, let key = chordGroup.first {
-            // 単打
-            handleSingleTap(key)
+            // 単打（ただし chord 出力済みの場合はスキップ。
+            // シフトキー差し替えで chord グループから除去された結果
+            // 1キーになった場合に二重出力を防ぐ。）
+            if !chordOutputted {
+                handleSingleTap(key)
+            }
         } else if chordGroup.count >= 2 {
             if let action = pendingSpecialAction {
                 // 遅延中の特殊アクションを発火
