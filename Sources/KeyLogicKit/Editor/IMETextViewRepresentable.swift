@@ -83,6 +83,9 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
     /// 不可視文字の描画色（改行）。nil の場合はデフォルト色
     public var invisibleNewlineColor: UIColor?
 
+    /// ソフトウェアキーボードを非表示にする（ゲームパッド専用アプリ向け）
+    public var hidesSoftwareKeyboard: Bool = false
+
     /// アンドゥ可能な外部テキスト変更（Optional Binding）
     ///
     /// 値がセットされると `updateUIView` でアンドゥ対応でテキストを適用し、nil にクリアする。
@@ -116,6 +119,7 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         invisibleFullWidthSpaceColor: UIColor? = nil,
         invisibleTabColor: UIColor? = nil,
         invisibleNewlineColor: UIColor? = nil,
+        hidesSoftwareKeyboard: Bool = false,
         undoableEdit: Binding<UndoableEdit?> = .constant(nil)
     ) {
         self.inputManager = inputManager
@@ -143,6 +147,7 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         self.invisibleFullWidthSpaceColor = invisibleFullWidthSpaceColor
         self.invisibleTabColor = invisibleTabColor
         self.invisibleNewlineColor = invisibleNewlineColor
+        self.hidesSoftwareKeyboard = hidesSoftwareKeyboard
         self._undoableEdit = undoableEdit
     }
 
@@ -227,6 +232,9 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
                 return rects
             }
         }
+
+        // ソフトウェアキーボード非表示（ゲームパッド専用モード）
+        textView.hidesSoftwareKeyboard = hidesSoftwareKeyboard
 
         // 検索置換 UI（UIFindInteraction）の有効化
         textView.isFindInteractionEnabled = isFindInteractionEnabled
