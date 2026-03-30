@@ -59,7 +59,8 @@ public class IMETextView: UITextView {
     }
 
     public override var inputView: UIView? {
-        hidesSoftwareKeyboard ? UIView() : super.inputView
+        get { hidesSoftwareKeyboard ? UIView() : super.inputView }
+        set { super.inputView = newValue }
     }
 
     /// 不可視文字描画用レイアウトマネージャ（`useInvisibleCharLayout: true` で初期化時に設定）
