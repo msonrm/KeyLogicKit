@@ -47,6 +47,21 @@ extension KeyModifierFlags {
 ///   - insertText / deleteBackward はソフトウェアキーボード用のフォールバック。
 public class IMETextView: UITextView {
 
+    /// ソフトウェアキーボードを非表示にする（ゲームパッド専用モード）
+    ///
+    /// `true` の場合、`inputView` を空の UIView に差し替えてソフトウェアキーボードの表示を抑制する。
+    public var hidesSoftwareKeyboard = false {
+        didSet {
+            if hidesSoftwareKeyboard != oldValue {
+                reloadInputViews()
+            }
+        }
+    }
+
+    public override var inputView: UIView? {
+        hidesSoftwareKeyboard ? UIView() : super.inputView
+    }
+
     /// 不可視文字描画用レイアウトマネージャ（`useInvisibleCharLayout: true` で初期化時に設定）
     private(set) var invisibleLayoutManager: InvisibleCharLayoutManager?
 
