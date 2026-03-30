@@ -698,6 +698,7 @@ public class InputManager {
             resetVisibleRange()
             state = .previewing
         }
+        onComposingTextChange?(.updated)
     }
 
     /// 次の候補を選択する（Space 連打 / 下矢印）
@@ -719,10 +720,12 @@ public class InputManager {
                 selectedCandidateIndex = 0
                 updateVisibleRange()
             }
+            onComposingTextChange?(.updated)
             return
         }
         selectedCandidateIndex = (selectedCandidateIndex + 1) % candidates.count
         updateVisibleRange()
+        onComposingTextChange?(.updated)
     }
 
     /// 前の候補を選択する（上矢印）
@@ -745,6 +748,7 @@ public class InputManager {
                     // selectedAdditionalCandidateIndex は 0 のまま（新しい先頭を選択）
                 }
             }
+            onComposingTextChange?(.updated)
             return
         }
 
@@ -759,12 +763,14 @@ public class InputManager {
                 // 既に展開済みなら追加展開せず、末尾（通常候補に最も近い位置）を選択
                 isAdditionalCandidateSelected = true
                 selectedAdditionalCandidateIndex = visibleAdditionalCandidates.count - 1
+                onComposingTextChange?(.updated)
                 return
             }
         }
 
         selectedCandidateIndex = max(0, selectedCandidateIndex - 1)
         updateVisibleRange()
+        onComposingTextChange?(.updated)
     }
 
     /// ウィンドウ内の番号で候補を直接選択・確定する（数字キー 1-9）
@@ -1003,6 +1009,7 @@ public class InputManager {
         guard state == .previewing else { return }
         previewText = nil
         state = .selecting
+        onComposingTextChange?(.updated)
     }
 
     // MARK: - Private: 確定ヘルパー
