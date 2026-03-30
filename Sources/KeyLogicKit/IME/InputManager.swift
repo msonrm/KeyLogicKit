@@ -109,6 +109,23 @@ public class InputManager {
     /// 日本語モード時のスペース幅（デフォルト: 全角、Shift+Space で逆転）
     public var japaneseSpaceWidth: SpaceWidth = .fullWidth
 
+    /// 外部からの composing テキスト変更通知イベント
+    public enum ComposingChangeEvent {
+        /// composing テキストが更新された（marked text を再描画）
+        case updated
+        /// composing が確定された（テキストを commit）
+        case committed(String)
+        /// composing がキャンセルされた（confirmed prefix があれば commit）
+        case cancelled(confirmedPrefix: String?)
+    }
+
+    /// 外部からの composing テキスト変更通知コールバック
+    ///
+    /// ゲームパッド等、IMETextView の pressesBegan を経由しない入力経路で
+    /// `appendDirectKana` / `replaceDirectKana` 等を呼んだ際に、
+    /// IMETextView が marked text を更新するためのフック。
+    public var onComposingTextChange: ((ComposingChangeEvent) -> Void)?
+
     /// 現在のモードと Shift 状態に応じたスペース文字を返す
     ///
     /// - 日本語モード: `japaneseSpaceWidth` に従う。Shift で逆転。
@@ -391,6 +408,7 @@ public class InputManager {
         }
         requestLiveConversion()
         requestPrediction()
+        onComposingTextChange?(.updated)
     }
 
     // MARK: - 逐次入力バッファ操作（カスタムテーブル用）
@@ -519,6 +537,7 @@ public class InputManager {
             // 空文字列の場合は削除のみ（特殊アクション前の巻き戻し）
             if composingText.isEmpty {
                 resetState()
+                onComposingTextChange?(.cancelled(confirmedPrefix: nil))
                 return
             }
         } else {
@@ -529,6 +548,7 @@ public class InputManager {
         }
         requestLiveConversion()
         requestPrediction()
+        onComposingTextChange?(.updated)
     }
 
     /// 末尾の1文字を削除する
@@ -548,12 +568,14 @@ public class InputManager {
             if sequentialBuffer.isEmpty && composingText.isEmpty {
                 let prefix = confirmedPrefix
                 resetState()
+                onComposingTextChange?(.cancelled(confirmedPrefix: prefix.isEmpty ? nil : prefix))
                 return .finished(prefix.isEmpty ? nil : prefix)
             }
             if state == .selecting || state == .previewing {
                 resetToComposing()
             }
             requestLiveConversion()
+            onComposingTextChange?(.updated)
             return .continuing
         }
         // バッファが空で composingText から直接削除 → フォールバック履歴を無効化
@@ -570,12 +592,14 @@ public class InputManager {
         if composingText.isEmpty {
             let prefix = confirmedPrefix
             resetState()
+            onComposingTextChange?(.cancelled(confirmedPrefix: prefix.isEmpty ? nil : prefix))
             return .finished(prefix.isEmpty ? nil : prefix)
         }
         if state == .selecting || state == .previewing {
             resetToComposing()
         }
         requestLiveConversion()
+        onComposingTextChange?(.updated)
         return .continuing
     }
 
@@ -865,6 +889,7 @@ public class InputManager {
         flushSequentialBuffer()
         let prefix = confirmedPrefix
         resetState()
+        onComposingTextChange?(.cancelled(confirmedPrefix: prefix.isEmpty ? nil : prefix))
         return prefix.isEmpty ? nil : prefix
     }
 
@@ -883,6 +908,7 @@ public class InputManager {
         }
         updateLeftSideContext(text)
         finalizeComposition()
+        onComposingTextChange?(.committed(text))
         return text
     }
 

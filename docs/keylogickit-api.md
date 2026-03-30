@@ -69,6 +69,15 @@ init()  // 辞書変換エンジンを初期化
 | `simultaneousWindow` | `TimeInterval` | `0.080` | 同時打鍵判定窓（秒） |
 | `fullControlMode` | `Bool` | `true` | キー入力完全制御モード（システム IME 切替を無効化） |
 | `zenzaiWeightURL` | `URL?` | `nil` | Zenzai モデル URL（DI） |
+| `onComposingTextChange` | `((ComposingChangeEvent) -> Void)?` | `nil` | 外部入力（ゲームパッド等）からの composing テキスト変更通知 |
+
+### ComposingChangeEvent
+
+| ケース | 説明 |
+|---|---|
+| `.updated` | composing テキストが更新された（marked text を再描画） |
+| `.committed(String)` | composing が確定された（テキストを commit） |
+| `.cancelled(confirmedPrefix: String?)` | composing がキャンセルされた |
 
 ### 入力操作メソッド
 

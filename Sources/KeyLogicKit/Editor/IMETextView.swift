@@ -77,6 +77,10 @@ public class IMETextView: UITextView {
         didSet {
             guard inputManager !== oldValue else { return }
             inputManager?.updateKeymap(ExpandedKeymap(definition: keyRouter.definition))
+            // 外部入力（ゲームパッド等）からの composing テキスト変更を反映
+            inputManager?.onComposingTextChange = { [weak self] event in
+                self?.handleExternalComposingChange(event)
+            }
         }
     }
 
@@ -346,6 +350,8 @@ public class IMETextView: UITextView {
     private func setupChordBuffer() {
         chordBuffer.onOutput = { [weak self] text, replaceCount in
             guard let self, let im = self.inputManager else { return }
+            self.isInternalInputOperation = true
+            defer { self.isInternalInputOperation = false }
             if im.inputMethod == .directEnglish {
                 // 英数モード: 直接挿入（composing なし）
                 for _ in 0..<replaceCount {
@@ -366,10 +372,14 @@ public class IMETextView: UITextView {
         }
         chordBuffer.onShiftSingle = { [weak self] action in
             guard let self else { return }
+            self.isInternalInputOperation = true
+            defer { self.isInternalInputOperation = false }
             self.executeChordAction(action)
         }
         chordBuffer.onSpecialAction = { [weak self] action in
             guard let self else { return }
+            self.isInternalInputOperation = true
+            defer { self.isInternalInputOperation = false }
             self.executeChordAction(action)
         }
     }
@@ -629,6 +639,9 @@ public class IMETextView: UITextView {
     // MARK: - insertText / deleteBackward: ソフトウェアキーボード用フォールバック
 
     public override func insertText(_ text: String) {
+        isInternalInputOperation = true
+        defer { isInternalInputOperation = false }
+
         guard let im = inputManager else {
             super.insertText(text)
             return
@@ -669,6 +682,9 @@ public class IMETextView: UITextView {
     }
 
     public override func deleteBackward() {
+        isInternalInputOperation = true
+        defer { isInternalInputOperation = false }
+
         guard isComposing, let im = inputManager else {
             super.deleteBackward()
             return
@@ -679,6 +695,9 @@ public class IMETextView: UITextView {
     // MARK: - pressesBegan: 唯一のキー入力ハンドラ
 
     public override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        isInternalInputOperation = true
+        defer { isInternalInputOperation = false }
+
         guard let key = presses.first?.key else {
             super.pressesBegan(presses, with: event)
             return
@@ -758,6 +777,9 @@ public class IMETextView: UITextView {
     }
 
     public override func pressesEnded(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        isInternalInputOperation = true
+        defer { isInternalInputOperation = false }
+
         guard let key = presses.first?.key else {
             super.pressesEnded(presses, with: event)
             return
@@ -1264,6 +1286,29 @@ public class IMETextView: UITextView {
         case .finished(let textToCommit):
             if let text = textToCommit {
                 commitText(text)
+            } else {
+                clearMarkedText()
+            }
+        }
+    }
+
+    // MARK: - 外部入力からの composing テキスト変更
+
+    /// IMETextView 自身が InputManager を操作中かを示すフラグ。
+    /// true の場合、onComposingTextChange コールバックを無視する（二重処理防止）。
+    private var isInternalInputOperation = false
+
+    /// ゲームパッド等、pressesBegan を経由しない外部入力からの変更を反映する
+    private func handleExternalComposingChange(_ event: InputManager.ComposingChangeEvent) {
+        guard !isInternalInputOperation else { return }
+        switch event {
+        case .updated:
+            updateMarkedTextDisplay()
+        case .committed(let text):
+            commitText(text)
+        case .cancelled(let confirmedPrefix):
+            if let prefix = confirmedPrefix {
+                commitText(prefix)
             } else {
                 clearMarkedText()
             }
