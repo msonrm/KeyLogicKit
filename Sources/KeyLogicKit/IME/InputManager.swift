@@ -836,6 +836,7 @@ public class InputManager {
             let text = confirmedPrefix + remaining
             updateLeftSideContext(remaining)
             finalizeComposition()
+            onComposingTextChange?(.committed(text))
             return .full(text)
 
         case .previewing:
@@ -843,6 +844,7 @@ public class InputManager {
             let text = confirmedPrefix + (previewText ?? composingText.convertTarget)
             updateLeftSideContext(previewText ?? composingText.convertTarget)
             finalizeComposition()
+            onComposingTextChange?(.committed(text))
             return .full(text)
 
         case .selecting:
@@ -855,6 +857,7 @@ public class InputManager {
                     let text = confirmedPrefix + additional.text
                     updateLeftSideContext(additional.text)
                     finalizeComposition()
+                    onComposingTextChange?(.committed(text))
                     return .full(text)
                 }
             }
@@ -864,6 +867,7 @@ public class InputManager {
                 let text = confirmedPrefix + remaining
                 updateLeftSideContext(remaining)
                 finalizeComposition()
+                onComposingTextChange?(.committed(text))
                 return .full(text)
             }
 
@@ -888,6 +892,7 @@ public class InputManager {
             let fullText = confirmedPrefix + confirmedText
             updateLeftSideContext(confirmedText)
             finalizeComposition()
+            onComposingTextChange?(.committed(fullText))
             return .full(fullText)
         }
     }
@@ -1062,6 +1067,7 @@ public class InputManager {
                 state = .composing
                 requestLiveConversion()
             }
+            onComposingTextChange?(.updated)
         } else {
             // 残りのテキストで変換リクエスト → selecting 状態へ
             requestConversion(forceSelecting: true)
