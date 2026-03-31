@@ -229,6 +229,11 @@ public class InputManager {
     /// 入力が空かどうか（confirmedPrefix・逐次入力バッファも考慮）
     public var isEmpty: Bool { composingText.isEmpty && confirmedPrefix.isEmpty && sequentialBuffer.isEmpty }
 
+    /// 変換前の生かなテキスト（拗音・濁点後置シフトの判定用）
+    public var rawKanaText: String {
+        resolvedPrefixForConversion().convertTarget
+    }
+
     /// previewing 状態で表示する第1候補のテキスト
     public private(set) var previewText: String?
 

@@ -42,6 +42,7 @@ init()  // 辞書変換エンジンを初期化
 | `visibleCandidateTexts` | `[String]` | ウィンドウ内の候補テキスト |
 | `selectedIndexInWindow` | `Int` | ウィンドウ内の選択位置（0-based） |
 | `isEmpty` | `Bool` | 入力が空か |
+| `rawKanaText` | `String` | 変換前の生かなテキスト（拗音・濁点判定用） |
 | `previewText` | `String?` | previewing 時の第1候補テキスト |
 | `isAdditionalCandidateSelected` | `Bool` | 追加候補が選択中か |
 | `selectedAdditionalCandidateIndex` | `Int` | 追加候補内の選択位置 |
