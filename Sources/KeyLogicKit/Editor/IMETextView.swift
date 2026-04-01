@@ -1419,8 +1419,8 @@ public class IMETextView: UITextView {
             let nsRange = NSRange(location: baseOffset + currentOffset, length: segmentLength)
             switch segment.focus {
             case .confirmed:
-                textStorage.addAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue, range: nsRange)
-                textStorage.addAttribute(.underlineColor, value: UIColor.label, range: nsRange)
+                // 部分確定済みテキストは下線を除去し、確定済みであることを視覚的に示す
+                textStorage.addAttribute(.underlineStyle, value: NSUnderlineStyle(rawValue: 0).rawValue, range: nsRange)
             case .focused:
                 // 無彩色の背景ハイライト（テキスト色はそのまま）
                 textStorage.addAttribute(.backgroundColor, value: UIColor.systemFill, range: nsRange)
