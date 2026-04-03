@@ -298,7 +298,7 @@ public class InputManager {
 
     // MARK: - Zenzai DI
 
-    /// Zenzai モデルファイルの URL（有料版から注入。nil なら辞書変換のみ）
+    /// Zenzai モデルファイルの URL（外部から注入。nil なら辞書変換のみ）
     public var zenzaiWeightURL: URL?
 
     // MARK: - 逐次入力バッファ（カスタムテーブル用）
@@ -1396,7 +1396,6 @@ public class InputManager {
             versionDependentMode: .v3(.init(leftSideContext: leftSideContext))
         )
     }
-
 
     /// 学習データ保存先ディレクトリを作成する
     private static func makeMemoryDirectoryURL() -> URL {
