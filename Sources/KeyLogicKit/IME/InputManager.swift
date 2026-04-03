@@ -1386,7 +1386,8 @@ public class InputManager {
         inferenceLimit: Int,
         richCandidates: Bool
     ) -> ConvertRequestOptions.ZenzaiMode {
-        guard let weightURL = zenzaiWeightURL else { return .off }
+        guard let weightURL = zenzaiWeightURL,
+              FileManager.default.fileExists(atPath: weightURL.path) else { return .off }
         return .on(
             weight: weightURL,
             inferenceLimit: inferenceLimit,
