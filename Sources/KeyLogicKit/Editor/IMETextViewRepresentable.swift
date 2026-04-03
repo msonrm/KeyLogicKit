@@ -375,7 +375,9 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
             if coordinator.lastTextFromUIKit == text {
                 // UIKit → Binding → updateUIView のフィードバック: スキップ
             } else {
+                coordinator.isProgrammaticChange = true
                 uiView.text = text
+                coordinator.isProgrammaticChange = false
             }
             coordinator.lastTextFromUIKit = nil
         }
