@@ -1245,6 +1245,10 @@ public class IMETextView: UITextView {
         unmarkText()
         // 確定テキストを通常テキストとして挿入（composition は既に終了済み）
         super.insertText(text)
+        // UIKit のテキストシステムにレイアウト更新を強制する。
+        // unmarkText() 直後に新しい setMarkedText() が来ると、内部状態のリセットが
+        // 完了しておらず markedText の表示が更新されないことがある。
+        layoutManager.ensureLayout(for: textContainer)
     }
 
     // MARK: - Composition Actions
