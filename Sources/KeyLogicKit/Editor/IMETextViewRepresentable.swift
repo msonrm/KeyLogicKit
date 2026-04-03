@@ -378,6 +378,9 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
                 coordinator.isProgrammaticChange = true
                 uiView.text = text
                 coordinator.isProgrammaticChange = false
+                // uiView.text 代入でカーソルが末尾にリセットされるため、
+                // appliedCursorLocation を無効化して必ず再適用させる
+                coordinator.appliedCursorLocation = -1
             }
             coordinator.lastTextFromUIKit = nil
         }
