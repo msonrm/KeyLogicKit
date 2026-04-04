@@ -106,6 +106,7 @@ init()  // 辞書変換エンジンを初期化
 | `selectCandidateInWindow(at: Int) -> ConfirmResult?` | 数字キーで候補選択（1-9） |
 | `confirmConversion() -> String` | 選択中の候補を確定 |
 | `confirmAll() -> String` | 全文確定 |
+| `confirmAllAsPrefix()` | 全文確定しつつ composition を維持（確定テキストを confirmedPrefix に蓄積） |
 | `confirmWithForm(_ form: ConversionForm) -> String` | 指定形式で確定（Ctrl+J/K/L/;/:） |
 | `selectNextPrediction()` | 予測候補を Tab で巡回選択 |
 | `acceptPrediction(at: Int) -> String?` | 予測候補を確定（Enter） |

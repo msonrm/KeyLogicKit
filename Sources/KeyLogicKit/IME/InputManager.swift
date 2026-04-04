@@ -928,6 +928,43 @@ public class InputManager {
         return text
     }
 
+    /// 全テキストを確定しつつ composition を維持する（確定直後に新しい文字入力が続く場合用）
+    ///
+    /// `confirmAll()` と同様に学習データ更新・leftSideContext 更新を行うが、
+    /// composition を終了せず確定テキストを `confirmedPrefix` に蓄える。
+    /// UIKit の `unmarkText()` → `insertText()` を経由しないため、
+    /// composition 終了の内部クリーンアップと新しい `setMarkedText()` の競合が発生しない。
+    ///
+    /// 呼び出し元は `commitText()` を呼ぶ必要がない。次の `confirmAll()` 時に
+    /// `confirmedPrefix` を含む全テキストが返される。
+    public func confirmAllAsPrefix() {
+        flushSequentialBuffer()
+        let text = displayText
+        if state == .selecting, !isAdditionalCandidateSelected, let selected = selectedCandidate {
+            converter.setCompletedData(selected)
+            converter.updateLearningData(selected)
+        }
+        updateLeftSideContext(text)
+        // confirmedPrefix に蓄積し、composing 状態を初期化（composition は終了しない）
+        // displayText には既存の confirmedPrefix が含まれるため、そのまま代入
+        confirmedPrefix = text
+        sequentialBuffer = ""
+        fallbackFlushedKeys.removeAll()
+        directRawInput = ""
+        composingText.stopComposition()
+        converter.stopComposition()
+        converter.commitUpdateLearningData()
+        candidates = []
+        selectedCandidateIndex = 0
+        liveConversionText = nil
+        previewText = nil
+        predictionCandidates = []
+        didExperienceSegmentEdition = false
+        resetAdditionalCandidates()
+        state = .composing
+        onComposingTextChange?(.updated)
+    }
+
     // MARK: - 変換形式を指定して確定
 
     /// 変換形式（macOS 標準 Ctrl+J,K,L,;,: 用）
