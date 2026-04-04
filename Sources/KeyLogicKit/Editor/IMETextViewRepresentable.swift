@@ -308,8 +308,11 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
             }
         }
 
-        // composing 中は InputManager がテキスト管理しているため外部同期をスキップ
-        guard inputManager.isEmpty else { return }
+        // composing 中、または marked text がある場合は InputManager がテキスト管理しているため外部同期をスキップ
+        // confirmAll() 後に DispatchQueue.main.async で appendDirectKana が走ると、
+        // isEmpty == true だが marked text が存在する瞬間がある。この間に binding 同期が
+        // 走ると uiView.text = text で marked text が上書きされてしまう。
+        guard inputManager.isEmpty, uiView.markedTextRange == nil else { return }
 
         // アンドゥ可能な外部編集の適用
         if let edit = undoableEdit {
