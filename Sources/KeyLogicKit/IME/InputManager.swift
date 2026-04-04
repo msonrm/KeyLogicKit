@@ -937,6 +937,10 @@ public class InputManager {
     ///
     /// 呼び出し元は `commitText()` を呼ぶ必要がない。次の `confirmAll()` 時に
     /// `confirmedPrefix` を含む全テキストが返される。
+    ///
+    /// **注意**: `onComposingTextChange` コールバックは発火しない。
+    /// 呼び出し元が直後に `addPrintableToComposing` → `updateMarkedTextDisplay`
+    /// を呼ぶことを前提としており、中間状態（新文字なし）での表示更新を避ける。
     public func confirmAllAsPrefix() {
         flushSequentialBuffer()
         let text = displayText
@@ -962,7 +966,7 @@ public class InputManager {
         didExperienceSegmentEdition = false
         resetAdditionalCandidates()
         state = .composing
-        onComposingTextChange?(.updated)
+        // onComposingTextChange は発火しない（呼び出し元が表示更新を行う）
     }
 
     // MARK: - 変換形式を指定して確定

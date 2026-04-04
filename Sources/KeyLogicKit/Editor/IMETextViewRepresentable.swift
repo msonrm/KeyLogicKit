@@ -308,8 +308,8 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
             }
         }
 
-        // composing 中、または marked text がある場合は InputManager がテキスト管理しているため外部同期をスキップ
-        guard inputManager.isEmpty, uiView.markedTextRange == nil else { return }
+        // composing 中は InputManager がテキスト管理しているため外部同期をスキップ
+        guard inputManager.isEmpty else { return }
 
         // アンドゥ可能な外部編集の適用
         if let edit = undoableEdit {
