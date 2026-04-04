@@ -932,15 +932,11 @@ public class InputManager {
     ///
     /// `confirmAll()` と同様に学習データ更新・leftSideContext 更新を行うが、
     /// composition を終了せず確定テキストを `confirmedPrefix` に蓄える。
-    /// UIKit の `unmarkText()` → `insertText()` を経由しないため、
-    /// composition 終了の内部クリーンアップと新しい `setMarkedText()` の競合が発生しない。
-    ///
     /// 呼び出し元は `commitText()` を呼ぶ必要がない。次の `confirmAll()` 時に
     /// `confirmedPrefix` を含む全テキストが返される。
     ///
-    /// **注意**: `onComposingTextChange` コールバックは発火しない。
-    /// 呼び出し元が直後に `addPrintableToComposing` → `updateMarkedTextDisplay`
-    /// を呼ぶことを前提としており、中間状態（新文字なし）での表示更新を避ける。
+    /// `onComposingTextChange` コールバックは発火しない。
+    /// 呼び出し元が直後に入力を追加して表示更新することを前提とする。
     public func confirmAllAsPrefix() {
         flushSequentialBuffer()
         let text = displayText
@@ -949,24 +945,7 @@ public class InputManager {
             converter.updateLearningData(selected)
         }
         updateLeftSideContext(text)
-        // confirmedPrefix に蓄積し、composing 状態を初期化（composition は終了しない）
-        // displayText には既存の confirmedPrefix が含まれるため、そのまま代入
-        confirmedPrefix = text
-        sequentialBuffer = ""
-        fallbackFlushedKeys.removeAll()
-        directRawInput = ""
-        composingText.stopComposition()
-        converter.stopComposition()
-        converter.commitUpdateLearningData()
-        candidates = []
-        selectedCandidateIndex = 0
-        liveConversionText = nil
-        previewText = nil
-        predictionCandidates = []
-        didExperienceSegmentEdition = false
-        resetAdditionalCandidates()
-        state = .composing
-        // onComposingTextChange は発火しない（呼び出し元が表示更新を行う）
+        finalizeComposition(preservingPrefix: text)
     }
 
     // MARK: - 変換形式を指定して確定
@@ -1116,11 +1095,14 @@ public class InputManager {
     }
 
     /// composing 全体をリセットする（全文確定時）
-    private func finalizeComposition() {
+    ///
+    /// - Parameter preservingPrefix: 非 nil の場合、confirmedPrefix にこの値を設定し
+    ///   composition を維持する（`confirmAllAsPrefix` 用）。nil の場合は全クリア。
+    private func finalizeComposition(preservingPrefix: String? = nil) {
         sequentialBuffer = ""
         fallbackFlushedKeys.removeAll()
         directRawInput = ""
-        confirmedPrefix = ""
+        confirmedPrefix = preservingPrefix ?? ""
         composingText.stopComposition()
         converter.stopComposition()
         converter.commitUpdateLearningData()
