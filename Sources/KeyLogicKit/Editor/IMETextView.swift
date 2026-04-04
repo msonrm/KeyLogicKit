@@ -871,14 +871,16 @@ public class IMETextView: UITextView {
             interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
             selectionAnchor = nil
 
-            // selecting/previewing 中 → 確定して新しい composing を開始
+            guard case .sequential(let characterMap) = keyRouter.definition.behavior else { return }
+
+            // selecting/previewing 中 → 確定テキストを confirmedPrefix に蓄えて composing 継続
+            // composition を終了しないことで、UIKit の unmarkText() → setMarkedText() 競合を回避。
+            // confirmedPrefix は次の confirmAll() 時に確定テキストに含まれる。
             if im.state == .selecting || im.state == .previewing {
-                let confirmed = im.confirmAll()
-                commitText(confirmed)
-                logEvent("select-and-continue", detail: confirmed)
+                im.confirmAllAsPrefix()
+                logEvent("select-and-continue-prefix", detail: im.confirmedPrefix)
             }
 
-            guard case .sequential(let characterMap) = keyRouter.definition.behavior else { return }
             addPrintableToComposing(c, inputManager: im, characterMap: characterMap)
             updateMarkedTextDisplay()
             logKeyEvent(phase: "began", key: key, handled: true)
