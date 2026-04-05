@@ -871,11 +871,10 @@ public class IMETextView: UITextView {
             interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
             selectionAnchor = nil
 
-            // selecting/previewing 中 → 確定して新しい composing を開始
+            // selecting/previewing 中 → confirmedPrefix に蓄えて composing 継続
             if im.state == .selecting || im.state == .previewing {
-                let confirmed = im.confirmAll()
-                commitText(confirmed)
-                logEvent("select-and-continue", detail: confirmed)
+                im.confirmAllAsPrefix()
+                logEvent("select-and-continue", detail: im.confirmedPrefix)
             }
 
             guard case .sequential(let characterMap) = keyRouter.definition.behavior else { return }
@@ -1055,12 +1054,11 @@ public class IMETextView: UITextView {
             selectionAnchor = nil
             interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
 
-            // selecting/previewing 中に文字キーを押した場合 → 確定して新規 composing
+            // selecting/previewing 中に文字キーを押した場合 → confirmedPrefix に蓄えて composing 継続
             if im.state == .selecting || im.state == .previewing {
                 chordBuffer.reset()
-                let confirmed = im.confirmAll()
-                commitText(confirmed)
-                logEvent("chord-select-and-continue", detail: confirmed)
+                im.confirmAllAsPrefix()
+                logEvent("chord-select-and-continue", detail: im.confirmedPrefix)
             }
 
             // 英数候補用: 日本語モードのみ QWERTY キー文字を蓄積
