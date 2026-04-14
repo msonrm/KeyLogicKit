@@ -32,15 +32,23 @@ Android の `InputMethodService` は iOS の `UITextInput` とは大きく異な
 
 | 項目 | Activity モード（現状） | IME サービス |
 |---|---|---|
-| `onKeyDown(keyCode, KeyEvent)` | Activity で受ける | `InputMethodService` で受けられる（dead-key 合成用に用意されているパス） |
-| `onGenericMotionEvent(MotionEvent)` | Activity で受ける | **`InputMethodService` には存在しない**。InputView 側で受ける必要あり |
+| `onKeyDown(keyCode, KeyEvent)` | Activity で受ける | `InputMethodService` で受けられる（IME 専用の `dispatchKeyEventPreIme` ルート） |
+| `onGenericMotionEvent(MotionEvent)` | Activity で受ける | **`InputMethodService` で受けられる**（`dispatchGenericMotionEventPreIme` ルート）※当初見落としていた |
 | テキスト書込先 | 自前の `TextFieldValue` | `currentInputConnection`（対象アプリの EditText） |
 | Composing 下線 | 自前描画 | `setComposingText` で OS が描画 |
 | テキスト読取 | ローカル文字列 | `getTextBeforeCursor(n, 0)` （非同期・失敗時 null） |
 
-最大のリスクは **アナログスティックの MotionEvent** が IME に届くかどうか。
-InputView を focusable にして `onGenericMotionEvent` を override すれば受け取れるはずだが、
-対象エディタにフォーカスがある状態で IME 側が motion を奪えるかは実機検証が必要。
+### joystick 受信の正解ルート（実機検証で確定）
+
+計画当初は「MotionEvent が IME に届くかは要検証・最悪 D-pad 縮退」としていたが、
+実機（DualSense）で以下が判明した:
+
+- **`View.onGenericMotionEvent`（InputView 側）**: View focus が必要だが、
+  IME ウィンドウは `FLAG_NOT_FOCUSABLE` のため focus を取れず発火しない
+- **`FLAG_NOT_FOCUSABLE` クリアで focus 奪取**: joystick MotionEvent は届くが、
+  対象 EditText の `InputConnection` が切れてボタン入力が効かなくなる副作用あり
+- **`InputMethodService.onGenericMotionEvent` 直接 override**: `onKeyDown` と
+  同じ IME 専用ルートで届く。focus 奪取なし、両立可能 ← **これが正解**
 
 ## 段階計画
 
