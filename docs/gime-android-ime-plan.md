@@ -135,20 +135,48 @@ eager output 方式になっている。InputConnection でもそのまま動作
 この段階で「変換中の文節」に下線・ハイライトが自動で付くようになり、
 候補パネルと対象アプリの表示が二重にならない。
 
-### Phase A6-6: 候補パネル・ビジュアライザを InputView に移植
+### Phase A6-6: 候補パネル・ビジュアライザを InputView に移植 ✅ 完了
 
 ゴール: IME 有効化中に候補リストとゲームパッドビジュアライザが画面下部に表示される。
 
-- `onCreateInputView()` で Compose 製ビジュアライザ + 候補パネルを返す
-  - 既存の `GimeApp.kt` を分解し、エディタ TextField を除いた
-    「ビジュアライザ + 候補 + モードインジケータ」部分を `ImeInputView` として再利用
-- `ComposeView` を `InputMethodService` 上でホストする際は以下の設定が必要:
-  - `ViewTreeLifecycleOwner.set(view, this)` 相当の self-hosted 実装
-  - `ViewTreeViewModelStoreOwner.set(...)` 相当
-  - `ViewTreeSavedStateRegistryOwner.set(...)` 相当
-  - ComposeView は Activity 外ではデフォルトでは動かないので、`setViewCompositionStrategy` で
-    `DisposeOnDetachedFromWindow` を使う
-- 候補ビューの分離は任意。`onCreateCandidatesView()` を使うと IME フレームの上に別パネルとして出る
+実装内容（実機検証済み、多数の試行錯誤を経て確立した作法）:
+
+- `onCreateInputView()` で `ComposeView` をホストする `GimeInputView` を返す
+- Compose コンテンツは `MaterialTheme { Column { GamepadVisualizer(inputManager) } }`
+  で Activity モードと完全共有
+
+#### IME + Compose の作法（重要・ハマりポイント集）
+
+Android IME で `ComposeView` を使うには、以下の **全要素** が揃っている必要がある。
+一つでも抜けると `onCreate` でサービスがクラッシュして Android が IME を自動無効化する
+（`try/catch` でも救えない場合あり）:
+
+1. **Service が `LifecycleOwner` / `ViewModelStoreOwner` / `SavedStateRegistryOwner` を実装する**
+2. **`ServiceLifecycleDispatcher` は使えない**
+   - `AbstractInputMethodService.onBind` が `final` のため、dispatcher のプリスーパー
+     呼び出しが実装できない
+   - 生の `LifecycleRegistry` を `handleLifecycleEvent(ON_CREATE/START/RESUME)` で
+     段階的に駆動する
+3. **`savedStateRegistryController.performAttach/performRestore(null)` は
+   `super.onCreate` の「前」に呼ぶ**
+   - `ComponentActivity.onCreate` と同じ順序。逆だと `IllegalStateException`
+4. **ViewTree owner は `window.decorView` に設定する**
+   - `ComposeView` 自身への設定ではなく IME の decorView に設定すると
+     view tree lookup が上位まで辿って解決する
+   - `ComponentActivity.setContent` の内部実装と同じパターン
+5. **`ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed`**
+   - Service Lifecycle に連動して composition を破棄
+6. **追加依存**: `androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7`,
+   `androidx.savedstate:savedstate-ktx:1.2.1`
+
+#### 失敗した試行（記録）
+
+- ❌ Service 側の LifecycleOwner 実装なし + ComposeView のみ → クラッシュ
+- ❌ 独自 Recomposer + `setParentCompositionContext`（ViewTree owner なし）→ クラッシュ
+- ❌ InputView ローカルの自己完結 ComposeOwner → クラッシュ
+- ❌ `ServiceLifecycleDispatcher` → `onBind final` でコンパイル不能
+- ✅ Service が owner 実装 + `window.decorView` に setViewTreeXxxOwner +
+  `DisposeOnViewTreeLifecycleDestroyed`
 
 ### Phase A6-7: 実機 QA・BT 再接続・切替導線
 
