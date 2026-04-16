@@ -56,8 +56,9 @@ The App stores the following data locally on your device only:
 - **Learning history** — Reading→surface pairs accumulated as you confirm
   conversions, stored in the same Room database for prediction quality
   improvement. Can be reset via the dictionary screen.
-- **App settings** — Including OSC settings (enabled state, IP, port),
-  stored via SharedPreferences.
+- **App settings** — Including OSC settings (enabled state, IP, port) and
+  language mode preferences (which input modes are enabled and their
+  cycle order), stored via SharedPreferences.
 
 This data never leaves your device and is automatically deleted when you
 uninstall the App.
