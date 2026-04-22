@@ -219,13 +219,29 @@ Android 版と同じ:
 
 ## TODO
 
-別セッションで実装する。本計画はリファレンスとして残す。
+本計画はリファレンスとして残す。主要項目は実装済み。
 
-- [ ] B7-1: OSC 送受信基盤 (Swift)
-- [ ] B7-2: VRChat モード設定 UI (SwiftUI)
-- [ ] B7-3: 出力ルーティング切替
-- [ ] B7-4: chatbox UX (debounce / 累積モデル)
-- [ ] B7-5: ビジュアライザに OSC バッジ
-- [ ] B7-6: プライバシーポリシー / Info.plist 対応
-- [ ] B7-7: ドキュメント / セットアップガイド
-- [ ] iPad + Pixel 10 VRChat Mobile での L4 実機検証
+- [x] B7-1: OSC 送受信基盤 (Swift) — `Sources/GIME/OSC/` に実装
+- [x] B7-2: VRChat モード設定 UI (SwiftUI) — `Sources/GIME/UI/VrChatSettingsView.swift`
+- [x] B7-3: 出力ルーティング切替 — `App.swift` の `refreshVrChatOutput()` / `sendVrChatDraftIfNeeded()`
+- [x] B7-4: chatbox UX (debounce / 累積モデル) — 実装済み
+- [x] B7-5: ビジュアライザに OSC バッジ — `GamepadVisualizerView.swift`
+- [x] B7-6: プライバシーポリシー / Info.plist 対応 — `NSLocalNetworkUsageDescription` 追加
+- [x] B7-7: ドキュメント / セットアップガイド — `docs/gime-vrchat-osc.md`
+- [x] iPad + Android VRChat Mobile での L4 実機検証 — **動作確認済み**（iPad GIME →
+      Android USB テザリング → VRChat Mobile へのチャットテキスト送信成功）
+
+## 後続の拡張（Android 版と共通）
+
+基本計画の完了後に追加した運用オプション（Android 版とセットで実装）:
+
+- **`commitOnlyMode`** (PR #498): VRChat Mobile が下書き受信で chatbox 入力 UI を
+  自動展開してしまう問題の回避策。ON で composing 中の `/chatbox/input` を抑制し、
+  LS 確定時のみ `sendMessage=true` で送信
+- **`typingIndicatorEnabled`** (PR #498): `/chatbox/typing` 送信の独立トグル。
+  `commitOnlyMode` とは独立
+- **`customTypingEnabled`** (PR #499 iOS / PR #500 Android): 入力中アクション。
+  composing 開始/終了エッジで任意の avatar parameter を `int` / `float` / `bool`
+  で送信できる汎用機構。無言勢の「typing 中に棒立ち」問題への対応策として、
+  "考え中ポーズ" 等のアニメーションを叩くのに使う。VRCEmote=7 プリセット同梱。
+  詳細仕様は `docs/gime-vrchat-osc-plan.md` の "拡張: 入力中アクション" セクション

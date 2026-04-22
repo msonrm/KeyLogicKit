@@ -215,12 +215,27 @@ OscSender("127.0.0.1", 9000).send("/chatbox/input", "こんにちは", true, fal
 
 ## 関連 TODO
 
-- [ ] A7-1: OSC 送信基盤 (OscSender + OscPacket)
-- [ ] A7-2: VRChat モード設定 UI
-- [ ] A7-3: 出力ルーティング切替
-- [ ] A7-4: chatbox UX (typing indicator + preview + commit)
-- [ ] A7-5: アバター入力ゼロ送信 (オプション)
-- [ ] A7-6: IsTyping アバターパラメータ (オプション)
-- [ ] A7-7: Viseme リップシンク (オプション)
-- [ ] A7-8: プライバシーポリシー & Play Store 対応
-- [ ] A7-9: ドキュメント & セットアップガイド
+- [x] A7-1: OSC 送信基盤 (OscSender + OscPacket) — 実装済み（`com/gime/android/osc/`）
+- [x] A7-2: VRChat モード設定 UI — `ui/VrChatScreen.kt`
+- [x] A7-3: 出力ルーティング切替 — IME + バブル dual output
+- [x] A7-4: chatbox UX (typing indicator + preview + commit) — 実装済み
+- [x] A7-5: アバター入力ゼロ送信 (オプション) — `commitOnlyMode` として実装
+- [x] A7-6: IsTyping アバターパラメータ (オプション) — **汎用化して `customTypingEnabled` として実装**（IsTyping 固定ではなく任意の address + int/float/bool を送れる形に発展。PR #500）
+- [ ] A7-7: Viseme リップシンク (オプション) — **未実装・方向転換**（VRChat 側の Viseme param は OSC 書き込み不可、TTS 仮想マイク経路が前提になる。詳細は会話履歴・`docs/gime-vrchat-osc.md` の "入力中アバターを「考え中ポーズ」にしたい" セクション参照）
+- [x] A7-8: プライバシーポリシー & Play Store 対応
+- [x] A7-9: ドキュメント & セットアップガイド — `docs/gime-vrchat-osc.md`
+
+### 拡張: 入力中アクション (customTyping)
+
+A7-6 の IsTyping 特化設計を汎用化し、composing 開始/終了エッジで
+任意の avatar parameter を叩ける仕組みに発展させた:
+
+- `VrChatOscSettings.customTyping{Enabled,Address,ValueType,StartValue,EndValue}`
+  を `SharedPreferences` で永続化
+- `VrChatOscOutput.typingStartMessage` / `typingEndMessage`（`Pair<String, Any>?`）
+  を `typingActive` の edge 遷移で送信
+- `sendTypingIndicator` / `commitOnlyMode` とは独立して動作
+- IME (`GimeInputMethodService`) とバブル (`BubbleService`) の両方で有効
+- UI: `ui/VrChatScreen.kt` に「入力中アクション」セクション + VRCEmote=7 プリセット
+
+iOS 版は PR #498 / #499 で先行実装、Android 版は PR #500。
