@@ -273,6 +273,13 @@ IME は画面下に docked する特性上、View をそのまま大きく出す
 - `TOUCHABLE_INSETS_CONTENT` はオーバーレイ上の候補タップによる選択は不可
   （ゲームパッドで cycle する前提）。候補タップ選択が欲しくなったら
   `TOUCHABLE_INSETS_REGION` + `touchableRegion` に切替える
+- **gesture navigation モードでの下端被り**: IME window はデフォルトで
+  gesture pill 位置まで伸びてしまい、D-pad 下端が pill と重なる。
+  `GimeInputView` の外側 Column に `Modifier.navigationBarsPadding()` を
+  入れて nav bar / pill 分の余白を確保する。compact バーの
+  `positionInRoot().y` は Column 先頭からの積み上げなので影響を受けず、
+  `contentTopInsets` 計算はそのまま機能する（insets は Column の「下側」
+  に空白として追加されるだけ）
 
 ## 参照
 
