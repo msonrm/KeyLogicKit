@@ -1,7 +1,10 @@
 # GIME Brahmic + Abjad 拡張 設計メモ
 
-**状態**: Devanagari Android PoC 着手中（2026-04-23）
+**状態**: **Devanagari Android PoC 実装済み**（2026-04-23、PR #508）。
+`सत्यमेव जयते` / `ओम्` / `नमः` / `अतः` / `दुःख` 等が実機で正しく
+入力できることを確認。
 **発端**: セッション 2026-04-22 の余談から発展した設計討議を記録として残す
+
 **更新履歴**:
 - 2026-04-23: 子音 varga / stop / 母音の全レイヤーを
   **varnamala 時計回り**方式に改訂（朗唱順と指の運動を同期させる設計原則）
@@ -9,6 +12,17 @@
   当初案の「子音連続 = auto-conjunct」は `नम` (namaste 語頭) 等の通常語を
   `न्म` にしてしまう致命的不具合があるため、ITRANS / Google Hindi IME 等と
   同様に halant (RT) 明示方式へ修正。
+- 2026-04-23: 実装中に判明した設計修正:
+  - **LS をトグルラッチ化**: 左親指で LS と D-pad を同時操作不可能な物理
+    制約のため。同方向 flick で toggle off、別方向 flick で上書き
+  - **L3 one-shot 非 varga サブレイヤー**: 1 子音 emit で自動 OFF
+    （連続非 varga は再度 L3 を押す）
+  - **LB は非 varga 状態と独立**: 常に現 LS latch の varga 鼻音を発火
+  - **RB = ओ 単押し / LT+RB = nukta**: ओ が Hindi 頻出なので LT シフトを外す
+  - **LT + A = ऋ**: Sanskrit 用の低頻度字を LT シフトに隔離
+  - **RT + LS = カーソル移動**: RT release 時に LS が使われていれば halant 抑止
+  - **LT + RT = visarga ः**: Sanskrit / 文語 Hindi 用
+- 2026-04-24: 関連ドキュメント更新、PR #508 を ready for review に
 
 ## 概要
 
@@ -223,16 +237,33 @@ nukta は借用音 dot、anusvara/chandrabindu は鼻音、visarga は Sanskrit 
   コールバック経由で composer の出力を受け取る）
 - engine 層は pure（Android / iOS プラットフォーム非依存）を維持
 
-### PoC 最小セット
+### PoC 実装結果（2026-04-23）
 
-1 週間スコープで:
+1 セッションで Android 実装を完走:
 
-- **33 子音 + 11 母音 matra + halant + backspace**
-- 検証文: **`सत्यमेव जयते`**（インド国章、Sanskrit）が正しく打てるか
-- conjunct 生成の正しさ: `क्ष्ण`, `त्र`, `द्व` 等の頻出 conjunct
-- 独立母音 vs matra の分岐: 語頭 `अ` / 語中 `क + ि`
+- ✅ 33 子音 + 11 母音 matra + halant + anusvara + chandrabindu + visarga +
+  nukta + 長母音 post-shift + backspace + space/।/॥ + カーソル移動
+- ✅ 検証文: `सत्यमेव जयते`（インド国章、Sanskrit）
+- ✅ `ओम्` (Om), `नमः` (namaḥ), `अतः` (ataḥ), `दुःख` (duḥkha) も確認
+- ✅ conjunct 生成: 明示的 halant 方式で任意の conjunct が組める
+- ✅ 独立母音 vs matra の自動分岐: composer 状態で判定
 
-PoC 完了後に Bengali / Tamil への展開検証。
+**実装ファイル**:
+- `android/app/src/main/java/com/gime/android/engine/DevanagariComposer.kt`
+- `android/app/src/main/java/com/gime/android/engine/GamepadResolver.kt`
+  (Devanagari テーブル群)
+- `android/app/src/main/java/com/gime/android/input/GamepadInputManager.kt`
+  (`handleDevanagariInput` + 各 dispatch 点)
+- `android/app/src/main/java/com/gime/android/ui/GimeApp.kt`
+  (DevaDpadCluster + DevaFaceButtons + ラベル)
+
+**次フェーズ候補** (未着手):
+- iOS 版への移植（Swift 同等実装）
+- Bengali / Tamil / Telugu / Gujarati / Kannada / Malayalam 等の Brahmic
+  展開。`BrahmicComposerCore` に切り出して言語別テーブルだけ差し替える構造に
+- Devanagari 数字 `० १ २` サブモード（現状は Start cycle で EN モードの ASCII 数字）
+- Avagraha ऽ / ZWJ / ZWNJ 等の低頻度字
+- 実機 ergonomics 長期使用テスト
 
 ---
 
