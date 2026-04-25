@@ -281,6 +281,29 @@ IME は画面下に docked する特性上、View をそのまま大きく出す
   `contentTopInsets` 計算はそのまま機能する（insets は Column の「下側」
   に空白として追加されるだけ）
 
+## バブル window の幅指定（Phase A8 補足、2026-04-25）
+
+`BubbleService` の `WindowManager.LayoutParams` は当初 width/height
+共に `WRAP_CONTENT` で attach していたが、これは Compose 内で
+`Modifier.width()` を指定しても所望の幅にならない罠がある:
+
+- WindowManager は WRAP_CONTENT で attach された view に対し、画面の
+  利用可能幅（= 画面幅 − window x 座標）を `MeasureSpec.AT_MOST` で
+  渡す。これが Compose の `Constraints.maxWidth` に伝播する
+- Compose の `Modifier.width(N.dp)` はあくまで「希望幅」で、親の
+  `Constraints.maxWidth` より大きい値は取れない（clamp される）
+- 結果として、バブルが画面端寄りに置かれていると、内部で 380dp を
+  指定しても利用可能幅（例: 360dp 画面で x=40 なら 320dp）に縮まる
+
+**対処**: `WindowManager.LayoutParams.width` を明示的に px 値で渡すと、
+window 自体がその幅で確保され、画面端からはみ出してでも所望の幅に
+なる（内側の Compose も clamp されない）。compact / 展開のトグル時は
+`WindowManager.updateViewLayout` で width を切替える。
+
+縦方向は同じ仕組みでも問題が出にくい（コンテンツ自然高さ < 画面高さ
+で clamp に当たらないため）。「縦は WRAP_CONTENT で動的に追随する
+のに、横だけ追随しないように見える」のはこの非対称性が原因。
+
 ## 参照
 
 - [TODO.md](../TODO.md) Phase A5「システム IME 化」
