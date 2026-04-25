@@ -1,6 +1,7 @@
 # GIME Brahmic + Abjad 拡張 設計メモ
 
-**状態**: **Devanagari Android PoC 実装済み**（2026-04-23、PR #508）。
+**状態**: **Devanagari iOS / Android 両対応**（Android: 2026-04-23、PR #508、
+iOS: 2026-04-24、PR #517 で Swift 移植）。
 `सत्यमेव जयते` / `ओम्` / `नमः` / `अतः` / `दुःख` 等が実機で正しく
 入力できることを確認。
 **発端**: セッション 2026-04-22 の余談から発展した設計討議を記録として残す
@@ -249,6 +250,8 @@ nukta は借用音 dot、anusvara/chandrabindu は鼻音、visarga は Sanskrit 
 - ✅ 独立母音 vs matra の自動分岐: composer 状態で判定
 
 **実装ファイル**:
+
+Android (PR #508 〜 #513):
 - `android/app/src/main/java/com/gime/android/engine/DevanagariComposer.kt`
 - `android/app/src/main/java/com/gime/android/engine/GamepadResolver.kt`
   (Devanagari テーブル群)
@@ -257,8 +260,18 @@ nukta は借用音 dot、anusvara/chandrabindu は鼻音、visarga は Sanskrit 
 - `android/app/src/main/java/com/gime/android/ui/GimeApp.kt`
   (DevaDpadCluster + DevaFaceButtons + ラベル)
 
+iOS (PR #517、Android からの直訳移植):
+- `Sources/GIME/DevanagariComposer.swift`（Kotlin → Swift、285 行）
+- `Sources/GIME/GamepadResolver.swift`（`.devanagari` enum case +
+  varga テーブル + LS/D-pad 方向解決ヘルパー）
+- `Sources/GIME/GamepadInputManager.swift`
+  (`handleDevanagariInput()` + 内部状態 + LS click で非 varga トグル +
+  RS ← で composer backspace + RS ↓ 多段タップに danda サイクル)
+- `Sources/GIME/GamepadVisualizerView.swift`
+  (動的 LB/RT/RB/LT ラベル + LS latch ベースの D-pad クラスタ +
+  modeBadgeColor + RS ヒント)
+
 **次フェーズ候補** (未着手):
-- iOS 版への移植（Swift 同等実装）
 - Bengali / Tamil / Telugu / Gujarati / Kannada / Malayalam 等の Brahmic
   展開。`BrahmicComposerCore` に切り出して言語別テーブルだけ差し替える構造に
 - Devanagari 数字 `० १ २` サブモード（現状は Start cycle で EN モードの ASCII 数字）
