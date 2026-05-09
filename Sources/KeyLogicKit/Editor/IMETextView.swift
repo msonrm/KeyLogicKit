@@ -122,6 +122,13 @@ public class IMETextView: UITextView {
     /// - count: 現在のフォント・コンテナ幅で1行に収まる全角（"あ"）文字数
     public var onFittingCharsPerLineChange: ((_ count: Int) -> Void)?
 
+    /// 視覚行（折り返し後の表示行）レイアウトの変更通知
+    ///
+    /// テキスト編集・フォント変更・コンテナ幅変更などで折り返し位置が変わった際に、
+    /// 確定後の `visualLineCharStarts` を引数に呼び出される。
+    /// 視覚行構成が前回通知時と同一の場合は発火しない。
+    public var onVisualLineLayoutChange: (([Int]) -> Void)?
+
     /// 文ナビゲーション通知（フォーカスモード用）
     public var onSentenceNavigation: ((_ sentenceRange: NSRange, _ rects: [CGRect]) -> Void)?
 
@@ -149,6 +156,9 @@ public class IMETextView: UITextView {
 
     /// 前回報告した1行あたり全角文字数
     private var lastReportedFittingChars: Int = 0
+
+    /// 前回報告した視覚行開始 UTF-16 オフセット配列（差分検出用）
+    private var lastReportedVisualLineCharStarts: [Int] = []
 
     /// pressesBegan で super をブロックしたキーコードを追跡
     ///
@@ -216,13 +226,18 @@ public class IMETextView: UITextView {
     public override func layoutSubviews() {
         super.layoutSubviews()
         let currentWidth = textContainer.size.width
-        guard abs(currentWidth - lastContainerWidth) > 0.5 else { return }
-        lastContainerWidth = currentWidth
-        let fitting = measureFittingCharsPerLine()
-        if fitting != lastReportedFittingChars {
-            lastReportedFittingChars = fitting
-            onFittingCharsPerLineChange?(fitting)
+        let widthChanged = abs(currentWidth - lastContainerWidth) > 0.5
+        if widthChanged {
+            lastContainerWidth = currentWidth
+            let fitting = measureFittingCharsPerLine()
+            if fitting != lastReportedFittingChars {
+                lastReportedFittingChars = fitting
+                onFittingCharsPerLineChange?(fitting)
+            }
         }
+        // 視覚行レイアウトは幅変更だけでなくテキスト変更でも変わるため、毎回 diff を取る。
+        // 同じ配列なら発火せず、変化時のみ通知する。
+        notifyVisualLineLayoutIfChanged()
     }
 
     /// 指定した全角文字数が1行にちょうど収まる UITextView のフレーム幅を返す
@@ -298,6 +313,74 @@ public class IMETextView: UITextView {
             forGlyphRange: firstLineGlyphRange, actualGlyphRange: nil
         )
         return firstLineCharRange.length
+    }
+
+    // MARK: - 視覚行レイアウト
+
+    /// 視覚行（折り返し後の表示行）の開始 UTF-16 オフセット配列
+    ///
+    /// `NSLayoutManager.lineFragmentRect(forGlyphAt:effectiveRange:)` を全テキストに対して
+    /// 走査し、各視覚行の先頭 UTF-16 オフセットを昇順で返す。配列の `count` がそのまま
+    /// テキスト全体の視覚行数となる。空テキストでは空配列。
+    ///
+    /// 任意の文字オフセット `loc` が含まれる視覚行は二分探索で得られる:
+    ///
+    /// ```swift
+    /// let row = visualLineCharStarts.lastIndex { $0 <= loc } ?? 0
+    /// ```
+    ///
+    /// プロポーショナルフォントや約物・カーニング込みで `UITextView` の実描画と一致する
+    /// 折り返し位置が得られるため、ミニマップ等のフォント非依存な視覚行マッピングに使える。
+    public var visualLineCharStarts: [Int] {
+        computeVisualLineCharStarts()
+    }
+
+    /// 全テキストを走査して各視覚行の開始文字オフセットを集める
+    private func computeVisualLineCharStarts() -> [Int] {
+        layoutManager.ensureLayout(for: textContainer)
+
+        let totalChars = textStorage.length
+        guard totalChars > 0 else { return [] }
+        let totalGlyphs = layoutManager.numberOfGlyphs
+        guard totalGlyphs > 0 else { return [0] }
+
+        var starts: [Int] = []
+        var glyphIndex = 0
+        while glyphIndex < totalGlyphs {
+            var lineGlyphRange = NSRange()
+            _ = layoutManager.lineFragmentRect(
+                forGlyphAt: glyphIndex,
+                effectiveRange: &lineGlyphRange
+            )
+            let charRange = layoutManager.characterRange(
+                forGlyphRange: lineGlyphRange, actualGlyphRange: nil
+            )
+            starts.append(charRange.location)
+            // 次のループへ進めない場合の保険（理論上は起きない）
+            let next = NSMaxRange(lineGlyphRange)
+            guard next > glyphIndex else { break }
+            glyphIndex = next
+        }
+        // 末尾改行で終わる場合、UITextView は改行後の空視覚行を1行として描画する。
+        // NSLayoutManager の lineFragmentRect は末尾改行に対応するフラグメントを返さないので、
+        // extraLineFragmentRect が有効ならその開始位置として totalChars を追加する。
+        if layoutManager.extraLineFragmentTextContainer != nil {
+            starts.append(totalChars)
+        }
+        return starts
+    }
+
+    /// 視覚行レイアウトの変化を検出してコールバックを発火する
+    ///
+    /// 前回通知した配列と完全一致する場合はコールバックを呼ばない。
+    /// `layoutSubviews` や外部からの編集確定後に呼ばれる。
+    public func notifyVisualLineLayoutIfChanged() {
+        guard onVisualLineLayoutChange != nil else { return }
+        let starts = computeVisualLineCharStarts()
+        if starts != lastReportedVisualLineCharStarts {
+            lastReportedVisualLineCharStarts = starts
+            onVisualLineLayoutChange?(starts)
+        }
     }
 
     // MARK: - Key Event Info
