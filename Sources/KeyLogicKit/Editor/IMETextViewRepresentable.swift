@@ -46,6 +46,10 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
     /// テキストコンテナに1行で収まる全角文字数が変化した際に呼ばれるコールバック
     public var onFittingCharsPerLineChange: ((_ count: Int) -> Void)?
 
+    /// 視覚行（折り返し後の表示行）の開始 UTF-16 オフセット配列が変化した際に呼ばれるコールバック
+    /// - starts: 各視覚行の先頭 UTF-16 オフセット（昇順）。`count` が視覚行数と等しい
+    public var onVisualLineLayoutChange: (([Int]) -> Void)?
+
     /// プログラム的なカーソル移動後のスクロール要求コールバック
     /// カーソル位置の UTF-16 オフセットを渡す。スクロール方法はアプリ側が決定する。
     @available(*, deprecated, message: "scrolloff が IMETextView 内で自動適用されるため不要")
@@ -108,6 +112,7 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         onEnglishModeChange: ((Bool) -> Void)? = nil,
         onCaretRectChange: ((CGRect) -> Void)? = nil,
         onFittingCharsPerLineChange: ((_ count: Int) -> Void)? = nil,
+        onVisualLineLayoutChange: (([Int]) -> Void)? = nil,
         onScrollRequest: ((IMETextView, Int) -> Void)? = nil,
         blockRangeProvider: BlockRangeProvider? = nil,
         blockSeparator: String? = nil,
@@ -136,6 +141,7 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         self.onEnglishModeChange = onEnglishModeChange
         self.onCaretRectChange = onCaretRectChange
         self.onFittingCharsPerLineChange = onFittingCharsPerLineChange
+        self.onVisualLineLayoutChange = onVisualLineLayoutChange
         self.onScrollRequest = onScrollRequest
         self.blockRangeProvider = blockRangeProvider
         self.blockSeparator = blockSeparator
@@ -206,6 +212,7 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         textView.onEnglishModeChange = onEnglishModeChange
         textView.onCaretRectChange = onCaretRectChange
         textView.onFittingCharsPerLineChange = onFittingCharsPerLineChange
+        textView.onVisualLineLayoutChange = onVisualLineLayoutChange
         textView.blockRangeProvider = blockRangeProvider
         textView.blockSeparator = blockSeparator
         textView.onSentenceNavigation = onSentenceNavigation
@@ -266,6 +273,7 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         uiView.onEnglishModeChange = onEnglishModeChange
         uiView.onCaretRectChange = onCaretRectChange
         uiView.onFittingCharsPerLineChange = onFittingCharsPerLineChange
+        uiView.onVisualLineLayoutChange = onVisualLineLayoutChange
         uiView.blockRangeProvider = blockRangeProvider
         uiView.blockSeparator = blockSeparator
         uiView.onSentenceNavigation = onSentenceNavigation
@@ -285,6 +293,11 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
             if let lm = uiView.invisibleLayoutManager, lm.showInvisibles != editorStyle.showInvisibles {
                 lm.showInvisibles = editorStyle.showInvisibles
                 lm.invalidateDisplay(forCharacterRange: NSRange(location: 0, length: uiView.textStorage.length))
+            }
+
+            // フォント変更で折り返し位置が変わるため視覚行レイアウトを再評価
+            DispatchQueue.main.async { [weak uiView] in
+                uiView?.notifyVisualLineLayoutIfChanged()
             }
         }
 
@@ -464,6 +477,8 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         public func textViewDidChange(_ textView: UITextView) {
             lastTextFromUIKit = textView.text
             text.wrappedValue = textView.text
+            // テキスト編集で折り返し位置が変わった場合に視覚行レイアウトを通知
+            (textView as? IMETextView)?.notifyVisualLineLayoutIfChanged()
         }
 
         public func textViewDidChangeSelection(_ textView: UITextView) {

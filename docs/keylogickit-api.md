@@ -496,17 +496,26 @@ func setSimultaneousWindow(_ window: TimeInterval)
 | `onEnglishModeChange` | `((Bool) -> Void)?` | 英数モード変更通知 |
 | `onCaretRectChange` | `((CGRect) -> Void)?` | キャレット位置変更通知 |
 | `onFittingCharsPerLineChange` | `((Int) -> Void)?` | テキストコンテナに1行で収まる全角文字数の変化通知（コンテナ幅・フォント変更時に発火） |
+| `onVisualLineLayoutChange` | `(([Int]) -> Void)?` | 視覚行（折り返し後の表示行）の開始 UTF-16 オフセット配列が変化した際の通知。`count` が視覚行数、各要素が視覚行の先頭オフセット |
+| `visualLineCharStarts` | `[Int]` (get) | 現在のテキスト・フォント・コンテナ幅で計算された視覚行開始 UTF-16 オフセット配列。`NSLayoutManager.lineFragmentRect(forGlyphAt:effectiveRange:)` ベースで `UITextView` の実描画と一致。空テキストでは空配列 |
+
+| `onSentenceNavigation` | `((NSRange, [CGRect]) -> Void)?` | 文ナビゲーション通知（フォーカスモード用） |
+| `onUserScroll` | `(() -> Void)?` | ユーザーのタッチスクロール時コールバック（フォーカスモード解除用） |
+| `blockRangeProvider` | `BlockRangeProvider?` | ブロック境界検出（スマート選択用） |
+| `blockSeparator` | `String?` | ブロック間セパレータ（swapBlock のセパレータ正規化用、nil で無効） |
+| `isFindInteractionEnabled` | `Bool` | UIFindInteraction による検索置換 UI を有効にする（iOS 16+、デフォルト `false`） |
 
 ### 静的メソッド
 
 | メソッド | 戻り値 | 説明 |
 |---|---|---|
 | `frameWidth(forCharsPerLine:font:)` | `CGFloat` | 指定した全角文字数が1行にちょうど収まる UITextView のフレーム幅を返す（`lineFragmentPadding` 込み）。SwiftUI の `.frame(maxWidth:)` に渡す用途。`onFittingCharsPerLineChange` と対になる API |
-| `onSentenceNavigation` | `((NSRange, [CGRect]) -> Void)?` | 文ナビゲーション通知（フォーカスモード用） |
-| `onUserScroll` | `(() -> Void)?` | ユーザーのタッチスクロール時コールバック（フォーカスモード解除用） |
-| `blockRangeProvider` | `BlockRangeProvider?` | ブロック境界検出（スマート選択用） |
-| `blockSeparator` | `String?` | ブロック間セパレータ（swapBlock のセパレータ正規化用、nil で無効） |
-| `isFindInteractionEnabled` | `Bool` | UIFindInteraction による検索置換 UI を有効にする（iOS 16+、デフォルト `false`） |
+
+### インスタンスメソッド
+
+| メソッド | 戻り値 | 説明 |
+|---|---|---|
+| `notifyVisualLineLayoutIfChanged()` | `Void` | 視覚行レイアウトを再計算し、前回通知時から変化があれば `onVisualLineLayoutChange` を発火する。`layoutSubviews` / `textViewDidChange` / フォント変更時に自動呼出されるが、外部からの直接編集後等に明示的に呼ぶこともできる |
 
 ## ScrollAlignment — スクロール配置方法（enum）
 
@@ -545,6 +554,7 @@ init(inputManager: InputManager, keyRouter: KeyRouter, editorStyle: EditorStyle 
      onEnglishModeChange: ((Bool) -> Void)? = nil,
      onCaretRectChange: ((CGRect) -> Void)? = nil,
      onFittingCharsPerLineChange: ((_ count: Int) -> Void)? = nil,
+     onVisualLineLayoutChange: (([Int]) -> Void)? = nil,
      onScrollRequest: ((IMETextView, Int) -> Void)? = nil,  // deprecated: scrolloff が自動適用
      blockRangeProvider: BlockRangeProvider? = nil,
      blockSeparator: String? = nil,
