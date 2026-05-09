@@ -504,6 +504,8 @@ func setSimultaneousWindow(_ window: TimeInterval)
 | `blockRangeProvider` | `BlockRangeProvider?` | ブロック境界検出（スマート選択用） |
 | `blockSeparator` | `String?` | ブロック間セパレータ（swapBlock のセパレータ正規化用、nil で無効） |
 | `isFindInteractionEnabled` | `Bool` | UIFindInteraction による検索置換 UI を有効にする（iOS 16+、デフォルト `false`） |
+| `editMenuActionsProvider` | `((NSRange) -> [EditMenuItem])?` | 選択時フローティング編集メニューに追加するアクション項目を、選択範囲の `NSRange` を引数に返すクロージャ。`nil` または空配列を返した場合はサブメニューを追加しない |
+| `editMenuActionsTitle` | `String` | 追加サブメニューのタイトル（デフォルト `"アクション"`） |
 
 ### 静的メソッド
 
@@ -516,6 +518,28 @@ func setSimultaneousWindow(_ window: TimeInterval)
 | メソッド | 戻り値 | 説明 |
 |---|---|---|
 | `notifyVisualLineLayoutIfChanged()` | `Void` | 視覚行レイアウトを再計算し、前回通知時から変化があれば `onVisualLineLayoutChange` を発火する。`layoutSubviews` / `textViewDidChange` / フォント変更時に自動呼出されるが、外部からの直接編集後等に明示的に呼ぶこともできる |
+| `makeEditMenu(forNSRange:suggestedActions:)` | `UIMenu?` | `editMenuActionsProvider` を呼び出し、システム項目（カット・コピー・調べる 等）の末尾に「アクション」サブメニューを追加した `UIMenu` を構築する。`IMETextViewRepresentable` の `Coordinator` が `UITextViewDelegate.textView(_:editMenuForTextIn:suggestedActions:)` から呼ぶ。直接 IMETextView を使う場合は利用側 delegate からこのメソッドを呼ぶ |
+
+## EditMenuItem — 編集メニュー追加項目（struct, Sendable）
+
+選択時のフローティング編集メニュー（カット・コピー・ペースト・調べる・翻訳・共有 等）の
+末尾に、アプリ側で定義した「アクション」サブメニューを追加するための値型。
+`IMETextView.editMenuActionsProvider` / `IMETextViewRepresentable.editMenuActionsProvider`
+から返した配列が、`editMenuActionsTitle` をタイトルとするサブメニューにまとめて並ぶ。
+
+```swift
+init(
+    title: String,
+    systemImage: String? = nil,
+    handler: @escaping @MainActor (NSRange) -> Void
+)
+```
+
+| プロパティ | 型 | 説明 |
+|---|---|---|
+| `title` | `String` | メニュー項目の表示タイトル |
+| `systemImage` | `String?` | SF Symbols 名（指定すると `UIImage(systemName:)` でアイコンを付ける） |
+| `handler` | `@MainActor (NSRange) -> Void` | タップ時に MainActor 上で呼ばれるハンドラ。引数は表示時点の選択範囲（UTF-16 単位） |
 
 ## ScrollAlignment — スクロール配置方法（enum）
 
@@ -566,7 +590,9 @@ init(inputManager: InputManager, keyRouter: KeyRouter, editorStyle: EditorStyle 
      invisibleFullWidthSpaceColor: UIColor? = nil,
      invisibleTabColor: UIColor? = nil,
      invisibleNewlineColor: UIColor? = nil,
-     undoableEdit: Binding<UndoableEdit?> = .constant(nil))
+     undoableEdit: Binding<UndoableEdit?> = .constant(nil),
+     editMenuActionsProvider: ((NSRange) -> [EditMenuItem])? = nil,
+     editMenuActionsTitle: String = "アクション")
 ```
 
 ## TextRangeRectsProvider — テキスト範囲 rect プロバイダ（クラス）
