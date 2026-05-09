@@ -189,6 +189,17 @@ public class IMETextView: UITextView {
     /// セパレータの付け替え（正規化）を行う。nil の場合は正規化なし（後方互換）。
     public var blockSeparator: String?
 
+    /// 編集メニュー（選択時のフローティングメニュー）に追加するアクション項目を、
+    /// 選択範囲の `NSRange` を引数に返すクロージャ。
+    ///
+    /// `nil` または空配列を返した場合はサブメニューを追加しない。
+    /// 返した項目は `editMenuActionsTitle` をタイトルとするサブメニューに
+    /// まとめてシステム項目（カット・コピー・調べる 等）の末尾に並ぶ。
+    public var editMenuActionsProvider: ((NSRange) -> [EditMenuItem])?
+
+    /// 追加サブメニューのタイトル（デフォルト: "アクション"）
+    public var editMenuActionsTitle: String = "アクション"
+
     /// テキスト選択のアンカー位置（SHFT+T/Y の選択起点）
     ///
     /// 標準テキストエディタでは Shift+矢印は「アンカー（固定端）」と「アクティブエンド（移動端）」で
@@ -1821,6 +1832,42 @@ public class IMETextView: UITextView {
             return nil
         }
         return textRange(from: start, to: end)
+    }
+
+    // MARK: - 編集メニュー
+
+    /// `editMenuActionsProvider` を呼び出し、システム項目の末尾に「アクション」サブメニューを
+    /// 追加した `UIMenu` を返すヘルパー。
+    ///
+    /// `IMETextViewRepresentable` の `Coordinator` が UITextViewDelegate の
+    /// `textView(_:editMenuForTextIn:suggestedActions:)` から呼び出す。
+    /// IMETextView を `IMETextViewRepresentable` 経由ではなく直接 `UITextViewDelegate` を
+    /// 設定して使う場合は、利用側の delegate からこのメソッドを呼ぶことで同じ動作になる。
+    ///
+    /// - Parameters:
+    ///   - range: 選択範囲（UTF-16 単位の `NSRange`）
+    ///   - suggestedActions: システムが提案したメニュー要素（カット・コピー 等）
+    /// - Returns: provider が空配列または `nil` を返した場合は `suggestedActions` のみで
+    ///            構成した `UIMenu`。アクション項目があればサブメニューを末尾に追加した `UIMenu`。
+    public func makeEditMenu(forNSRange range: NSRange, suggestedActions: [UIMenuElement]) -> UIMenu? {
+        var elements = suggestedActions
+
+        if let provider = editMenuActionsProvider {
+            let items = provider(range)
+            if !items.isEmpty {
+                let actions: [UIMenuElement] = items.map { item in
+                    let image = item.systemImage.flatMap { UIImage(systemName: $0) }
+                    return UIAction(title: item.title, image: image) { _ in
+                        Task { @MainActor in
+                            item.handler(range)
+                        }
+                    }
+                }
+                elements.append(UIMenu(title: editMenuActionsTitle, children: actions))
+            }
+        }
+
+        return UIMenu(children: elements)
     }
 
     /// スマート選択を拡大する（Shift+Option+→）

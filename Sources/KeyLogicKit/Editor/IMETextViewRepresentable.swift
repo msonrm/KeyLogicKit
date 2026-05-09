@@ -75,6 +75,16 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
     /// テキスト範囲の rect を問い合わせるプロバイダ（nil で無効）
     public var textRangeRectsProvider: TextRangeRectsProvider?
 
+    /// 編集メニュー（選択時フローティングメニュー）に追加するアクション項目を返すクロージャ。
+    ///
+    /// `nil` または空配列を返した場合はサブメニューを追加しない。
+    /// 返した項目は `editMenuActionsTitle` をタイトルとするサブメニューに
+    /// まとめてシステム項目（カット・コピー・調べる 等）の末尾に並ぶ。
+    public var editMenuActionsProvider: ((NSRange) -> [EditMenuItem])?
+
+    /// 追加サブメニューのタイトル（デフォルト: "アクション"）
+    public var editMenuActionsTitle: String = "アクション"
+
     /// UIFindInteraction による検索置換 UI を有効にする（iOS 16+）
     public var isFindInteractionEnabled: Bool = false
 
@@ -125,7 +135,9 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         invisibleTabColor: UIColor? = nil,
         invisibleNewlineColor: UIColor? = nil,
         hidesSoftwareKeyboard: Bool = false,
-        undoableEdit: Binding<UndoableEdit?> = .constant(nil)
+        undoableEdit: Binding<UndoableEdit?> = .constant(nil),
+        editMenuActionsProvider: ((NSRange) -> [EditMenuItem])? = nil,
+        editMenuActionsTitle: String = "アクション"
     ) {
         self.inputManager = inputManager
         self.keyRouter = keyRouter
@@ -155,6 +167,8 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         self.invisibleNewlineColor = invisibleNewlineColor
         self.hidesSoftwareKeyboard = hidesSoftwareKeyboard
         self._undoableEdit = undoableEdit
+        self.editMenuActionsProvider = editMenuActionsProvider
+        self.editMenuActionsTitle = editMenuActionsTitle
     }
 
     public func makeCoordinator() -> Coordinator {
@@ -217,6 +231,8 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         textView.blockSeparator = blockSeparator
         textView.onSentenceNavigation = onSentenceNavigation
         textView.onUserScroll = onUserScroll
+        textView.editMenuActionsProvider = editMenuActionsProvider
+        textView.editMenuActionsTitle = editMenuActionsTitle
 
         // TextRangeRectsProvider にクロージャを設定
         if let provider = textRangeRectsProvider {
@@ -277,6 +293,8 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
         uiView.blockRangeProvider = blockRangeProvider
         uiView.blockSeparator = blockSeparator
         uiView.onSentenceNavigation = onSentenceNavigation
+        uiView.editMenuActionsProvider = editMenuActionsProvider
+        uiView.editMenuActionsTitle = editMenuActionsTitle
         uiView.setSimultaneousWindow(inputManager.simultaneousWindow)
 
         // EditorStyle の変更を検知して再設定
@@ -515,6 +533,15 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
             DispatchQueue.main.async {
                 imeView.enforceScrolloff()
             }
+        }
+
+        public func textView(
+            _ textView: UITextView,
+            editMenuForTextIn range: NSRange,
+            suggestedActions: [UIMenuElement]
+        ) -> UIMenu? {
+            guard let imeView = textView as? IMETextView else { return nil }
+            return imeView.makeEditMenu(forNSRange: range, suggestedActions: suggestedActions)
         }
     }
 }
