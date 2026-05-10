@@ -150,6 +150,84 @@ IME の解釈を実機で 1 件ずつ確認する。
 1. このメモ（`docs/gide-spec-eval.md`）をコミット → push → draft PR 作成。
 2. 後続セッションで **Phase 0.5 spike** から着手するかを再判断。
 
+## 余談: 派生案件アイデア（仮称 KIDE）
+
+GiDE が出口側に作る「Android = HID Device 役で送信」の機構は、入口を
+差し替えるだけで化ける。**「USB OTG キーボード → 配列変換 → HID
+Device 役で送出」**にすると、Android 端末が **「ポータブルな配列
+アダプタ（インストール不要、ホスト OS 非依存）」** になる。
+
+### 位置付け: かえうちの競合 / 上位互換
+
+[かえうち](https://kaeuchi.jp/) はキーボードと PC の間に挟む専用ハード
+ウェアで、薙刀式・月配列・親指シフト等の代替日本語配列をホスト OS に
+依存せず実現する製品。数千〜万円の専用機で、コンフィグはツール経由で
+焼き込む形式。
+
+KIDE 案は同じ問題を Android 端末で解く。比較すると:
+
+| 観点 | かえうち | KIDE 案 |
+|---|---|---|
+| ハードウェア | 専用機（追加購入） | 手持ちの Android 端末 |
+| ホスト互換性 | USB HID（Mac/Win/Linux/iPad） | BT HID（同左 + Quest/visionOS） |
+| レイテンシ | マイコン直結、ほぼゼロ | USB OTG → Android → BT HID（実測要） |
+| 配列切替 | ハード上のキー or 専用ツール | 手元画面の GUI で即切替 |
+| 配列オーサリング | 専用フォーマット | `web/public/keymaps/` の JSON 資産をそのまま流用 |
+| ビジュアライザ | なし | 配列図 + レイヤー追従 + 前置シフト表示 |
+| 配列共有 | 個人配布 | 配列ハブ Web サイトと連動した PR ベース運用 |
+| 持ち出し性 | USB ケーブル必須 | BT で完全ワイヤレス |
+
+レイテンシは負ける（特に薙刀式級の同時打鍵で体感差が出る可能性）が、
+**配列ハブ + ビジュアライザ + GUI 配列切替** の体験で差別化できる。
+「試打用」「配列開発用」「出張先での即席代替配列」用途では上位互換に
+立てる可能性が高い。
+
+### 既存資産との適合度
+
+- `web/public/keymaps/*.json`: プラットフォーム非依存の配列定義群が
+  すでに揃っている。追加もハブで回っている。
+- `KeyLogicKit/IME/SimultaneousKeyBuffer.swift`: `pressesEnded` ベース
+  かつタイマー不要。薙刀式 / NICOLA / 親指シフト等の同時打鍵を実機で
+  動かしている実績あり。
+- `KeymapDefinition` v1 + `KeymapCodable`: JSON で外部化済み。Android
+  側で再パースするだけで全配列を引き継げる。
+- `Sources/KanaEditor/UI/KeyboardPanel/KeyboardView.swift`: 配列図
+  ビジュアライザ、レイヤー切替、前置シフト追従、ヒートマップを実装済。
+  Compose 移植の参考実装。
+
+### 必要になる投資
+
+1. **KeyLogicKit の Kotlin port**: `KeyRouter` + `KeymapDefinition` +
+   `KeymapCodable` + `ChordKey` + `SimultaneousKeyBuffer` の 5 ファイル
+   相当。値型 + データ駆動設計なので機械的に移植可能。`InputManager`
+   （AzooKey 連携、変換エンジン側）は不要 — 出口がローマ字 IME では
+   なく HID キーストロークなので、変換層は GIME/GiDE 側にだけ残せばよい。
+2. **USB OTG 入力**: Android `InputDevice` で USB HID キーボードを受信。
+   BT キーボード入力より jitter が少なく、同時打鍵判定が安定するはず。
+3. **配列図ビジュアライザの Compose 移植**: 既存 SwiftUI 版が参照に
+   できるが、地味に工数がかかる。MVP では簡易表示で逃げる選択肢もあり。
+
+### Phase 0.5 spike との関係
+
+GiDE Phase 0.5 で検証する「BT 同時 2 役（HID Host 受信 + HID Device
+送信）」は、KIDE では「**USB OTG 受信 + BT HID Device 送信**」に置き
+換わる。**USB + BT のほうがリソース競合が少ないので GiDE よりむしろ
+通りやすい可能性が高い** — GiDE 単体で BT 2 役が NG だった場合でも
+KIDE は生き残るシナリオがある。Phase 0.5 spike を組むときに「ついでに
+USB OTG + BT HID も最小確認しておく」と将来戦略の幅が広がる。
+
+### 仕様書との整合
+
+`GiDE-spec.md` には以下が明記されている:
+
+> 汎用的な入力中継ツールへの拡張、カスタムキー配列対応、物理キーボード
+> 入力ソース、他プラットフォーム移植などは GiDE の範囲外とする。これら
+> は MVP の体感を踏まえて別プロジェクトとして判断する。
+
+KIDE は完全にこの「別プロジェクト」枠。GiDE Phase 4 完了後、HID 送出
+機構の安定性が体感で確認できた時点で着手判断を行う。GiDE の MVP には
+混ぜない。
+
 ---
 
 参考:
@@ -158,3 +236,4 @@ IME の解釈を実機で 1 件ずつ確認する。
   対比して理解しやすい）
 - `android/com/gime/android/input/GamepadInputManager.kt`: 流用元の入力
   パイプライン
+- かえうち: https://kaeuchi.jp/ （KIDE 案のベンチマーク対象）
