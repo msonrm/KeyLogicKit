@@ -192,38 +192,89 @@ GiDE と比較した致命的優位:
 
 ## Phase 分け
 
-### Phase 0: 環境準備
+### Phase 0: 環境準備 ✅ (PR #575 merged)
 - `android-kide/` プロジェクト雛形
 - GiDE の `hid/` パッケージをコピーして `com.msonrm.kide.hid` に変換
 - Compose プロジェクトとして起動できる状態まで
 - Placeholder MainActivity で BT HID Device 役の初期化のみ
 
-### Phase 1: USB OTG キーボード受信プロトタイプ
+### Phase 1: USB OTG キーボード受信プロトタイプ ✅ (PR #576, #577 merged)
 - USB HID キーボードを `InputDevice` として認識
 - `dispatchKeyEvent` で KeyEvent を捕捉
-- 受信した KeyEvent をログ表示するだけ（HID 送出はしない）
-- 物理キーが正しく `KEYCODE_*` + `scanCode` で取れることを実機確認
+- 受信した KeyEvent をログ表示
+- **発見**: `KeyEvent.scanCode` は **Linux evdev keycode** で、USB HID Usage
+  ではない (例: Q キー = scanCode 0x10 = KEY_Q)。`EvdevToHidUsageTable` で
+  変換が必要
 
-### Phase 2: シンプル置換配列（Dvorak / Colemak / 大西）
-- KeymapDefinition v1 JSON のパース
-- Android KeyEvent → HID Usage 変換テーブル
-- 配列選択 UI
-- 「物理 A キーを Dvorak A キーで打つ」相当の挙動を実機確認
+### Phase 2: シンプル置換配列 ✅ (PR #578, #581 merged)
+- `EvdevToHidUsageTable` (evdev → HID Usage 変換)
+- `SimpleKeyRemap` data class + Identity / Dvorak / Colemak ハードコード
+- `HidModifier.fromMetaState` (metaState → HID modifier byte)
+- 配列選択 UI + Send to host トグル (誤送出防止のセーフガード)
+- CapsLock を Android シングルソースに揃え、letter キーには Shift bit に
+  XOR で翻訳 (HID modifier byte には CapsLock bit がないため)
+- `dispatchKeyEvent` で Tab / Enter / 矢印 / PageUp/Down も含めて捕捉
+- CapsLock keypress は consume せず Android system に流して状態同期
 
-### Phase 3: 前置シフト配列（AZIK / 月配列）
-- シフト状態管理
-- ローマ字展開モードでの送出
+### Phase 3: AZIK 拡張ローマ字 ✅ (PR #582)
+- `KeyRouter` interface + `KeyInput` data class 抽象化
+- `KeyAction` sealed class: `None / SingleStroke / RollbackAndSendString`
+- `SimpleKeyRemapRouter`: Phase 2 のシンプル置換を Router 化
+- `AzikRouter`: eager + BS rollback、任意長最長一致
+- `AzikTable`: `azik_us.json` の suffix + inputMappings を ASCII シーケンスに
+  事前展開 (約 190 規則)
+- 最適化: 共通プレフィックス削減 (例: `kf → ki` を `BS×0 + i` の 1 stroke で送出)
+- マッチ後 buffer クリアで誤連鎖展開防止 (例: `kzji → かんじ` を正しく)
+- `interStrokeDelayMs` default を 3ms に下げ (USB OTG 入力は BT より信頼度高)
+- 月配列は出力モデルが JIS かななので Phase 4 以降に分離
 
-### Phase 4: 同時打鍵 chord（薙刀式 / 親指シフト）
+### Phase 4: 同時打鍵 chord + JIS かな出力 (未着手)
 - KeyLogicKit の `SimultaneousKeyBuffer` / `ChordKey` を Kotlin port
-- KanaToJisKeyTable（JIS かな出力モード）の追加
+- 薙刀式 / 親指シフト / NICOLA / 新下駄
+- `KanaToJisKeyTable` (JIS かな出力モード) の追加
+- 月配列の本対応 (前置シフト + JIS かな出力)
 - ローマ字 / JIS かな 切替 UI
 
-### Phase 5: UX 仕上げ
+### Phase 5: UX 仕上げ (未着手)
 - 配列ビジュアライザ Compose 移植（`KanaEditor/UI/KeyboardPanel/KeyboardView.swift` を参考）
 - 配列ハブ JSON のインポート（URL からダウンロード or ファイル選択）
 - 接続状態の細やかな表示
 - 受信側 OS 別のセットアップガイド (Mac / iPad / Windows / Quest)
+- TuningCard 復活 (interStrokeDelayMs / coalesceWindowMs スライダー)
+
+## 実機検証ノート (Phase 3 までの実測)
+
+### iPad の Apple Japanese IME はラグ大
+
+実機検証で **iPad の標準日本語 IME (ローマ字モード) は KIDE 入力に対して
+顕著な遅延**を示すことを確認。これは Android 側 (KIDE)・BT HID 経路では
+なく、iPad の IME 処理時間が支配的:
+
+- **ライブ変換 OFF**: 「最悪」(連続入力で目に見えるラグ)
+- **ライブ変換 ON**: 「かなり悪い」(若干軽減するが実用には足りない)
+- **iPad + Siberia (自作エディタ、システム IME 非依存)**: **快適**
+  → iPad のシステム IME 自体が遅延要因と確定
+
+### KIDE 側でできる最適化 (Phase 3 で実施済)
+
+- HID stroke 数削減 (共通プレフィックス削減、buffer クリア)
+- `interStrokeDelayMs` 短縮 (10ms → 3ms)
+- 物理的下限は BT HID の service interval (~7.5ms) で、0ms にしても
+  ワイヤ上の挙動はほぼ変わらない
+
+### Phase 3 後の検証スコープ (Phase 4 と並行で実施予定)
+
+iPad のシステム IME は遅いが、ペルソナの主力は **MacBook + HHKB の
+尊師スタイル** や **Windows / Surface のノマドワーカー**。これらの OS の
+標準 IME 実装 (ことえり / Google IME / MS-IME 等) は iPad と異なり、
+実用域のレイテンシで動く可能性が高い。
+
+優先順位:
+1. **MacBook (BT HID) + ことえり** での AZIK 検証
+2. **Windows / Surface + MS-IME** での検証
+3. Quest / visionOS は副産物
+
+各機種の動作所感は本ファイルに継続的に追記する。
 
 ## 既知のリスクと検証ポイント
 
