@@ -228,9 +228,35 @@ GiDE と比較した致命的優位:
 - `interStrokeDelayMs` default を 3ms に下げ (USB OTG 入力は BT より信頼度高)
 - 月配列は出力モデルが JIS かななので Phase 4 以降に分離
 
-### Phase 4: 同時打鍵 chord + JIS かな出力 (未着手)
+### Phase 4: 同時打鍵 chord + JIS かな出力 (着手中、JSON ローダー + AZIK JSON 化まで)
+
+**完了済み:**
+- `assets/keymaps/` への JSON 同梱 (`romaji_colemak_us.json` / `azik_us.json` / `nicola_us.json`)
+- `com/msonrm/kide/keymap/` パッケージ
+  - `KeymapDefinition` + `KeymapLoader`: `org.json` だけで KeymapDefinition v1
+    (`web/public/keymaps/*.json`) をパース。sequential / chord 両 behavior を
+    扱える。`_comment_*` キーは無視。
+  - `RomajiBaseTable`: `Sources/KeyLogicKit/IME/DefaultKeymaps.swift` の
+    `standardRomajiTable` を Kotlin port (約 250 規則)。`inputBase: "romaji"`
+    展開時のベース。
+  - `KeymapExpansion`: `inputBase` + `suffixRules` + `inputMappings` を
+    Swift `KeymapDefinition.expandInputMappings` と同じマージ順で展開し、
+    base と一致するエントリを除いて `KanaToRomajiTable` で kana → ASCII に
+    変換。AZIK ルーター用の最終テーブルを返す。
+- `SimpleKeyRemap.fromKeymap(def)` で `keyRemap` フィールドから物理→論理 HID Usage マップを構築
+- `AzikRouter.fromKeymap(def)` で JSON 由来テーブルを受け取る形に refactor。
+  ハードコード `AzikTable.MAP` (約 190 規則) を削除。
+- `MainActivity.buildAvailableRouters()` で起動時に assets を一括ロード:
+  - `behavior: sequential` + `keyRemap` あり → `SimpleKeyRemapRouter` (Colemak 等)
+  - `behavior: sequential` + `inputBase`/`suffixRules` → `AzikRouter` (AZIK 等)
+  - `behavior: chord` → ChordBuffer 未実装のため skip + log
+- 副産物として AZIK の対応規則が増加 (旧 hardcoded は約 190 規則、JSON 由来は
+  単語ショートカット `kt→こと` 等を含む全範囲)
+- Identity / Dvorak はハードコード継続 (JSON 等価物が `web/public/keymaps/` に無いため)
+
+**残り:**
 - KeyLogicKit の `SimultaneousKeyBuffer` / `ChordKey` を Kotlin port
-- 薙刀式 / 親指シフト / NICOLA / 新下駄
+- 薙刀式 / 親指シフト / NICOLA / 新下駄 (chord JSON → router)
 - `KanaToJisKeyTable` (JIS かな出力モード) の追加
 - 月配列の本対応 (前置シフト + JIS かな出力)
 - ローマ字 / JIS かな 切替 UI
@@ -308,6 +334,10 @@ README にサポート機種・推奨機種を明記する想定。
 - iPad の日本語 IME の「ライブ変換」OFF 推奨（GiDE Phase 3 の知見）
 - 受信側に何も設定変更させない MVP は不可能。セットアップガイドを充実
   させる方針。
+- 受信側 OS 別の分岐コードは置かず、ごく標準的な BT HID キーボードとして
+  振る舞う。Mac / iPad / Windows / Surface / Chromebook / Linux / Quest /
+  visionOS いずれも同じ HID Report で動作する想定 (Phase 0.5 で GiDE が
+  実証済みの方針)。
 
 ## 参考
 
