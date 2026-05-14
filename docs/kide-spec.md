@@ -228,7 +228,7 @@ GiDE と比較した致命的優位:
 - `interStrokeDelayMs` default を 3ms に下げ (USB OTG 入力は BT より信頼度高)
 - 月配列は出力モデルが JIS かななので Phase 4 以降に分離
 
-### Phase 4: 同時打鍵 chord + JIS かな出力 (着手中、JSON ローダー + AZIK + JIS かな出力 PoC まで)
+### Phase 4: 同時打鍵 chord + JIS かな出力 (着手中、NICOLA chord PoC まで)
 
 **完了済み:**
 - `assets/keymaps/` への JSON 同梱 (`romaji_colemak_us.json` / `azik_us.json` / `nicola_us.json`)
@@ -263,11 +263,30 @@ GiDE と比較した致命的優位:
   単語ショートカット `kt→こと` 等を含む全範囲)
 - Identity / Dvorak はハードコード継続 (JSON 等価物が `web/public/keymaps/` に無いため)
 
+**Phase 4 後半 完了済み (chord PoC):**
+- `engine/ChordKey.kt`: `KeyLogicKit/IME/ChordKey.swift` の Kotlin port。33 キー
+  (QWERTY 30 + space + leftThumb + rightThumb) の bit mask (Long)。
+- `engine/SimultaneousKeyBuffer.kt`: `SimultaneousKeyBuffer.swift` の Kotlin port、
+  KIDE 用にシンプル化 (3 キー chord 差し替えは未実装、ASCII rollback 系も省略)。
+  Phase enum (accumulating / passthrough / shiftMode) + inter-key timing +
+  idle gating + シフトモード移行 を含む。
+- `engine/ChordKanaRouter.kt`: chord JSON 定義を `SimultaneousKeyBuffer` と
+  組み合わせて消費するルーター。`KanaToJisKeyTable` で kana を JIS HID stroke
+  に変換して emit。Right Alt 等の HID Usage 表に無いキーを scanCode で検出する。
+- `KeyRouter` interface に `keyDown(input, emit)` / `keyUp(input, emit)` を追加
+  (sequential router はデフォルト実装で route() を 1 回呼ぶだけ。chord router は
+  直接 override)。
+- `MainActivity.dispatchKeyEvent` で ACTION_UP も router に渡すようにリファクタ。
+  ChordKanaRouter は keyUp で single tap / shift release 判定を行う。
+- NICOLA (`nicola_us.json`) を `ChordKanaRouter.fromKeymap` でロード。
+  - 左親指 = Space、右親指 = Right Alt (ANSI) または 変換キー (JIS)
+  - 30 letter chord (Q→。 等の単独) + 60 chord (leftThumb+X / rightThumb+X)
+  - 受信側 OS の入力ソースを「日本語 - かな入力」に切替えて使う
+
 **残り:**
-- 実機検証: Mac / Win / Chromebook の「日本語 - かな入力」モードで `SequentialKanaRouter`
-  の HID 出力が期待通り解釈されるか
-- KeyLogicKit の `SimultaneousKeyBuffer` / `ChordKey` を Kotlin port
-- 薙刀式 / 親指シフト / NICOLA / 新下駄 (chord JSON → router、`SequentialKanaRouter` と同じ kana 出力経路に乗せる)
+- NICOLA 実機検証
+- 3 キー chord 差し替え (薙刀式向け)
+- 薙刀式 / 新下駄 (chord JSON → router)
 - 月配列の本対応 (前置シフト + JIS かな出力)
 - ローマ字 / JIS かな 切替 UI (現状は router 一覧に両モードを並べる暫定 UI)
 
