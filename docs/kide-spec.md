@@ -228,7 +228,7 @@ GiDE と比較した致命的優位:
 - `interStrokeDelayMs` default を 3ms に下げ (USB OTG 入力は BT より信頼度高)
 - 月配列は出力モデルが JIS かななので Phase 4 以降に分離
 
-### Phase 4: 同時打鍵 chord + JIS かな出力 (着手中、JSON ローダー + AZIK JSON 化まで)
+### Phase 4: 同時打鍵 chord + JIS かな出力 (着手中、JSON ローダー + AZIK + JIS かな出力 PoC まで)
 
 **完了済み:**
 - `assets/keymaps/` への JSON 同梱 (`romaji_colemak_us.json` / `azik_us.json` / `nicola_us.json`)
@@ -239,27 +239,37 @@ GiDE と比較した致命的優位:
   - `RomajiBaseTable`: `Sources/KeyLogicKit/IME/DefaultKeymaps.swift` の
     `standardRomajiTable` を Kotlin port (約 250 規則)。`inputBase: "romaji"`
     展開時のベース。
-  - `KeymapExpansion`: `inputBase` + `suffixRules` + `inputMappings` を
-    Swift `KeymapDefinition.expandInputMappings` と同じマージ順で展開し、
-    base と一致するエントリを除いて `KanaToRomajiTable` で kana → ASCII に
-    変換。AZIK ルーター用の最終テーブルを返す。
+  - `KeymapExpansion`: 2 系統の展開を提供:
+    - `expandToAzikAsciiTable`: AZIK ASCII 出力 router 用 (base 差分のみ kana→ASCII)
+    - `expandToKanaTable`: JIS かな出力 router 用 (base 含む全エントリーを kana のまま)
 - `SimpleKeyRemap.fromKeymap(def)` で `keyRemap` フィールドから物理→論理 HID Usage マップを構築
-- `AzikRouter.fromKeymap(def)` で JSON 由来テーブルを受け取る形に refactor。
+- `AzikRouter.fromKeymap(def)` で JSON 由来テーブル (ASCII 出力) を受け取る形に refactor。
   ハードコード `AzikTable.MAP` (約 190 規則) を削除。
+- `KanaToJisKeyTable` (`engine/`): かな → JIS かな入力モードでの HID stroke 列。
+  Mac の「日本語 - かな入力」(ANSI 物理) を基準にした 50 音 + 濁音/半濁音
+  (2 stroke 合成) + 小書き (Shift+key) + 句読点。OS 別分岐は持たず、ごく
+  標準的な ANSI HID キーボードとして振る舞う。
+- `SequentialKanaRouter` (`engine/`): AZIK と同じ JSON 定義から **JIS かな出力モード**
+  の router を構築。eager+rollback ではなく **buffer + 最長一致 + 完成 kana 単位で emit**
+  モデル (`n` や `q` は次入力まで defer する標準ローマ字 IME 相当の挙動)。
+- `KeyAction.EmitStrokes(List<KanaStroke>)` 新規。`HidKeyboardManager.executeAction`
+  で複数 HID stroke の順次送出に対応 (`interStrokeDelayMs` が自動で挟まる)。
 - `MainActivity.buildAvailableRouters()` で起動時に assets を一括ロード:
   - `behavior: sequential` + `keyRemap` あり → `SimpleKeyRemapRouter` (Colemak 等)
-  - `behavior: sequential` + `inputBase`/`suffixRules` → `AzikRouter` (AZIK 等)
+  - `behavior: sequential` + `inputBase`/`suffixRules` → **`AzikRouter` (ASCII 出力)
+    と `SequentialKanaRouter` (かな出力) を両方並べる**
   - `behavior: chord` → ChordBuffer 未実装のため skip + log
-- 副産物として AZIK の対応規則が増加 (旧 hardcoded は約 190 規則、JSON 由来は
+- 副産物として AZIK の対応規則が増加 (旧 hardcoded 約 190 規則 → JSON 由来は
   単語ショートカット `kt→こと` 等を含む全範囲)
 - Identity / Dvorak はハードコード継続 (JSON 等価物が `web/public/keymaps/` に無いため)
 
 **残り:**
+- 実機検証: Mac / Win / Chromebook の「日本語 - かな入力」モードで `SequentialKanaRouter`
+  の HID 出力が期待通り解釈されるか
 - KeyLogicKit の `SimultaneousKeyBuffer` / `ChordKey` を Kotlin port
-- 薙刀式 / 親指シフト / NICOLA / 新下駄 (chord JSON → router)
-- `KanaToJisKeyTable` (JIS かな出力モード) の追加
+- 薙刀式 / 親指シフト / NICOLA / 新下駄 (chord JSON → router、`SequentialKanaRouter` と同じ kana 出力経路に乗せる)
 - 月配列の本対応 (前置シフト + JIS かな出力)
-- ローマ字 / JIS かな 切替 UI
+- ローマ字 / JIS かな 切替 UI (現状は router 一覧に両モードを並べる暫定 UI)
 
 ### Phase 5: UX 仕上げ (未着手)
 - 配列ビジュアライザ Compose 移植（`KanaEditor/UI/KeyboardPanel/KeyboardView.swift` を参考）
