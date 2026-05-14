@@ -263,6 +263,17 @@ GiDE と比較した致命的優位:
   単語ショートカット `kt→こと` 等を含む全範囲)
 - Identity / Dvorak はハードコード継続 (JSON 等価物が `web/public/keymaps/` に無いため)
 
+**Phase 4 後半 + 月配列 完了済み:**
+
+- 月配列 2-263 (US) を `assets/keymaps/tsuki2-263_us.json` として同梱。
+  `MainActivity.buildAvailableRouters` の振り分け条件を緩和し、`inputMappings`
+  だけを持つ前置シフト系 JSON も `AzikRouter` (ASCII 出力) +
+  `SequentialKanaRouter` (JIS かな出力) の両モードで router 化されるようにした。
+  月配列の `d` / `k` 前置シフトは router の buffer + 最長一致ロジックで
+  自然に表現される (`d` は単体で table に無い → prefix 扱いで wait、`dq` で確定)。
+- `KanaToJisKeyTable` に単独濁点 `゛` / 半濁点 `゜` を追加。月配列の `l → ゛`
+  / `/ → ゜` のような独立 kana を JIS HID stroke として送出可能に。
+
 **Phase 4 後半 完了済み (chord PoC):**
 - `engine/ChordKey.kt`: `KeyLogicKit/IME/ChordKey.swift` の Kotlin port。33 キー
   (QWERTY 30 + space + leftThumb + rightThumb) の bit mask (Long)。
