@@ -339,6 +339,14 @@ Usage Max を 0xDD (221) まで拡張し、International1 (0x87 = ろ) / LANG1
   打てるようになる
 - 副産物: LANG2 (0x91) で iPad の IME を 英数 ←→ 日本語 にトグルできる
   (薙刀式 `switchToEnglish` 用 の HID 経路として `KeyActionParser` で対応済)
+- **JIS 配列モードでは ANSI モードと右側記号エリアの mapping が異なる**:
+  `=`(0x2E)=へ, `[`(0x2F)=濁点, `]`(0x30)=半濁点, `\`(0x31)=む
+  (ANSI モードは `=`=半濁点, `]`=む, `\`=へ で同じキーが別 kana になる)
+  KIDE は **JIS 配列モード前提** に KanaToJisKeyTable を構築している。
+  ANSI モードのまま使うと半濁音 (ぽ ぱ ぴ ぷ ぺ) が全部壊れる。
+- Apple 独自の Shift+key 経路で `Shift+E = ぃ` などの small kana 追加経路が
+  あることを発見。`Shift+[ = 「`, `Shift+] = 」` も。これらも KanaToJisKeyTable
+  に取り込んで `ぃ` 含む chord (薙刀式 でぃ / てぃ 等) も動くようになった。
 
 セットアップ要件:
 - iPad: 設定 → 一般 → キーボード → ハードウェアキーボード → 配列 で
