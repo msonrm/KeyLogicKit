@@ -411,8 +411,16 @@ F+G→switchToEnglish / M+V→confirm 等) を含む。`ChordKanaRouter.fromKeym
   「日本語 - かな入力」モードを有効化する手順、Right Alt の話、推奨キーボード等を
   `docs/kide-setup-*.md` 等に整備。
 
-### Phase 5: UX 仕上げ (未着手)
-- 配列ビジュアライザ Compose 移植（`KanaEditor/UI/KeyboardPanel/KeyboardView.swift` を参考）
+### Phase 5: UX 仕上げ (一部着手)
+- ✅ **配列ビジュアライザ Compose 移植** (Phase 4.5 で先行実装、 `MainActivity.kt` の
+  `KeyboardMock` / `KeyboardKey` / `KeyboardMockRows`): US ANSI 5 段グリッドで
+  リアルタイム押下ハイライト + router 別の動的ラベル差替。 ラベル選択優先度は
+  「多キー chord layer → 単一前置 layer → Shift 面 → router base → 物理キー」。
+  押下追跡は `pressedHidUsages: Set<Byte>` (scanCode → HID Usage + 修飾子は
+  keyCode → 0xE0-0xE7 fallback)。 親指行は `⇧L | ␣ | ⌥R | ⇧R` で
+  NICOLA 右親指 (Right Alt) も可視化。
+  - **残 TODO**: 「使われないキーを薄表示 (dim)」 で 「このキー押しても無効」
+    が分かるように。 chord 構成キーのうち押下中以外を highlight。
 - 配列ハブ JSON のインポート（URL からダウンロード or ファイル選択）
 - 接続状態の細やかな表示
 - 受信側 OS 別のセットアップガイド (Mac / iPad / Windows / Quest)
