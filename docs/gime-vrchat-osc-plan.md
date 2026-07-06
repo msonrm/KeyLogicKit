@@ -1,5 +1,7 @@
 # GIME Android — VRChat OSC 連携 計画
 
+> **【アーカイブ / 撤去済み】** VRChat 連携（OSC / バブル / 二段翻訳）は 2026-07 に撤去。実装は git tag `gime-vrchat-impl-archive`（commit b8379cb）に保存。本計画書は設計知見の記録として残す。
+
 ## 背景
 
 GIME は CJK + 英語 をゲームパッドだけで打てる Android IME。

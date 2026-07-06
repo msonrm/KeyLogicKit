@@ -1,5 +1,7 @@
 # GIME iOS — VRChat OSC 連携 計画
 
+> **【アーカイブ / 撤去済み】** iOS の VRChat OSC 連携は 2026-07 に撤去（GIME を純 IME 化）。実装は git tag `gime-vrchat-impl-archive`（commit b8379cb）に保存。本計画書は設計知見の記録として残す。
+
 ## 背景
 
 Android 版 GIME で実装・実機検証済みの **VRChat OSC chatbox 連携**
