@@ -1,0 +1,52 @@
+{
+  "keymap": "nicola_us",
+  "description": "NICOLA US: 単打 + 親指シフト同時打鍵（space=左親指、rightAlt=右親指）",
+  "cases": [
+    {
+      "name": "single_w_ka",
+      "steps": [{ "press": "w" }],
+      "expect": { "text": "か" }
+    },
+    {
+      "name": "single_q_kuten",
+      "steps": [{ "press": "q" }],
+      "expect": { "text": "。" }
+    },
+    {
+      "name": "left_thumb_shift_w_e",
+      "steps": [{ "chord": ["space", "w"] }],
+      "expect": { "text": "え" }
+    },
+    {
+      "name": "sequence_kaka_with_window",
+      "steps": [
+        { "press": "w" },
+        { "wait": 150 },
+        { "press": "w" }
+      ],
+      "expect": { "text": "かか" }
+    },
+    {
+      "name": "rolling_two_letters_no_chord_entry",
+      "steps": [{ "press": "w" }, { "press": "q" }],
+      "expect": { "text": "か。" }
+    },
+    {
+      "name": "thumb_single_tap_idle_inserts_space",
+      "skip": ["kide"],
+      "steps": [{ "press": "space" }, { "wait": 150 }],
+      "expect": { "text": "　" }
+    },
+    {
+      "name": "thumb_single_tap_confirms_composing",
+      "skip": ["kide"],
+      "steps": [
+        { "press": "w" },
+        { "wait": 150 },
+        { "press": "space" },
+        { "wait": 150 }
+      ],
+      "expect": { "confirmed": "か", "composing": "" }
+    }
+  ]
+}

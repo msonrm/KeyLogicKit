@@ -1,0 +1,40 @@
+{
+  "keymap": "builtin:romaji_us",
+  "description": "組み込み標準ローマ字テーブル（US）の基本動作",
+  "cases": [
+    {
+      "name": "basic_ka",
+      "steps": [{ "press": "k" }, { "press": "a" }],
+      "expect": { "text": "か" }
+    },
+    {
+      "name": "youon_kya",
+      "steps": [{ "press": "k" }, { "press": "y" }, { "press": "a" }],
+      "expect": { "text": "きゃ" }
+    },
+    {
+      "name": "sokuon_kka",
+      "steps": [{ "press": "k" }, { "press": "k" }, { "press": "a" }],
+      "expect": { "text": "っか" }
+    },
+    {
+      "name": "hatsuon_nn",
+      "steps": [{ "press": "n" }, { "press": "n" }],
+      "expect": { "text": "ん" }
+    },
+    {
+      "name": "hepburn_shi_tsu",
+      "steps": [
+        { "press": "s" }, { "press": "h" }, { "press": "i" },
+        { "press": "t" }, { "press": "s" }, { "press": "u" }
+      ],
+      "expect": { "text": "しつ" }
+    },
+    {
+      "name": "confirm_with_enter",
+      "skip": ["kide"],
+      "steps": [{ "press": "k" }, { "press": "a" }, { "press": "enter" }],
+      "expect": { "confirmed": "か", "composing": "" }
+    }
+  ]
+}

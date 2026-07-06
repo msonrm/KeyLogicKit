@@ -45,7 +45,9 @@
         "period": "dot",
         "slash": "slash",
         "lang2": "leftThumb",
-        "lang1": "rightThumb"
+        "lang1": "rightThumb",
+        "international5": "leftThumb",
+        "international4": "rightThumb"
       },
       "shiftKeys": [
         { "key": "leftThumb" },
