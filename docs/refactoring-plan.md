@@ -23,7 +23,7 @@
 1. **共有ゴールデンテスト・コーパス**（最重要アイデア）
    - `Tests/golden/` に「キーマップ + キーイベント列 → 期待かな出力」の JSON フィクスチャを置き、Swift / Kotlin / TypeScript の3実装が同じコーパスを読んで検証する。
    - 移植パリティ（"Port of *.swift L439-751" コメント依存の手動同期）を機械検証に置き換える。
-   - **進捗 (2026-07-06)**: コーパス v1 完成（形式仕様 = `Tests/golden/README.md`、romaji/AZIK/月配列/NICOLA の 4 キーマップ・26 ケース）。期待値はキーマップ JSON から手で導出（実装の出力コピーではない）。web ランナー実装済み（`web/src/engine/__tests__/golden.test.ts`、vitest、CI = web-test.yml）。Swift / Kotlin ランナーは未着手。
+   - **完了 (2026-07-06、PR #630/#631)**: コーパス v1（形式仕様 = `Tests/golden/README.md`、romaji/AZIK/月配列/NICOLA の 4 キーマップ・26 ケース、`skip` によるプラットフォーム除外対応）+ 3 ランナー稼働（web = vitest / Swift = iOS Simulator / Kotlin = kide の JUnit）。CI は web-test / swift-test / kide-test / keymap-check の 4 本。初回運用で chord テーブル `_comment` デコーダバグ（かわせみが iOS でデコード不能）と kide assets の乖離を検出・修正済み。Phase 1-2〜1-4 の残り（InputManager 等の追加ユニットテスト、GIME 側 KoreanComposer/DevanagariComposer のテスト）は Phase 2/3 の作業と併走で拡充する。
 2. **Swift**: `KeyLogicKit.Package.swift` に testTarget 追加。対象順: `InputManager.drainSequentialBuffer`（greedy longest-match）、`SimultaneousKeyBuffer`（4状態FSM+ロールバック）、`KeymapCodable` roundtrip、`SentenceBoundary`。CI は macOS ランナーで `swift test`。
 3. **web**: vitest 導入。対象順: `sequential-buffer.ts` / `simultaneous-buffer.ts` / `korean-composer.ts` / `keymap-expander.ts`。
 4. **Android**: JUnit で `KoreanComposer` / `DevanagariComposer`、kide の `ChordKanaRouter` / `SequentialKanaRouter` / `AzikRouter`。
