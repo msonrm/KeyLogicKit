@@ -57,22 +57,15 @@ Sources/KanaEditor/                    # アプリターゲット（プライベ
         └── TypingStatsView.swift      # 打鍵統計（指別・段別・左右バランス・交互打鍵率）
 
 Sources/GIME/                              # ゲームパッド日本語入力アプリ（実験的、韓国語・英語・中国語対応）
-├── App.swift                              # @main（IMETextView + GamepadVisualizer + Zenzai トグル + 共有シート + VRChat OSC dual output）
+├── App.swift                              # @main（IMETextView + GamepadVisualizer + Zenzai トグル + 共有シート）
 ├── GamepadResolver.swift                  # かなテーブル・英語T9テーブル・注音テーブル・韓国語子音テーブル・アクション enum
-├── GamepadInputManager.swift              # GCController → GamepadSnapshot パイプライン（5モード対応、onIdleConfirm 横取りで OSC 連携）
+├── GamepadInputManager.swift              # GCController → GamepadSnapshot パイプライン（5モード対応）
 ├── KoreanComposer.swift                   # ハングル音節合成エンジン（2ボル式、겹받침対応）
 ├── PinyinEngine.swift                     # CJK 候補検索エンジン（簡体: CC-CEDICT + OpenSubtitles、繁体: libchewing）
-├── GamepadVisualizerView.swift            # SwiftUI ビジュアライザ（動的レイヤー切替、モード別表示、英語/注音十字配置、VRChat OSC バッジ）
+├── GamepadVisualizerView.swift            # SwiftUI ビジュアライザ（動的レイヤー切替、モード別表示、英語/注音十字配置）
 ├── ZenzaiModelManager.swift               # Zenzai モデルの自動ダウンロード・管理（@Observable）
-├── SendTextIntent.swift                   # App Intent（テキスト取得、ショートカットアプリ連携）
-├── OSC/                                   # VRChat OSC 連携（Phase B7、Android 版 Phase A7 の Swift 移植）
-│   ├── OscPacket.swift                        # OSC 1.0 encode/decode 自前実装（外部依存なし）
-│   ├── OscSender.swift                        # UDP 送信（Network framework の NWConnection）
-│   ├── OscReceiver.swift                      # デバッグ用 UDP 受信（NWListener）
-│   ├── VrChatOscOutput.swift                  # chatbox 専用ラッパー（typing indicator / 144 制限 / 100ms debounce）
-│   └── VrChatOscSettings.swift                # UserDefaults ベース永続化（@Observable）
-└── UI/
-    └── VrChatSettingsView.swift               # VRChat OSC 設定画面 + テスト送信 + デバッグ受信ログ
+└── SendTextIntent.swift                   # App Intent（テキスト取得、ショートカットアプリ連携）
+# 注: VRChat OSC 連携（OSC/・VrChatSettingsView）は 2026-07 撤去。tag gime-vrchat-impl-archive 参照
 
 android/                                   # GIME Android 移植版（Kotlin + Jetpack Compose）
 ├── app/src/main/java/
@@ -94,21 +87,10 @@ android/                                   # GIME Android 移植版（Kotlin + J
 │   │   │   │                                   # SavedStateRegistryOwner 自前実装、
 │   │   │   │                                   # window.decorView に owner 設定で
 │   │   │   │                                   # ComposeView ホスティング可能に。
-│   │   │   │                                   # InputConnection 出力 + OSC 出力 (dual)
+│   │   │   │                                   # InputConnection 出力
 │   │   │   └── GimeInputView.kt                # ComposeView をホストする FrameLayout
-│   │   ├── osc/                                # VRChat OSC 連携 (Phase A7)
-│   │   │   ├── OscPacket.kt                    # OSC 1.0 encode/decode 自前実装
-│   │   │   ├── OscSender.kt                    # UDP 送信
-│   │   │   ├── OscReceiver.kt                  # デバッグ用 UDP 受信
-│   │   │   ├── VrChatOscOutput.kt              # chatbox 専用ラッパー
-│   │   │   │                                   # (typing indicator / 144 制限 /
-│   │   │   │                                   #  100ms debounce)
-│   │   │   └── VrChatOscSettings.kt            # SharedPreferences ベース永続化
-│   │   ├── translate/                          # 二段送信翻訳 (Phase A10)
-│   │   │   ├── TranslatorManager.kt            # ML Kit On-Device Translation ラッパー
-│   │   │   │                                   # (JA→EN/KO/ZH、モデル on-demand DL)
-│   │   │   └── ChineseConverter.kt             # ZH 簡体 → 繁體（台湾風）後処理
-│   │   │                                       # OpenCC4j stPhrase を greedy match で適用
+│   │   │   # 注: osc/・translate/・bubble/（VRChat 連携）は 2026-07 撤去。
+│   │   │   #     tag gime-vrchat-impl-archive 参照
 │   │   ├── learn/
 │   │   │   └── GimeDatabase.kt                 # Room DB（learn + user_word）と DatabaseProvider
 │   │   └── ui/
@@ -116,9 +98,7 @@ android/                                   # GIME Android 移植版（Kotlin + J
 │   │       │                                   # エディタ + ビジュアライザ）
 │   │       ├── GimeTheme.kt                    # Material You テーマ（Android 12+ で
 │   │       │                                   # dynamicColorScheme、ダーク/ライト追従）
-│   │       ├── DictionaryScreen.kt             # ユーザー辞書エディタ + 学習履歴リセット
-│   │       └── VrChatScreen.kt                 # VRChat OSC 設定 + テスト送信 +
-│   │                                           # デバッグ受信ログ
+│   │       └── DictionaryScreen.kt             # ユーザー辞書エディタ + 学習履歴リセット
 │   └── com/kazumaproject/                      # ★ vendored: KazumaProject/JapaneseKeyboard (MIT)
 │       ├── markdownhelperkeyboard/converter/   # 変換エンジン本体（LOUDS + N-gram）
 │       │   ├── engine/KanaKanjiEngine.kt       # メイン API。getCandidatesWithoutPrediction 等
