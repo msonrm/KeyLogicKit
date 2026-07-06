@@ -563,17 +563,13 @@ public class IMETextView: UITextView {
             }
         case .insertAndConfirm(let text):
             selectionAnchor = nil
-            if isComposing {
-                let confirmed = im.confirmAll()
-                commitText(confirmed)
+            if let confirmed = confirmAndCommitIfComposing(im) {
                 logEvent("chord-punct-confirm", detail: confirmed)
             }
             insertText(text)
         case .switchToEnglish:
             selectionAnchor = nil
-            if isComposing {
-                let confirmed = im.confirmAll()
-                commitText(confirmed)
+            if let confirmed = confirmAndCommitIfComposing(im) {
                 logEvent("switch-en-confirm", detail: confirmed)
             }
             chordBuffer.reset()
@@ -593,9 +589,7 @@ public class IMETextView: UITextView {
                 switchToJapaneseMode()
                 logEvent("toggle-ja", detail: "→ japanese")
             } else {
-                if isComposing {
-                    let confirmed = im.confirmAll()
-                    commitText(confirmed)
+                if let confirmed = confirmAndCommitIfComposing(im) {
                     logEvent("toggle-en-confirm", detail: confirmed)
                 }
                 chordBuffer.reset()
@@ -682,10 +676,7 @@ public class IMETextView: UITextView {
         onEnglishModeChange?(!isJapanese)
 
         // 日本語 → 英語に切り替わった時、composing 中なら全文確定
-        if !isJapanese && isComposing {
-            guard let im = inputManager else { return }
-            let confirmed = im.confirmAll()
-            commitText(confirmed)
+        if !isJapanese, let im = inputManager, let confirmed = confirmAndCommitIfComposing(im) {
             logEvent("mode-confirm", detail: confirmed)
         }
     }
@@ -703,9 +694,7 @@ public class IMETextView: UITextView {
         switch key.keyCode {
         case .keyboardLANG2:
             // 英数直接入力に切替
-            if isComposing, let im = inputManager {
-                let confirmed = im.confirmAll()
-                commitText(confirmed)
+            if let im = inputManager, let confirmed = confirmAndCommitIfComposing(im) {
                 logEvent("fc-eisu-confirm", detail: confirmed)
             }
             resetChordBufferIfNeeded()
@@ -728,9 +717,7 @@ public class IMETextView: UITextView {
                     switchToJapaneseMode()
                     logEvent("fc-caps-ja", detail: "→ japanese")
                 } else {
-                    if isComposing {
-                        let confirmed = im.confirmAll()
-                        commitText(confirmed)
+                    if let confirmed = confirmAndCommitIfComposing(im) {
                         logEvent("fc-caps-confirm", detail: confirmed)
                     }
                     resetChordBufferIfNeeded()
@@ -849,9 +836,7 @@ public class IMETextView: UITextView {
         // キーマップの hidToKey にマッピングがあれば KeyRouter に任せる（親指シフト等）。
         // マッピングがなければ super に委譲してシステム IME 切替に使う。
         if key.keyCode == .keyboardLANG2 && !keymapHandles(key.keyCode) {
-            if isComposing, let im = inputManager {
-                let confirmed = im.confirmAll()
-                commitText(confirmed)
+            if let im = inputManager, let confirmed = confirmAndCommitIfComposing(im) {
                 logEvent("eisu-confirm", detail: confirmed)
             }
             logKeyEvent(phase: "began", key: key, handled: false)
@@ -1186,9 +1171,7 @@ public class IMETextView: UITextView {
             // modeKeys 経由（KeyRouter → executeAction）で発火
             interceptedKeyCodes.insert(HIDKeyCode(key.keyCode))
             selectionAnchor = nil
-            if isComposing {
-                let confirmed = im.confirmAll()
-                commitText(confirmed)
+            if let confirmed = confirmAndCommitIfComposing(im) {
                 logEvent("switch-en-confirm", detail: confirmed)
             }
             resetChordBufferIfNeeded()
@@ -1213,9 +1196,7 @@ public class IMETextView: UITextView {
                 switchToJapaneseMode()
                 logEvent("toggle-ja", detail: "→ japanese")
             } else {
-                if isComposing {
-                    let confirmed = im.confirmAll()
-                    commitText(confirmed)
+                if let confirmed = confirmAndCommitIfComposing(im) {
                     logEvent("toggle-en-confirm", detail: confirmed)
                 }
                 resetChordBufferIfNeeded()
@@ -1341,6 +1322,20 @@ public class IMETextView: UITextView {
         // unmarkText() 直後に新しい setMarkedText() が来ると、内部状態のリセットが
         // 完了しておらず markedText の表示が更新されないことがある。
         layoutManager.ensureLayout(for: textContainer)
+    }
+
+    /// composing 中なら全文を確定してホストアプリへ commit する。
+    ///
+    /// モード切替や句読点挿入の前に composing を確定する `executeAction` /
+    /// `executeChordAction` / システム IME キー処理の重複（9 箇所）を集約する。
+    /// 確定した文字列を返し（composing でなければ何もせず nil）、呼び出し側は
+    /// その値でサイト固有の `logEvent` を出す。
+    @discardableResult
+    private func confirmAndCommitIfComposing(_ im: InputManager) -> String? {
+        guard isComposing else { return nil }
+        let confirmed = im.confirmAll()
+        commitText(confirmed)
+        return confirmed
     }
 
     // MARK: - Composition Actions
