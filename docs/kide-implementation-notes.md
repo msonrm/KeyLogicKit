@@ -2,12 +2,13 @@
 
 > CLAUDE.md の参照節から移設（2026-07-06）。KIDE の実装状況・コンポーネント構成の詳細。仕様は `docs/kide-spec.md` / `GiDE-spec.md` を参照。
 
-## GiDE（MVP 打ち切り）
+## GiDE（MVP 打ち切り・ソース削除済み）
+
+**Android 実装 `android-gide/` とビルドワークフロー `gide-android-build.yml` は 2026-07-06 に削除**（Phase 2 軽量版）。gide は GIME(gamepad)↔KIDE(HID) の橋渡し役だったが、両現行アプリが直接コードをほぼ共有しないため共有 Gradle モジュール化はせず、**gide 側にのみ存在した移植漏れバグ修正（RS↓ チャタリング debounce `rsDownDebounceMs`）を GIME (`android/`) へ救出**したうえで削除した。実コードは git 履歴を参照。設計・打ち切り経緯は以下のアーカイブ文書に残す。
 
 - `GiDE-spec.md` — GiDE (Gamepad Interface Device Emulator) MVP スペック。Android を BT HID キーボードに化けさせて任意機器に入力する派生アプリ。**Phase 3 実機検証で「ゲームパッド入力の構造的限界（chord 判定 + ローマ字展開 + 多段イベント）で物理キーボード比 2-4x オーバーヘッドが取れない」と判明し、MVP を打ち切り。後継として KIDE（USB OTG キーボード入力版）に方針転換**
 - `docs/gide-spec-eval.md` — GiDE MVP スペックの実現可能性評価メモ（Phase 0.5 spike の追加、ローマ字送出戦略、派生案件 KIDE のアイデア）
-- `android-gide/` — GiDE Android プロジェクト（Phase 3 まで実装したが MVP 打ち切り。`com.msonrm.gide` namespace、HID 送信パイプライン + GIME 入力流用 + KanaToRomajiTable 等の実装が KIDE に流用される）。GIME (`android/`) とはバージョン独立（タグ prefix `gide-android-v*`、versionCode 環境変数 `GIDE_VERSION_CODE`）
-- `.github/workflows/gide-android-build.yml` — GiDE Android のビルドワークフロー。`android-build.yml` (GIME 用) と並行運用
+- 旧構成（削除前）: `com.msonrm.gide` namespace、HID 送信パイプライン + GIME 入力流用 + `KanaToRomajiTable`。`hid/` は KIDE に流用済み（下記）。GIME (`android/`) とはバージョン独立で、タグ prefix `gide-android-v*` / versionCode 環境変数 `GIDE_VERSION_CODE` を使用していた（`GIDE_PAT` secret は未使用化）
 
 ## KIDE（現行）
 
