@@ -1,0 +1,52 @@
+{
+  "keymap": "azik_us",
+  "description": "AZIK US: ローマ字ベース + 拡張マッピング + suffixRules",
+  "cases": [
+    {
+      "name": "base_romaji_ka",
+      "steps": [{ "press": "k" }, { "press": "a" }],
+      "expect": { "text": "か" }
+    },
+    {
+      "name": "suffix_kan",
+      "steps": [{ "press": "k" }, { "press": "z" }],
+      "expect": { "text": "かん" }
+    },
+    {
+      "name": "suffix_kin",
+      "description": "kk は base の kka（っか）のプレフィックスでもあるため保留され、composing の仮解決として きん が表示される。確定ベースの kide は対象外",
+      "skip": ["kide"],
+      "steps": [{ "press": "k" }, { "press": "k" }],
+      "expect": { "text": "きん" }
+    },
+    {
+      "name": "sokuon_beats_suffix_kka",
+      "description": "kk（きん）で保留した後に a が来たら、より長い kka（っか）が勝つ",
+      "steps": [{ "press": "k" }, { "press": "k" }, { "press": "a" }],
+      "expect": { "text": "っか" }
+    },
+    {
+      "name": "single_q_n",
+      "steps": [{ "press": "q" }],
+      "expect": { "text": "ん" }
+    },
+    {
+      "name": "semicolon_sokuon",
+      "steps": [{ "press": "semicolon" }],
+      "expect": { "text": "っ" }
+    },
+    {
+      "name": "hyphen_chouon",
+      "steps": [{ "press": "hyphen" }],
+      "expect": { "text": "ー" }
+    },
+    {
+      "name": "word_kanzi",
+      "steps": [
+        { "press": "k" }, { "press": "z" },
+        { "press": "z" }, { "press": "i" }
+      ],
+      "expect": { "text": "かんじ" }
+    }
+  ]
+}

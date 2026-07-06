@@ -639,6 +639,8 @@ extension KeymapDefinition.ChordConfig: Codable {
         let nested = try container.nestedContainer(keyedBy: DynamicCodingKey.self, forKey: key)
         var dict: [UInt64: String] = [:]
         for codingKey in nested.allKeys {
+            // _comment プレフィックスのキーは注記として除外（inputMappings と同じ扱い）
+            if codingKey.stringValue.hasPrefix("_comment") { continue }
             guard let bits = BitmaskEncoding.bits(from: codingKey.stringValue) else {
                 throw DecodingError.dataCorruptedError(
                     forKey: codingKey, in: nested,
@@ -658,6 +660,8 @@ extension KeymapDefinition.ChordConfig: Codable {
         let nested = try container.nestedContainer(keyedBy: DynamicCodingKey.self, forKey: key)
         var dict: [UInt64: KeyAction] = [:]
         for codingKey in nested.allKeys {
+            // _comment プレフィックスのキーは注記として除外（inputMappings と同じ扱い）
+            if codingKey.stringValue.hasPrefix("_comment") { continue }
             guard let bits = BitmaskEncoding.bits(from: codingKey.stringValue) else {
                 throw DecodingError.dataCorruptedError(
                     forKey: codingKey, in: nested,

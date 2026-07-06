@@ -45,7 +45,11 @@
         "period": "dot",
         "slash": "slash",
         "space": "leftThumb",
-        "rightAlt": "rightThumb"
+        "rightAlt": "rightThumb",
+        "international5": "leftThumb",
+        "international4": "rightThumb",
+        "lang2": "leftThumb",
+        "lang1": "rightThumb"
       },
       "shiftKeys": [
         { "key": "leftThumb", "singleTapAction": "convert" },

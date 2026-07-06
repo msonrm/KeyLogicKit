@@ -33,5 +33,13 @@ let package = Package(
                 .interoperabilityMode(.Cxx)
             ]
         ),
+        .testTarget(
+            name: "KeyLogicKitTests",
+            dependencies: ["KeyLogicKit"],
+            path: "Tests/KeyLogicKitTests",
+            swiftSettings: [
+                .interoperabilityMode(.Cxx)
+            ]
+        ),
     ]
 )

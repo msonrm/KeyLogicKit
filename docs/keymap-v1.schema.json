@@ -61,9 +61,17 @@
     },
     "keyRemap": {
       "type": "object",
+      "patternProperties": {
+        "^_comment": { "type": "string" }
+      },
       "additionalProperties": { "type": "string", "minLength": 1, "maxLength": 1 },
-      "propertyNames": { "type": "string", "minLength": 1, "maxLength": 1 },
-      "description": "キーリマップテーブル（物理キー文字 → 論理キー文字）。inputBase と併用すると、ベーステーブルのキーを物理キー空間に自動変換する。bufferDisplayMap が未指定の場合は bufferDisplayMap としても使用される。"
+      "propertyNames": {
+        "anyOf": [
+          { "type": "string", "minLength": 1, "maxLength": 1 },
+          { "type": "string", "pattern": "^_comment" }
+        ]
+      },
+      "description": "キーリマップテーブル（物理キー文字 → 論理キー文字）。inputBase と併用すると、ベーステーブルのキーを物理キー空間に自動変換する。bufferDisplayMap が未指定の場合は bufferDisplayMap としても使用される。\"_comment\" プレフィックスのキーは注記用として無視される。"
     },
     "suffixRules": {
       "type": "object",
@@ -121,7 +129,7 @@
               "description": "半角→全角文字マッピング（1文字→1文字）"
             }
           },
-          "required": ["type", "characterMap"],
+          "required": ["type"],
           "additionalProperties": false
         },
         {
@@ -147,13 +155,16 @@
         "lookupTable": {
           "type": "object",
           "additionalProperties": { "type": "string" },
-          "propertyNames": { "$ref": "#/$defs/bitmaskString" },
-          "description": "キー組合せビットマスク → 出力文字列"
+          "propertyNames": { "$ref": "#/$defs/bitmaskOrCommentName" },
+          "description": "キー組合せビットマスク → 出力文字列。\"_comment\" プレフィックスのキーは注記用として無視される"
         },
         "specialActions": {
           "type": "object",
+          "patternProperties": {
+            "^_comment": { "type": "string" }
+          },
           "additionalProperties": { "$ref": "#/$defs/keyActionString" },
-          "propertyNames": { "$ref": "#/$defs/bitmaskString" },
+          "propertyNames": { "$ref": "#/$defs/bitmaskOrCommentName" },
           "description": "キー組合せビットマスク → 特殊アクション"
         },
         "simultaneousWindow": {
@@ -164,13 +175,16 @@
         "englishLookupTable": {
           "type": "object",
           "additionalProperties": { "type": "string" },
-          "propertyNames": { "$ref": "#/$defs/bitmaskString" },
+          "propertyNames": { "$ref": "#/$defs/bitmaskOrCommentName" },
           "description": "英数モード用の lookup テーブル"
         },
         "englishSpecialActions": {
           "type": "object",
+          "patternProperties": {
+            "^_comment": { "type": "string" }
+          },
           "additionalProperties": { "$ref": "#/$defs/keyActionString" },
-          "propertyNames": { "$ref": "#/$defs/bitmaskString" },
+          "propertyNames": { "$ref": "#/$defs/bitmaskOrCommentName" },
           "description": "英数モード用の特殊アクション"
         },
         "shiftKeys": {
@@ -253,6 +267,13 @@
       "type": "string",
       "pattern": "^[A-Za-z]+(\\+[A-Za-z]+)*$",
       "description": "ChordKey の組合せ表記（\"+\" 区切り、親指キー先頭・他はアルファベット順）"
+    },
+    "bitmaskOrCommentName": {
+      "anyOf": [
+        { "$ref": "#/$defs/bitmaskString" },
+        { "type": "string", "pattern": "^_comment" }
+      ],
+      "description": "ビットマスク表記、または \"_comment\" プレフィックスの注記キー"
     },
     "keyActionString": {
       "type": "string",
