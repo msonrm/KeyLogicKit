@@ -96,6 +96,33 @@ SentenceBoundary）は UIKit 非依存・方向非依存のため無傷で使い
 3. **縦書きモードの実装**: 行進行方向の切替、候補・予測ポップアップの縦書き対応（行の左側に表示等）、
    約物・長音符の縦書きグリフ確認。初期スコープ外を明記: ルビ、縦中横、禁則処理の高度化。
 
+## Phase 6: GIME Android 変換エンジンの provenance 監査・差し替え/更新可能化（将来）
+
+GIME Android は vendored の **KazumaProject/JapaneseKeyboard** 変換エンジン（LOUDS + N-gram、`com/kazumaproject/` に同梱、辞書 assets ~15MB）を使う。コードは MIT だが **辞書データの系譜（mozc / UT 辞書由来か等）がリポジトリ内に未文書化**で、LICENSE/ACKNOWLEDGEMENTS も未同梱。公開/商用配布の前に provenance を確定し、必要なら差し替え/更新できる状態にする。
+
+### 現状アセスメント（2026-07-07）
+- **変換エンジンはファサード `engine/JapaneseConverter.kt` の裏に隔離**されている。公開型は GIME 自前（`Candidate(surface, reading, cost)` / `BunsetsuResult`）で、KazumaProject 内部（`KanaKanjiEngine` / LOUDS / GraphBuilder / FindPath 等）は非公開。
+- 入力コア `GamepadInputManager` は `converter.convertBunsetsu()` を呼び `JapaneseConverter.Candidate` を持つのみ（`com.kazumaproject` 非依存）。→ **エンジン差し替えの最小形＝`JapaneseConverter` の再実装**（消費側は無改変）。
+- iOS GIME は AzooKey/Zenzai（KeyLogicKit の `InputManager`）を同じ入力抽象の裏で使用済み ＝ プラットフォーム間で既にエンジンが違う＝差し替え可能性の実証。
+
+### 摩擦点（一枚差し替えで済まない理由）
+1. **学習/ユーザー辞書が KazumaProject 製で漏れている**: `LearnRepository` / `UserDictionaryRepository` / `LearnDao` / `UserWord`（Room）を GIME 本体5ファイル（`ui/DictionaryScreen` / `MainActivity` / `ui/GimeApp` / `ime/GimeInputMethodService` / `learn/GimeDatabase`）が直接参照し、`JapaneseConverter` にも注入（学習加重に寄与）。エンジンごと学習/辞書を替えるならここも波及する。
+2. **`convertBunsetsu` の契約**: GIME の文節編集 UX（左スティックで文節移動・文節別候補 cycle）は「文節分割 + 文節別候補リスト」に依存。差し替え先は flat な n-best ではなく文節分割を提供する必要がある。
+
+### 進め方（案・優先順）
+1. **provenance 監査**（最優先・低コスト）: 辞書 assets の出どころ・ライセンスを特定し LICENSE/ACKNOWLEDGEMENTS を同梱。keymap 二重管理と同様に CI で欠落検出しても良い。
+2. **`KanaConverter` interface 抽出**: `JapaneseConverter` の公開 API（`convert` / `convertBunsetsu` / `initializeAsync` / `isReady`）を interface 化し実装を差し替え可能に（現行 KazumaProject 実装が第1実装）。摩擦点2の契約を明文化する。
+3. **差し替え/更新の選択肢**（動機に応じて）:
+   - **辞書データだけ差し替え**（エンジン維持、mozc-UT 等 出どころ明確な辞書へ）— 摩擦点1/2を回避する最小対応。純粋に provenance が動機ならこれが費用対効果最良
+   - KazumaProject 本体のアップストリーム追従（新版を vendor 更新）
+   - Mozc を JNI で採用（BSD・出どころ明確。文節 API マッピング + JNI 統合の工数）
+   - サーバー / オンデバイス LLM 変換（オフライン性・レイテンシの再設計を伴う大改修）
+4. **学習/辞書の脱 KazumaProject**（必要なら）: 上記5ファイルの依存を GIME 自前の永続化層 or interface へ置換。
+5. **iOS 側との関係**: iOS は AzooKey/Zenzai なので直接の共通化対象外。ただし `KanaConverter` の契約（文節分割 + 候補）を両 OS で概念統一しておくと、将来のゴールデンテスト共有（Phase 1 拡張）が効く。
+
+### 検証
+Android ローカルビルド不可のため kide 同様 dispatch ビルド + 実機。interface 抽出はコンパイル検証で足りるが、変換品質の回帰は**ゴールデンコーパス（Phase 1）の変換出力への拡張** or 実機比較で担保する。
+
 ## 優先度の考え方
 
 - Phase 1 が最もレバレッジが高い: 3プラットフォーム移植の「同期が人力」という構造リスクを機械検証に変える。
@@ -103,3 +130,4 @@ SentenceBoundary）は UIKit 非依存・方向非依存のため無傷で使い
 - Phase 3 は Phase 1・2 と絡めてやると安い（テストを書くために切り出す、共通化のために揃える）。さらに Phase 5（縦書き）の成立条件である `TextSurface` 境界を作るフェーズでもあるため、IMETextView の分割は「関数を短くする」ではなく「描画層を差し替え可能にする」を基準に行う。
 - Phase 4 は隙間時間でよいが、CLAUDE.md 再構成だけは Claude Code 駆動開発の効率に直結するため早めを推奨。
 - Phase 5 は独立プロジェクト規模。ただし spike（5-1）だけは Phase 3 の設計判断に影響するため、前倒しで実施してもよい。
+- Phase 6（変換エンジン）は緊急ではないが、**provenance 監査（6-1）と `KanaConverter` interface 抽出（6-2）は安く先に進められる**（低リスク・compile 検証可）。実際のエンジン差し替えはその後、動機（出どころ確定なら辞書のみ差し替えが最小）に応じて判断する。エンジン本体はファサードで隔離済みなので、境界を interface 化しておけば差し替え時の波及が読める。
