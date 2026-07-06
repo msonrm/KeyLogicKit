@@ -2,9 +2,7 @@
 
 > CLAUDE.md のプロジェクト概要から移設（2026-07-06）。GIME Android の機能を追加・変更したらこのファイルを更新すること。
 
-> **【2026-07 撤去】VRChat 連携（OSC 送信 / バブル表示 / 二段送信翻訳）は削除**し、GIME を純 IME 化した（`android/` から `bubble/`・`osc/`・`translate/`・`VrChatScreen` を撤去、ML Kit / OpenCC 依存と全 uses-permission も削除）。以下に残る Phase A7（OSC）/ A8（バブル）/ 翻訳の記述は**アーカイブ**であり、実装は git tag `gime-vrchat-impl-archive`（commit b8379cb）に保存。設計知見は `docs/gime-vrchat-osc-plan.md` 等を参照。
-
-Kotlin + Jetpack Compose による GIME の Android 移植版。iOS 版とほぼ同等の入力体験。**Android システム IME としても動作可能**（Phase A6 完遂、任意アプリのテキスト欄にゲームパッド入力）。~~+ VRChat OSC 連携（Phase A7）+ バブル表示（Phase A8）~~（2026-07 撤去、上記参照）。
+Kotlin + Jetpack Compose による GIME の Android 移植版。iOS 版とほぼ同等の入力体験。**Android システム IME としても動作可能**（Phase A6 完遂、任意アプリのテキスト欄にゲームパッド入力）+ **VRChat OSC 連携**（Phase A7、chatbox に直接送信。オプトイン）+ **バブル表示**（Phase A8、フローティングオーバーレイで VRChat 専用運用）。
 
 ## iOS 版との実装の違い・Android 固有機能
 

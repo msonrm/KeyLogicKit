@@ -2,8 +2,6 @@
 
 > CLAUDE.md のプロジェクト概要から移設（2026-07-06）。GIME iOS の機能を追加・変更したらこのファイルを更新すること。
 
-> **【2026-07 撤去】VRChat OSC 連携は削除**し、GIME を純 IME 化した（`Sources/GIME/OSC/`・`UI/VrChatSettingsView.swift` を撤去、`App.swift`・`GamepadVisualizerView.swift` から OSC 配線を除去）。実装は git tag `gime-vrchat-impl-archive`（commit b8379cb）に保存。設計知見は `docs/gime-ios-osc-plan.md`（アーカイブ）を参照。
-
 ゲームパッド日本語入力アプリ（実験的、韓国語・英語・中国語簡体字・中国語繁體字・Devanagari 対応）。KeyLogicKit に依存。GCController でゲームパッド入力を受け取り、KeyRouter をバイパスして InputManager に直接かなを注入する。韓国語は KoreanComposer で2ボル式ハングル合成、英語は T9 レイアウトで IME バイパス。中国語簡体字は PinyinEngine で abbreviated pinyin（简拼）→候補リスト検索、CandidatePopup で選択。中国語繁體字は注音テーブルで abbreviated zhuyin（注音首）→ PinyinEngine で候補検索、繁體字で表示。
 
 - **韓国語 자모 모드**: LT 長押し=Jamo Lock（持続）/ 2連続短押し=Smart Jamo（一時、空白・句読点・削除・カーソル・LS・モード切替で自動解除）。자모 모드中は D-pad / LB / フェイスボタンが互換 Jamo（U+3131..U+3163）の単体出力に切替わり、右スティック → が直前 jamo の連打、↑ が直前子音の 평→격→경 サイクル。
