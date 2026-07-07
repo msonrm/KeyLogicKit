@@ -794,8 +794,13 @@ extension KeymapDefinition: Codable {
         try container.encodeIfPresent(inputBase, forKey: .inputBase)
         try container.encodeIfPresent(keyRemap, forKey: .keyRemap)
         try container.encodeIfPresent(suffixRules, forKey: .suffixRules)
-        // inputBase/suffixRules 展開時は元の明示的マッピングのみ書き出す（圧縮形式を保持）
-        if explicitInputMappings != nil {
+        // inputBase/suffixRules 展開時は元の明示的マッピング（圧縮形式）のみ書き出す。
+        // 展開済み inputMappings は decode 時に inputBase/suffixRules から再生成されるため
+        // 書かない（明示マッピングが無ければ explicitInputMappings=nil でキー自体を省略）。
+        // 分岐条件は init の展開判定（inputBase != nil || suffixRules != nil）と対称にする。
+        // これを怠ると inputBase のみ指定のキーマップ（romajiUS 等）で encode→decode 時に
+        // 展開済みテーブルが explicitInputMappings へ化ける（roundtrip 非対称）。
+        if inputBase != nil || suffixRules != nil {
             try container.encodeIfPresent(explicitInputMappings, forKey: .inputMappings)
         } else {
             try container.encodeIfPresent(inputMappings, forKey: .inputMappings)
