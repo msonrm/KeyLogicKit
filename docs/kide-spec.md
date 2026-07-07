@@ -421,13 +421,6 @@ F+G→switchToEnglish / M+V→confirm 等) を含む。`ChordKanaRouter.fromKeym
   NICOLA 右親指 (Right Alt) も可視化。
   - **残 TODO**: 「使われないキーを薄表示 (dim)」 で 「このキー押しても無効」
     が分かるように。 chord 構成キーのうち押下中以外を highlight。
-- ✅ **編集 / ナビゲーション系キーの長押しリピート** (`MainActivity.isAutoRepeatEligible`):
-  従来は OS の auto-repeat (`repeatCount > 0`) を全キーで捨てていたため、実キーボード
-  なら効く「Backspace 長押しで連続削除」「矢印長押しでスクロール」が KIDE 経由だと
-  効かず連打が必要だった。 Backspace / Delete / 矢印 / Home / End / PageUp / PageDown
-  に限ってリピートを通すように変更。 これらは passthrough 系で buffer に乗らないので
-  chord / sequential のかな合成ロジックには影響しない。 Space は chord 配列で左親指
-  シフトに使われるため除外し、 かな合成キーは従来通り「離すまで 1 stroke」を維持。
 - 配列ハブ JSON のインポート（URL からダウンロード or ファイル選択）
 - 接続状態の細やかな表示
 - 受信側 OS 別のセットアップガイド (Mac / iPad / Windows / Quest)
