@@ -110,7 +110,10 @@ GIME Android は vendored の **KazumaProject/JapaneseKeyboard** 変換エンジ
 2. **`convertBunsetsu` の契約**: GIME の文節編集 UX（左スティックで文節移動・文節別候補 cycle）は「文節分割 + 文節別候補リスト」に依存。差し替え先は flat な n-best ではなく文節分割を提供する必要がある。
 
 ### 進め方（案・優先順）
-1. **provenance 監査**（最優先・低コスト）: 辞書 assets の出どころ・ライセンスを特定し LICENSE/ACKNOWLEDGEMENTS を同梱。keymap 二重管理と同様に CI で欠落検出しても良い。
+1. **provenance 監査** ✅ **完了（2026-07-07, PR #644）**: 辞書 assets の出どころ・ライセンスを特定し LICENSE/ACKNOWLEDGEMENTS を同梱。keymap 二重管理と同様に CI で欠落検出しても良い。
+   - **確定内容**: 変換モジュール = KazumaProject/JapaneseKeyboard（MIT）を上流 commit `4995505`（2026-04-03）から vendor。辞書 = google/mozc の system 辞書（BSD-3-Clause + NAIST License + Public Domain、SA 継承なし）。Mozc UT（CC BY-SA）は**不同梱**（ファサードが無効化 + assets に無し）。
+   - **成果物**: `docs/gime-android-converter-vendor.md`（素性 + 上流追従手順）、`android/scripts/sync-kazuma-converter.sh`（`KAZUMA_REF` 指定の再同期）、`GIME.ACKNOWLEDGEMENTS.md`（mozc ライセンス全文同梱）。
+   - **残課題（任意）**: CI での欠落検出（keymap 二重管理と同様のガード）は未実装。
 2. **`KanaConverter` interface 抽出**: `JapaneseConverter` の公開 API（`convert` / `convertBunsetsu` / `initializeAsync` / `isReady`）を interface 化し実装を差し替え可能に（現行 KazumaProject 実装が第1実装）。摩擦点2の契約を明文化する。
 3. **差し替え/更新の選択肢**（動機に応じて）:
    - **辞書データだけ差し替え**（エンジン維持、mozc-UT 等 出どころ明確な辞書へ）— 摩擦点1/2を回避する最小対応。純粋に provenance が動機ならこれが費用対効果最良
