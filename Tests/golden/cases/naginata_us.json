@@ -1,0 +1,180 @@
+{
+  "keymap": "naginata_us",
+  "description": "薙刀式(US): 文字キー同士の同時打鍵 + 前置スペースシフト + specialActions（編集系）。simultaneousWindow=0.08s(80ms)",
+  "cases": [
+    {
+      "name": "single_f_ka",
+      "description": "単打 F = か",
+      "steps": [{ "press": "f" }, { "wait": 120 }],
+      "expect": { "text": "か" }
+    },
+    {
+      "name": "chord_fj_ga_within_window",
+      "description": "窓内2打=同時: F+J = が（文字キー同士の chord）",
+      "steps": [{ "chord": ["f", "j"] }],
+      "expect": { "text": "が" }
+    },
+    {
+      "name": "boundary_inside_margin_chord",
+      "description": "境界の内側（40ms < 80ms）: 同時打鍵として F+J = が",
+      "steps": [
+        { "down": "f" },
+        { "wait": 40 },
+        { "down": "j" },
+        { "up": "j" },
+        { "up": "f" }
+      ],
+      "expect": { "text": "が" }
+    },
+    {
+      "name": "boundary_outside_margin_sequential",
+      "description": "境界の外側（200ms > 80ms）: 逐次として F=か, J=あ → かあ",
+      "steps": [
+        { "down": "f" },
+        { "wait": 200 },
+        { "down": "j" },
+        { "up": "j" },
+        { "up": "f" }
+      ],
+      "expect": { "text": "かあ" }
+    },
+    {
+      "name": "boundary_exact_just_inside_79ms",
+      "description": "境界ちょうど手前（79ms < 80ms）= まだ同時 → が。web の setTimeout 境界を固定するケース（実時間ランナーでは再現不可のため web 限定）",
+      "skip": ["swift", "kide"],
+      "steps": [
+        { "down": "f" },
+        { "wait": 79 },
+        { "down": "j" },
+        { "up": "j" },
+        { "up": "f" }
+      ],
+      "expect": { "text": "が" }
+    },
+    {
+      "name": "boundary_exact_at_window_80ms",
+      "description": "境界ちょうど（80ms）= タイマー満了で逐次 → かあ。web 限定（同上）",
+      "skip": ["swift", "kide"],
+      "steps": [
+        { "down": "f" },
+        { "wait": 80 },
+        { "down": "j" },
+        { "up": "j" },
+        { "up": "f" }
+      ],
+      "expect": { "text": "かあ" }
+    },
+    {
+      "name": "rolling_stagger_ki_te",
+      "description": "ロールオーバー: w を離す前に e を押下。W+E は chord 未定義 → 2単打 き, て",
+      "steps": [
+        { "down": "w" },
+        { "down": "e" },
+        { "up": "w" },
+        { "up": "e" }
+      ],
+      "expect": { "text": "きて" }
+    },
+    {
+      "name": "shift_chord_space_e_ri",
+      "description": "シフト+文字の同時押し: space+E = り（シフト単打とは弁別される）",
+      "steps": [{ "chord": ["space", "e"] }],
+      "expect": { "text": "り" }
+    },
+    {
+      "name": "shift_single_tap_idle_inserts_space",
+      "description": "シフト単打の判別: space を単打（idle）→ singleTapAction=convert → 全角スペース",
+      "skip": ["kide"],
+      "steps": [{ "press": "space" }, { "wait": 120 }],
+      "expect": { "text": "　" }
+    },
+    {
+      "name": "continuous_space_shift",
+      "description": "連続シフト: space 押しっぱなしで e r w → space+E/R/W = り/ね/め",
+      "skip": ["kide"],
+      "steps": [
+        { "down": "space" },
+        { "wait": 120 },
+        { "press": "e" },
+        { "press": "r" },
+        { "press": "w" },
+        { "up": "space" }
+      ],
+      "expect": { "text": "りねめ", "composing": "りねめ" }
+    },
+    {
+      "name": "special_deleteback_U",
+      "description": "specialActions: U 単打 = deleteBack。かか を打って U で末尾削除 → か",
+      "skip": ["kide"],
+      "steps": [
+        { "press": "f" },
+        { "wait": 120 },
+        { "press": "f" },
+        { "wait": 120 },
+        { "press": "u" },
+        { "wait": 120 }
+      ],
+      "expect": { "text": "か" }
+    },
+    {
+      "name": "special_moveright_Y_confirms",
+      "description": "specialActions: Y 単打 = moveRight。web はカーソル制御を持たないため composing を確定する",
+      "skip": ["swift", "kide"],
+      "steps": [
+        { "press": "f" },
+        { "wait": 120 },
+        { "press": "y" },
+        { "wait": 120 }
+      ],
+      "expect": { "confirmed": "か", "composing": "" }
+    },
+    {
+      "name": "special_moveleft_T_confirms",
+      "description": "specialActions: T 単打 = moveLeft。web は同様に確定する",
+      "skip": ["swift", "kide"],
+      "steps": [
+        { "press": "f" },
+        { "wait": 120 },
+        { "press": "t" },
+        { "wait": 120 }
+      ],
+      "expect": { "confirmed": "か", "composing": "" }
+    },
+    {
+      "name": "special_switch_english_FG",
+      "description": "specialActions: F+G chord = switchToEnglish。切替後は生キー透過（h がそのまま）",
+      "skip": ["swift", "kide"],
+      "steps": [
+        { "down": "f" },
+        { "down": "g" },
+        { "up": "g" },
+        { "up": "f" },
+        { "wait": 120 },
+        { "press": "h", "char": "h" }
+      ],
+      "expect": { "confirmed": "h", "composing": "" }
+    },
+    {
+      "name": "special_confirm_MV",
+      "description": "specialActions: M+V chord = confirm。先行の か を確定（M の eager な はロールバックされる）",
+      "skip": ["kide"],
+      "steps": [
+        { "press": "f" },
+        { "wait": 120 },
+        { "down": "m" },
+        { "down": "v" },
+        { "up": "v" },
+        { "up": "m" },
+        { "wait": 120 }
+      ],
+      "expect": { "confirmed": "か", "composing": "" }
+    },
+    {
+      "name": "special_insertAndConfirm_space_M",
+      "description": "specialActions: space+M = insertAndConfirm:。 → 。を挿入して確定",
+      "skip": ["kide"],
+      "steps": [{ "chord": ["space", "m"] }, { "wait": 120 }],
+      "expect": { "confirmed": "。", "composing": "" }
+    }
+  ]
+}
