@@ -130,6 +130,15 @@ scripts/jp-dict-gen/                       # Phase A2.2 で使った辞書生成
 
 .github/workflows/android-build.yml        # 手動ビルド（workflow_dispatch）で APK 成果物を生成
 
+hechima-wasm/                              # hechima スタックの変換エンジン部（powered by Mozc）
+├── hechima_wasm.cc                        # 変換ラッパー（かな UTF-8 → 文節/候補 JSON。converter 層のみ使用）
+├── link.sh                                # em++ リンクスクリプト（MOZC_SRC/MOZC_BUILD で駆動。-DNDEBUG 必須）
+├── hechima_wasm_test.js                   # node ヘッドレス変換テスト（緑 = 「PASS — 変換成立」）
+├── patches/data_manager.patch             # 埋め込み .inc (48MB) を焼かず CreateFromFile 化する自前パッチ
+└── README.md                              # ビルドレシピ正典（NDEBUG の罠含む）
+
+.github/workflows/hechima-wasm.yml         # 手動（workflow_dispatch）: fcitx5-mozc clone → パッチ → wasm ビルド → テスト → Release 添付
+
 docs/
 ├── keylogickit-api.md                 # KeyLogicKit Public API リファレンス
 ├── keymap-format.md                   # キーマップ定義フォーマット仕様書 v1
