@@ -40,6 +40,7 @@ npm run test:hechima     # build:engine + build:hechima → node でゴールデ
 | `commit(text)` | `string` | 確定文字列を出力。**呼び元が hide → 注入の順で処理する**（セッションは commit 時に hide を呼ばない） |
 | `hostKey(name)` | `string`（省略可） | ホスト文書へ実キーを 1 打注入（name = `KeyboardEvent.code` 名: `'ArrowLeft'` / `'Backspace'` 等）。編集キー二重経路の委譲先 |
 | `convert(yomi)` | `(string) → Promise<[{key, candidates}] \| null>`（省略可） | かな漢字変換。null/省略/失敗 = フォールバック（よみ 1 文節・カナ/かな巡回） |
+| `resize(segIdx, offset)` | `(number, number) → Promise<[{key, candidates}] \| null>`（省略可、v0.2.0+） | 文節伸縮（hechima-wasm v0.2.0+ の `hechima_resize`）。offset はよみ文字数（±）。null/空/失敗 = 伸縮不能（現状維持）。未提供なら editSegment* は無害に飲まれる |
 
 ## 3. 公開 API（`Hechima.*`）
 
@@ -98,7 +99,7 @@ npm run test:hechima     # build:engine + build:hechima → node でゴールデ
 |---|---|---|---|
 | `moveLeft` / `moveRight` | 注目文節を左右へ移動 | **飲む**（よみ内カーソルは持たない） | `cb.hostKey('ArrowLeft'/'ArrowRight')` |
 | `deleteBack` | 取消（clear + hide） | **engine 既定**（composingKana 末尾削除） | `cb.hostKey('Backspace')` |
-| `editSegmentLeft/Right` | 据え置き（engine 既定 = 確定）。Mozc ResizeSegment が hechima-wasm 未公開のため。契約の枠のみ | 同左 | 同左 |
+| `editSegmentLeft/Right` | **文節伸縮**（v0.2.0+）: `cb.resize(focus, ∓1)` → 再変換結果で差し替え・フォーカス維持（結合で減った分は clamp）。`cb.resize` 未提供なら飲む | 飲む（確定に倒さない） | 飲む |
 
 - 旧方式（QuuBee が暫定でやっていた `engine.chordBuffer.onSpecialAction` の外部 wrap）は
   **撤去してよい**。`onHostAction` が同じ判定点をエンジンの正式 API として提供する。
@@ -120,6 +121,8 @@ node ランナー [`web/scripts/run-hechima-golden.mjs`](../web/scripts/run-hech
 5. 編集キー二重経路（空 / Phase 2 / 合成中 × T/Y/U。specialAction 直接発火 + 実打鍵 E2E）
 6. 実変換 E2E（hechima-wasm 接続で kyouhaiitenkidesune → 今日はいい天気ですね。
    `hechima-wasm/dist/` にバンドル + 辞書が無ければ skip。env `HECHIMA_WASM_JS` / `MOZC_DATA` で上書き可）
+7. 文節伸縮（v0.2.0+: Phase 2 の editSegment → `cb.resize` 呼び出し・resize 未提供/合成中は飲む・
+   実 Mozc での -1 → +1 ラウンドトリップ。`hechima_resize` 未搭載の wasm では E2E ケースを skip）
 
 タイミングは仮想クロックで決定的に進める（mozc E2E のみ実タイマー — wasm 初期化と干渉するため）。
 
@@ -131,3 +134,6 @@ node ランナー [`web/scripts/run-hechima-golden.mjs`](../web/scripts/run-hech
   **KeymapEngine も v1.1.0 以上に更新すること**（onHostAction が無いと編集キーが二重経路にならない）。
 - 回帰 `fep_mozc_test` / `fep_naginata_edit_test` が緑のままを確認
   （naginata edit の Part A は `web/src/hechima/golden/naginata_edit.json` と同等）。
+- 文節伸縮（v0.2.0）を使うには: hechima-wasm を **v0.2.0** に差し替え（`hechima_resize` 追加。
+  convert の入出力は互換）、mozc-worker に `hechima_resize` の RPC を足し、cb に
+  `resize(segIdx, offset)` を実装する。薙刀式 space+T/Y が Phase 2 で文節伸縮になる。
