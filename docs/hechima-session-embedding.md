@@ -90,16 +90,41 @@ npm run test:hechima     # build:engine + build:hechima → node でゴールデ
 
 ## 5. 編集キーの二重経路（`InputEngine.onHostAction` 経由）
 
-薙刀式の T=moveLeft / Y=moveRight / U=deleteBack 等の編集アクションは、ホストが文書を
-所有する構図では「セッション状態に応じて 3 通り」に振り分ける必要がある。hechima は
-`setEngine` 時に **`engine.onHostAction`（KeymapEngine v1.1.0+ の正式 API）** を配線し、
-以下の意味論で処理する（QuuBee 実証済み・golden 化済み）:
+薙刀式の T=moveLeft / Y=moveRight / U=deleteBack、space+T/Y=editSegment、space 単打=convert、
+M+V=confirm 等のアクションは、ホストが文書を所有する構図では「セッション状態に応じて 3 通り」に
+振り分ける必要がある。hechima は `setEngine` 時に **`engine.onHostAction`（KeymapEngine
+**v1.2.0+** の正式 API）** を配線し、以下の意味論で処理する（QuuBee 実証済み・golden 化済み）:
 
 | アクション | Phase 2（候補選択中） | 変換前よみ合成中 | 空バッファ |
 |---|---|---|---|
 | `moveLeft` / `moveRight` | 注目文節を左右へ移動 | **飲む**（よみ内カーソルは持たない） | `cb.hostKey('ArrowLeft'/'ArrowRight')` |
 | `deleteBack` | 取消（clear + hide） | **engine 既定**（composingKana 末尾削除） | `cb.hostKey('Backspace')` |
 | `editSegmentLeft/Right` | **文節伸縮**（v0.2.0+）: `cb.resize(focus, ∓1)` → 再変換結果で差し替え・フォーカス維持（結合で減った分は clamp）。`cb.resize` 未提供なら飲む | 飲む（確定に倒さない） | 飲む |
+| `convert`（SandS 単打等） | **次候補**（注目文節を送る）（v0.3.0+） | engine 既定（確定 → 変換開始） | engine 既定 |
+| `confirm`（薙刀式 M+V 等） | **結合確定**（v0.3.0+） | engine 既定 | engine 既定 |
+| `insertAndConfirm`（space+M=。等） | **現候補確定 + テキスト確定**（v0.3.0+） | engine 既定 | engine 既定 |
+
+### Phase 2 のキー routing（v0.3.0 で修正）
+
+**v0.2.0 以前は Phase 2 の全 keydown がセッションのナビ処理に直行し、engine に届かなかった**。
+そのため space+T のような同時打鍵が Phase 2 では構造的に成立せず、editSegment* は実打鍵で
+発火不能だった（QuuBee 報告 `docs/hechima_v020_phase2_chord_feedback.md`。おまけに space が
+「次候補」、T が「確定+新規合成」に化ける三重奏）。v0.3.0 の routing:
+
+- **ナビキー**（Enter / Escape / Backspace / ←→↑↓ — chord 語彙に参加しない実キー）→
+  セッションが直接処理（結合確定・取消・文節移動・候補送り・**Shift+←→ = 文節伸縮**）
+- **それ以外**（印字キー・SandS シフト = space 等）→ **engine へ流し、chord 解決の結果
+  （specialAction / かな出力）で解釈**。SandS の tap/hold 判定は engine の専権のまま
+- Phase 2 中に engine がかなを出力（= 追加入力）したら「現候補を確定して新規合成」
+  （実 IME の標準挙動。pumpEngine が処理）
+- keyup は従来どおり常に engine へ（SandS 単打の判定に必須）
+
+### Shift+←→ = 文節伸縮（全配列共通、v0.3.0+）
+
+標準 IME と同じく、**Phase 2 中の Shift+← / Shift+→ で注目文節を伸縮**する。セッション層の
+機能なので**配列に依存しない** — 内蔵ローマ字でも任意の keymap でも、`cb.resize` さえ実装して
+あれば効く（薙刀式の space+T/Y は同じ機能への配列固有ショートカットという位置づけになる）。
+`cb.resize` 未提供なら飲む（候補表示を壊さない）。
 
 - 旧方式（QuuBee が暫定でやっていた `engine.chordBuffer.onSpecialAction` の外部 wrap）は
   **撤去してよい**。`onHostAction` が同じ判定点をエンジンの正式 API として提供する。
@@ -123,6 +148,9 @@ node ランナー [`web/scripts/run-hechima-golden.mjs`](../web/scripts/run-hech
    `hechima-wasm/dist/` にバンドル + 辞書が無ければ skip。env `HECHIMA_WASM_JS` / `MOZC_DATA` で上書き可）
 7. 文節伸縮（v0.2.0+: Phase 2 の editSegment → `cb.resize` 呼び出し・resize 未提供/合成中は飲む・
    実 Mozc での -1 → +1 ラウンドトリップ。`hechima_resize` 未搭載の wasm では E2E ケースを skip）
+8. Phase 2 の実打鍵 E2E（v0.3.0+: space+T 同時打鍵 → resize / space 単打 → 次候補 /
+   M+V → 結合確定 / かな追加入力 → 確定して継続 / Shift+←→ → 伸縮。specialAction 直叩きでは
+   検出できなかった routing バグの再発防止）
 
 タイミングは仮想クロックで決定的に進める（mozc E2E のみ実タイマー — wasm 初期化と干渉するため）。
 
@@ -137,3 +165,7 @@ node ランナー [`web/scripts/run-hechima-golden.mjs`](../web/scripts/run-hech
 - 文節伸縮（v0.2.0）を使うには: hechima-wasm を **v0.2.0** に差し替え（`hechima_resize` 追加。
   convert の入出力は互換）、mozc-worker に `hechima_resize` の RPC を足し、cb に
   `resize(segIdx, offset)` を実装する。薙刀式 space+T/Y が Phase 2 で文節伸縮になる。
+- **v0.3.0（Phase 2 routing 修正 + Shift+←→）**: `hechima.js` と `keymap-engine.js`（**v1.2.0**）の
+  **2 ファイル差し替えのみ**。QuuBee 側のコード変更は不要（cb.resize は v0.2.0 追随で配線済み）。
+  keymap-engine が v1.1.0 のままだと Phase 2 の space 単打が全角スペース挿入に化けるので
+  **必ずセットで**差し替えること。
