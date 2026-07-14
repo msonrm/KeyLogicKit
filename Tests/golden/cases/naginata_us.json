@@ -90,7 +90,7 @@
     },
     {
       "name": "continuous_space_shift",
-      "description": "連続シフト: space 押しっぱなしで e r w → space+E/R/W = り/ね/め",
+      "description": "連続シフト: space 押しっぱなしで e r w → space+E/R/W = り/め/ね（v18 で め⇔ね 入れ替え）",
       "skip": ["kide"],
       "steps": [
         { "down": "space" },
@@ -100,7 +100,7 @@
         { "press": "w" },
         { "up": "space" }
       ],
-      "expect": { "text": "りねめ", "composing": "りねめ" }
+      "expect": { "text": "りめね", "composing": "りめね" }
     },
     {
       "name": "special_deleteback_U",
