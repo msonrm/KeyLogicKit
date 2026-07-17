@@ -39,7 +39,7 @@ npm run test:hechima     # build:engine + build:hechima → node でゴールデ
 
 | コールバック | 型 | 意味 |
 |---|---|---|
-| `show(segments)` | `({text, kind, candidates?, candidateIndex?})[]` | 未確定表示を描画。`kind`: `yomi`（未確定よみ）/ `focus`（注目文節）/ `other`（非注目）。候補選択中は各文節に `candidates`（候補一覧、読み取り専用コピー）と `candidateIndex`（選択位置）が載る（v0.5.0+。候補ポップアップ等の描画用） |
+| `show(segments)` | `({text, kind, candidates?, candidateIndex?, additional?, additionalIndex?})[]` | 未確定表示を描画。`kind`: `yomi`（未確定よみ）/ `focus`（注目文節）/ `other`（非注目）。候補選択中は各文節に `candidates`（候補一覧、読み取り専用コピー）と `candidateIndex`（選択位置）が載る（v0.5.0+）。注目文節には展開済みの `additional`（追加候補 = ひらがな/カタカナ、↑ で段階展開）と `additionalIndex`（領域内選択中のみ）も載る（v0.6.0+）。UI は additional を通常候補の上に注釈付きで表示する |
 | `hide()` | | 表示消去（バッファが空になった） |
 | `commit(text)` | `string` | 確定文字列を出力。**呼び元が hide → 注入の順で処理する**（セッションは commit 時に hide を呼ばない） |
 | `hostKey(name)` | `string`（省略可） | ホスト文書へ実キーを 1 打注入（name = `KeyboardEvent.code` 名: `'ArrowLeft'` / `'Backspace'` 等）。編集キー二重経路の委譲先 |
@@ -164,6 +164,9 @@ node ランナー [`web/scripts/run-hechima-golden.mjs`](../web/scripts/run-hech
    検出できなかった routing バグの再発防止）
 9. 候補公開 + 直接選択（v0.5.0+: show の candidates/candidateIndex・selectCandidate の
    範囲外/非 Phase 2 で false・focus 移動後の選択・確定への反映）
+10. 英字合成 + 追加候補（v0.6.0+: Shift+英字 → as-typed 筆頭の綴りバリエーション変換・
+    混在よみ・BS 全消しでモード終了 / ↑・Shift+Space の段階展開（ひらがな→カタカナ）・
+    領域内往復・追加候補の確定）
 
 タイミングは仮想クロックで決定的に進める（mozc E2E のみ実タイマー — wasm 初期化と干渉するため）。
 
