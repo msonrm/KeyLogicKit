@@ -12,6 +12,7 @@
   （API 境界 = かな→文節/候補 JSON）。
 - **正しさの正典**: `web/src/hechima/golden/*.json`（セッション・ゴールデン）。
 - 関連: [`docs/keymap-engine-embedding.md`](keymap-engine-embedding.md) /
+  [`docs/hechima-protocol.md`](hechima-protocol.md)（電文 v0 = worker RPC 仕様） /
   [`hechima-wasm/README.md`](../hechima-wasm/README.md)
 
 ## 1. ビルド
@@ -23,7 +24,10 @@ npm run test:hechima     # build:engine + build:hechima → node でゴールデ
 ```
 
 - 形式は **UMD、グローバル名 `Hechima`**（`<script>` / `importScripts` / `require` の 3 通り）。
-- バンドルは約 12KB（KeymapEngine へは**型のみ参照**なので同梱されない = 分離ベンダリング可能）。
+- バンドルは約 16KB（KeymapEngine へは**型のみ参照**なので同梱されない = 分離ベンダリング可能）。
+- v0.4.0+ は **`hechima-worker.js`**（hechima-wasm を動かす Worker 本体、IIFE。min 版も）を
+  併せて出力する。`new Worker("hechima-worker.js")` で読み、`Hechima.connectWorker` で接続する
+  （電文 v0。仕様は [`docs/hechima-protocol.md`](hechima-protocol.md)）。
 - 出力先 `web/public/hechima/` はコミット対象。型定義は手書きの
   [`hechima.d.ts`](../web/public/hechima/hechima.d.ts)（cb 契約の明文化を兼ねる）。
 - タグ付き GitHub Release（`hechima-v*`）にも添付する。取り込み側は `Hechima.version` を記録する。
@@ -50,6 +54,8 @@ npm run test:hechima     # build:engine + build:hechima → node でゴールデ
 | `createFep(cb) → FepSession` | セッションを作る |
 | `resolveRomaji(kana, pend, flush)` | 内蔵ローマ字リゾルバ（診断・テスト用） |
 | `fallbackConvert(yomi)` | フォールバック変換（診断・テスト用） |
+| `connectWorker(worker, opts?) → WorkerConnection`（v0.4.0+） | hechima-worker への接続（id 相関・ready 待機・resize 機能検出）。`conn.callbacks()` を cb にスプレッドすると convert/resize が配線される |
+| `HECHIMA_PROTOCOL_VERSION`（v0.4.0+） | 電文プロトコル版数（[`hechima-protocol.md`](hechima-protocol.md)） |
 
 `FepSession`（fep.js の返り値オブジェクトと同一契約）:
 
@@ -68,12 +74,16 @@ npm run test:hechima     # build:engine + build:hechima → node でゴールデ
 <script src="keymap-engine.js"></script>
 <script src="hechima.js"></script>
 <script>
+  // 実変換: hechima-worker（電文 v0）に接続すると convert/resize が cb 形で得られる。
+  // 独自 worker を使う場合は convert(yomi) を自前実装してもよい（QuuBee 方式）
+  const conn = Hechima.connectWorker(new Worker("hechima/hechima-worker.js"));
+  conn.init();   // 既定 = worker と同階層の ./hechima-wasm.js + ./mozc.data
   const fep = Hechima.createFep({
     show(segments) { renderInline(segments); },
     hide() { clearInline(); },
     commit(text) { clearInline(); insertToDocument(text); },   // hide → 注入の順
     hostKey(name) { injectRealKey(name); },                    // 編集キー委譲
-    convert(yomi) { return mozcWorkerRpc(yomi); },             // hechima-wasm 等
+    ...conn.callbacks(),                                       // convert + resize（文節伸縮）
   });
   fep.setActive(true);
 

@@ -1,0 +1,118 @@
+# hechima 電文 v0 — 「かな → 文節/候補」境界のプロトコル仕様
+
+hechima スタックの変換エンジン境界を流れるメッセージの正典。
+「**返り値の形 = 将来の IME 通信プロトコルの電文形式として設計する**」という
+設計方針（統合スペック v1）の実装であり、型定義の正典は
+[`web/src/hechima/protocol.ts`](../web/src/hechima/protocol.ts)（`Hechima.*` として公開）。
+
+## 1. 三つのトランスポート、一つのペイロード
+
+同じペイロード（§2）が 3 つの運び方で流れる。上位層（セッション・候補 UI）は
+どのトランスポートかを知らない:
+
+| トランスポート | 実装 | 状態 |
+|---|---|---|
+| C API（ccall 直呼び） | `hechima-wasm` の `hechima_convert` / `hechima_resize`（JSON 文字列を返す） | 実装済み |
+| **Worker postMessage RPC** | `hechima-worker.js`（本書の主対象。§3） | 実装済み（v0.4.0） |
+| ネットワーク延伸 | WebRTC DataChannel 等（インプットハブ構想。スマホ母艦→受信側サイト） | 将来 |
+
+## 2. ペイロード: `WireSegment`
+
+```json
+{ "segments": [ { "key": "きょうは", "candidates": ["今日は", "京は", "きょうは"] }, ... ] }
+```
+
+- `key` = 文節のよみ（ひらがな）。全文節の `key` を結合すると入力よみに一致する
+- `candidates` = 変換候補。先頭が第一候補
+- `segments` が無い / 空 / パース不能は「結果なし」= 呼び元は現状維持 or フォールバック
+
+これは `hechima_convert` の返す JSON と同形。セッション層の `cb.convert` /
+`cb.resize` が返す `ConvertSegment[]` はこの `segments` 配列そのもの。
+
+## 3. Worker RPC（電文 v0）
+
+`hechima-worker.js`（classic worker。`npm run build:hechima` で
+`web/public/hechima/` に出力）とホストの間の postMessage 契約。
+
+### ホスト → Worker
+
+| 電文 | フィールド | 意味 |
+|---|---|---|
+| `init` | `wasmJs?`, `dataUrl?` | wasm ロード + 辞書取得。パスは worker スクリプト位置からの相対 URL（既定 `./hechima-wasm.js` / `./mozc.data`）。1 worker につき 1 回 |
+| `convert` | `id`, `kana`, `maxCands?` | かな漢字変換（maxCands 既定 9） |
+| `resize` | `id`, `segIdx`, `offset`, `maxCands?` | 文節伸縮。直近の convert 結果の `segIdx` 文節（0 起点）のよみを `offset`（よみ文字数 ±）だけ伸縮して再変換 |
+
+### Worker → ホスト
+
+| 電文 | フィールド | 意味 |
+|---|---|---|
+| `progress` | `loaded`, `total` | 辞書ダウンロード進捗（`total` 不明時は 0） |
+| `ready` | `protocol`, `version`, `features` | 初期化完了。`protocol` = 電文版数（現在 0）、`version` = hechima バンドル版、`features.resize` = 実行時機能検出（古い wasm では false） |
+| `error` | `message` | 初期化失敗（init に対する終端応答） |
+| `result` | `id`, `segments`, `error?` | convert / resize の結果。`segments: null` = 結果なし。`error` は診断用付帯情報で契約上は null と同義 |
+
+### 相関・互換規約
+
+- `id` は呼び元が採番（単調増分で衝突しない）。応答は同じ `id` をエコーする
+- 受信側は**未知のメッセージ種・未知のフィールド・未知の `id` を黙って無視**する
+  （前方互換の要）
+- in-flight 破棄（変換待ち中の追加打鍵で古い結果を捨てる）は**呼び元の責務**
+  （セッション層が世代トークンで実施済み。トランスポートは関知しない）
+- 版数規約: 後方互換の拡張（フィールド追加・メッセージ種追加）は `protocol` を
+  変えない。既存フィールドの意味変更・削除は `protocol` を上げる
+
+### クライアント側ヘルパ
+
+`Hechima.connectWorker(worker, opts?)` が id 相関・ready 待機・resize 機能検出を
+閉じ込める。`conn.callbacks()` を `createFep` の cb にスプレッドすれば配線完了:
+
+```js
+const worker = new Worker("hechima-worker.js");
+const conn = Hechima.connectWorker(worker, { onProgress: (l, t) => bar(l / t) });
+conn.init();   // await せず投げっぱなしでもよい（convert は ready まで待機する）
+const fep = Hechima.createFep({ show, hide, commit, hostKey, ...conn.callbacks() });
+```
+
+## 4. 既知の制約（v0 の限界と v1 課題）
+
+### resize は stateful
+
+`hechima_resize` は「**直近の convert 結果**」への操作で、変換状態を wasm 内に
+static に 1 つだけ保持する。このため:
+
+- 成立条件は**トランスポートが 1:1**（1 ホスト : 1 worker インスタンス）の間だけ
+- 複数クライアントの多重化（ネットワーク延伸・共有サーバー）では convert が
+  交錯した時点で壊れる
+
+**v1 課題**: stateless 化（`resize` に かな + 文節境界配列を明示して再変換）または
+明示セッション ID の導入。どちらも wasm 再ビルド案件なので、**学習
+（`FinishConversion` 配線）と同時に 1 回で焼く**こと（hechima-wasm CI への
+actions/cache 導入もその時に）。
+
+### 語彙の不足（将来の予約）
+
+以下は v0 に無い。追加はフィールド/メッセージ種の追加（= 後方互換）で行う予定:
+
+| 予約語彙 | 用途 |
+|---|---|
+| `learn` | 確定通知（どの候補を選んだか）→ Mozc の FinishConversion。学習の前提 |
+| `predict` | 予測変換（StartPrediction） |
+| 候補注釈 | `candidates` の要素をオブジェクト化（ひらがな/カタカナ/記号種別等の annotation） |
+| ユーザー辞書 | 登録・削除・列挙 |
+
+## 5. テスト
+
+- [`web/scripts/run-hechima-worker-test.mjs`](../web/scripts/run-hechima-worker-test.mjs)
+  （`npm run test:hechima` の一部）: ビルド済み worker を環境スタブ内で実行し、
+  `connectWorker` との実往復で RPC 配管（id 相関・ready 待機ゲート・resize 機能検出・
+  null 契約・init 前 convert・範囲外 resize）を実 Mozc で検証。wasm 不在なら skip
+  （CI は web-test.yml が Release から取得）
+- 変換の正しさ自体は `run-hechima-golden.mjs`（セッション・ゴールデン）の守備範囲
+
+## 6. 消費者
+
+- **オンライン日本語入力ラボ**（新設サイト、Cloudflare）: `hechima-worker.js` +
+  `connectWorker` をそのまま使う想定
+- **QuuBee**: 独自の `mozc-worker.js`（本 worker の原型）を使用中。`hechima-worker.js` +
+  `connectWorker` への置き換えは**任意**（電文は同系だが init の応答形など細部が異なる。
+  置き換える場合は bridge.js の RPC 相関コードを `connectWorker` に委譲できる）
