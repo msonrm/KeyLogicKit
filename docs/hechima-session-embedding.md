@@ -39,7 +39,7 @@ npm run test:hechima     # build:engine + build:hechima → node でゴールデ
 
 | コールバック | 型 | 意味 |
 |---|---|---|
-| `show(segments)` | `({text, kind})[]` | 未確定表示を描画。`kind`: `yomi`（未確定よみ）/ `focus`（注目文節）/ `other`（非注目） |
+| `show(segments)` | `({text, kind, candidates?, candidateIndex?})[]` | 未確定表示を描画。`kind`: `yomi`（未確定よみ）/ `focus`（注目文節）/ `other`（非注目）。候補選択中は各文節に `candidates`（候補一覧、読み取り専用コピー）と `candidateIndex`（選択位置）が載る（v0.5.0+。候補ポップアップ等の描画用） |
 | `hide()` | | 表示消去（バッファが空になった） |
 | `commit(text)` | `string` | 確定文字列を出力。**呼び元が hide → 注入の順で処理する**（セッションは commit 時に hide を呼ばない） |
 | `hostKey(name)` | `string`（省略可） | ホスト文書へ実キーを 1 打注入（name = `KeyboardEvent.code` 名: `'ArrowLeft'` / `'Backspace'` 等）。編集キー二重経路の委譲先 |
@@ -66,6 +66,7 @@ npm run test:hechima     # build:engine + build:hechima → node でゴールデ
 | `feedUp(e) → bool` | keyup を消費（SandS の単打 convert が発火）。内蔵ローマ字経路は常に false |
 | `setEngine(engine, keyOf)` | KeymapEngine の `InputEngine` を注入（`null` = 内蔵ローマ字）。`keyOf` には `KeymapEngine.keyEventFromBrowser` をそのまま渡せる |
 | `pumpEngine()` | `engine.onStateChange`（chord 窓満了）から呼ぶ |
+| `selectCandidate(index) → bool`（v0.5.0+） | 候補選択中に注目文節の候補を直接選択。候補 UI の数字キー/クリックからホストが呼ぶ（キー routing には関与しない = どのキーで呼ぶかはホスト方針）。範囲外・非候補選択中は false |
 | `reset()` | 全状態クリア |
 
 ## 4. 最小統合例
@@ -161,6 +162,8 @@ node ランナー [`web/scripts/run-hechima-golden.mjs`](../web/scripts/run-hech
 8. Phase 2 の実打鍵 E2E（v0.3.0+: space+T 同時打鍵 → resize / space 単打 → 次候補 /
    M+V → 結合確定 / かな追加入力 → 確定して継続 / Shift+←→ → 伸縮。specialAction 直叩きでは
    検出できなかった routing バグの再発防止）
+9. 候補公開 + 直接選択（v0.5.0+: show の candidates/candidateIndex・selectCandidate の
+   範囲外/非 Phase 2 で false・focus 移動後の選択・確定への反映）
 
 タイミングは仮想クロックで決定的に進める（mozc E2E のみ実タイマー — wasm 初期化と干渉するため）。
 
