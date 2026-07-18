@@ -209,4 +209,154 @@ final class SimultaneousKeyBufferTests: XCTestCase {
             return
         }
     }
+
+    // MARK: - 相互シフト（judgment == .mutual）
+
+    /// A=あ, B=い, C=う, A+B=ば, A+C=ぼ, A+B+C=みゃ のテーブル
+    private func mutualLookup(_ bits: UInt64) -> String? {
+        let a = ChordKey.A.bit, b = ChordKey.B.bit, c = ChordKey.C.bit
+        switch bits {
+        case a: return "あ"
+        case b: return "い"
+        case c: return "う"
+        case a | b: return "ば"
+        case a | c: return "ぼ"
+        case a | b | c: return "みゃ"
+        default: return nil
+        }
+    }
+
+    func testMutualChordIgnoresTiming() {
+        var outputs: [Output] = []
+        let buffer = makeBuffer(
+            window: 0.001,   // window 方式ならロールオーバーになる極小窓
+            lookup: { self.mutualLookup($0) },
+            outputs: { outputs.append($0) }
+        )
+        buffer.judgment = .mutual
+        buffer.keyDown(.A)
+        Thread.sleep(forTimeInterval: 0.02)   // 窓を大きく超えて2キー目
+        buffer.keyDown(.B)
+        buffer.keyUp(.B)
+        buffer.keyUp(.A)
+        // 時間に関係なく chord: ば のみ（単打 あ/い は出ない）
+        XCTAssertEqual(outputs, [Output(text: "ば", replaceCount: 0)])
+    }
+
+    func testMutualContinuousChord() {
+        var outputs: [Output] = []
+        let buffer = makeBuffer(
+            lookup: { self.mutualLookup($0) },
+            outputs: { outputs.append($0) }
+        )
+        buffer.judgment = .mutual
+        // A 押しっぱなしで B → C（連続シフトの一般化）
+        buffer.keyDown(.A)
+        buffer.keyDown(.B)   // A+B = ば
+        buffer.keyUp(.B)     // 部分リリース → 出力コミット、A は armed のまま
+        buffer.keyDown(.C)   // A+C = ぼ（追記。差し替えではない）
+        buffer.keyUp(.C)
+        buffer.keyUp(.A)     // A は消費済み → 単打 あ は出ない
+        XCTAssertEqual(outputs, [
+            Output(text: "ば", replaceCount: 0),
+            Output(text: "ぼ", replaceCount: 0),
+        ])
+    }
+
+    func testMutualThreeKeyReplaceThenAppend() {
+        var outputs: [Output] = []
+        let buffer = makeBuffer(
+            lookup: { self.mutualLookup($0) },
+            outputs: { outputs.append($0) }
+        )
+        buffer.judgment = .mutual
+        buffer.keyDown(.A)
+        buffer.keyDown(.B)   // ば
+        buffer.keyDown(.C)   // A+B+C = みゃ（ば を差し替え）
+        buffer.keyUp(.C)     // コミット
+        buffer.keyDown(.C)   // 再打鍵 → A+B+C = みゃ を追記
+        buffer.keyUp(.C)
+        buffer.keyUp(.B)
+        buffer.keyUp(.A)
+        XCTAssertEqual(outputs, [
+            Output(text: "ば", replaceCount: 0),
+            Output(text: "みゃ", replaceCount: 1),   // ば(1文字)を差し替え
+            Output(text: "みゃ", replaceCount: 0),   // 追記
+        ])
+    }
+
+    func testMutualFallthroughDisarm() {
+        var outputs: [Output] = []
+        let buffer = makeBuffer(
+            lookup: { bits in
+                let a = ChordKey.A.bit, b = ChordKey.B.bit, c = ChordKey.C.bit
+                switch bits {
+                case a: return "あ"
+                case b: return "い"
+                case c: return "う"
+                case a | b: return "ば"   // A+B のみ定義（A+C は未定義）
+                default: return nil
+                }
+            },
+            outputs: { outputs.append($0) }
+        )
+        buffer.judgment = .mutual
+        buffer.keyDown(.A)
+        buffer.keyDown(.C)   // A+C 未定義 → fall-through: あ を単打解決、A は disarm
+        buffer.keyUp(.C)
+        buffer.keyDown(.B)   // A は押下中だが disarm 済み → A+B=ば は成立しない
+        buffer.keyUp(.B)
+        buffer.keyUp(.A)     // 解決済みの A から単打は出ない
+        XCTAssertEqual(outputs, [
+            Output(text: "あ", replaceCount: 0),   // fall-through で解決
+            Output(text: "う", replaceCount: 0),   // C の単打（B down 時に解決）
+            Output(text: "い", replaceCount: 0),   // B の単打（finalize）
+        ])
+    }
+
+    func testMutualShiftKeyConsumedNoSingleAction() {
+        var outputs: [Output] = []
+        var shiftSingles: [KeyAction] = []
+        let shiftA = ChordKey.space.bit | ChordKey.A.bit
+        let buffer = makeBuffer(
+            lookup: { bits in
+                if bits == shiftA { return "の" }
+                return self.mutualLookup(bits)
+            },
+            shiftKeys: [.space: .convert],
+            outputs: { outputs.append($0) },
+            shiftSingles: { shiftSingles.append($0) }
+        )
+        buffer.judgment = .mutual
+        buffer.keyDown(.space)
+        buffer.keyDown(.A)     // space+A = の
+        buffer.keyUp(.space)   // シフトキーを先に離しても
+        buffer.keyUp(.A)
+        XCTAssertEqual(outputs, [Output(text: "の", replaceCount: 0)])
+        XCTAssertTrue(shiftSingles.isEmpty, "消費済みシフトキーの単打アクションは発火しない")
+    }
+
+    func testMutualPendingSpecialFiresOnPartialRelease() {
+        var outputs: [Output] = []
+        var specials: [KeyAction] = []
+        let ab = ChordKey.A.bit | ChordKey.B.bit
+        let buffer = makeBuffer(
+            lookup: { bits in
+                if bits == ChordKey.A.bit { return "あ" }
+                if bits == ChordKey.B.bit { return "い" }
+                return nil
+            },
+            special: { $0 == ab ? .confirm : nil },
+            outputs: { outputs.append($0) },
+            specials: { specials.append($0) }
+        )
+        buffer.judgment = .mutual
+        buffer.keyDown(.A)
+        buffer.keyDown(.B)   // A+B = specialAction（3キー目の可能性があるため保留）
+        buffer.keyUp(.B)     // 部分リリース → 保留アクション発火
+        XCTAssertEqual(specials.count, 1)
+        buffer.keyUp(.A)     // 消費済み → 単打なし
+        XCTAssertTrue(outputs.isEmpty)
+        XCTAssertEqual(specials.count, 1)
+    }
 }

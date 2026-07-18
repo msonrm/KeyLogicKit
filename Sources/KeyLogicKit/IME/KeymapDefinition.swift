@@ -261,6 +261,14 @@ public struct KeymapDefinition: Sendable {
         public let singleTapAction: KeyAction?
     }
 
+    /// 同時打鍵の判定方式
+    public enum ChordJudgment: String, Sendable, Codable {
+        /// 時間窓ベース（既定）: `simultaneousWindow` 内のキー重なりのみを同時打鍵とみなす
+        case window
+        /// 相互シフト（状態ベース）: 物理押下の重なりだけで判定し、時間を見ない（薙刀式系）
+        case mutual
+    }
+
     /// 同時打鍵設定
     public struct ChordConfig: Sendable {
         /// 物理キー（HID キーコード）→ 内部キー ID の変換テーブル
@@ -272,7 +280,12 @@ public struct KeymapDefinition: Sendable {
         /// キーの組合せビットマスク → 特殊アクション（KeyAction 統一）
         public let specialActions: [UInt64: KeyAction]
 
+        /// 同時打鍵の判定方式（省略時は `.window`）
+        public let judgment: ChordJudgment
+
         /// 同時打鍵判定ウィンドウ（秒）
+        ///
+        /// `judgment == .mutual` では判定に使用されない。
         public let simultaneousWindow: TimeInterval
 
         /// 英数モード用の lookup テーブル（nil の場合は英数モードなし）

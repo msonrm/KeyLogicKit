@@ -220,6 +220,7 @@ private final class GoldenHarness {
 
         if let chordData = expanded.chordData {
             let buffer = SimultaneousKeyBuffer()
+            buffer.judgment = chordData.judgment
             buffer.simultaneousWindow = chordData.simultaneousWindow
             buffer.lookupFunction = { chordData.lookupTable[$0] }
             buffer.specialActionFunction = { chordData.specialActions[$0] }

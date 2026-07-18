@@ -1,6 +1,6 @@
 {
   "keymap": "naginata_us",
-  "description": "薙刀式(US): 文字キー同士の同時打鍵 + 前置スペースシフト + specialActions（編集系）。simultaneousWindow=0.08s(80ms)",
+  "description": "薙刀式(US): judgment=mutual（相互シフト）。文字キー同士の同時打鍵 + スペースシフト + specialActions（編集系）。時間窓を使わず押下の重なりで判定する。kide は mutual 未対応（window のまま）のため mutual 依存ケースは skip",
   "cases": [
     {
       "name": "single_f_ka",
@@ -9,14 +9,14 @@
       "expect": { "text": "か" }
     },
     {
-      "name": "chord_fj_ga_within_window",
-      "description": "窓内2打=同時: F+J = が（文字キー同士の chord）",
+      "name": "chord_fj_ga",
+      "description": "2キー同時: F+J = が（文字キー同士の chord。2キー目 down で発火）",
       "steps": [{ "chord": ["f", "j"] }],
       "expect": { "text": "が" }
     },
     {
-      "name": "boundary_inside_margin_chord",
-      "description": "境界の内側（40ms < 80ms）: 同時打鍵として F+J = が",
+      "name": "overlap_40ms_chord",
+      "description": "40ms 間隔でも押下が重なっていれば chord: F+J = が",
       "steps": [
         { "down": "f" },
         { "wait": 40 },
@@ -27,8 +27,9 @@
       "expect": { "text": "が" }
     },
     {
-      "name": "boundary_outside_margin_sequential",
-      "description": "境界の外側（200ms > 80ms）: 逐次として F=か, J=あ → かあ",
+      "name": "mutual_hold_beyond_window_still_chord",
+      "description": "相互シフト: ミリ秒を見ない。F を 200ms 押しっぱなしでも J が来れば chord → が（旧 window 判定では かあ になっていた）。kide は window 実装のまま（mutual 未対応）のため skip",
+      "skip": ["kide"],
       "steps": [
         { "down": "f" },
         { "wait": 200 },
@@ -36,37 +37,11 @@
         { "up": "j" },
         { "up": "f" }
       ],
-      "expect": { "text": "かあ" }
-    },
-    {
-      "name": "boundary_exact_just_inside_79ms",
-      "description": "境界ちょうど手前（79ms < 80ms）= まだ同時 → が。web の setTimeout 境界を固定するケース（実時間ランナーでは再現不可のため web 限定）",
-      "skip": ["swift", "kide"],
-      "steps": [
-        { "down": "f" },
-        { "wait": 79 },
-        { "down": "j" },
-        { "up": "j" },
-        { "up": "f" }
-      ],
       "expect": { "text": "が" }
     },
     {
-      "name": "boundary_exact_at_window_80ms",
-      "description": "境界ちょうど（80ms）= タイマー満了で逐次 → かあ。web 限定（同上）",
-      "skip": ["swift", "kide"],
-      "steps": [
-        { "down": "f" },
-        { "wait": 80 },
-        { "down": "j" },
-        { "up": "j" },
-        { "up": "f" }
-      ],
-      "expect": { "text": "かあ" }
-    },
-    {
       "name": "rolling_stagger_ki_te",
-      "description": "ロールオーバー: w を離す前に e を押下。W+E は chord 未定義 → 2単打 き, て",
+      "description": "ロールオーバー: w を離す前に e を押下。W+E は chord 未定義 → fall-through で 2単打 き, て",
       "steps": [
         { "down": "w" },
         { "down": "e" },
@@ -74,6 +49,62 @@
         { "up": "e" }
       ],
       "expect": { "text": "きて" }
+    },
+    {
+      "name": "mutual_continuous_dakuon",
+      "description": "連続シフトの一般化: J（濁音シフト相当）押しっぱなしで F→ が、続けて D → ど。任意の chord キーがシフトキーとして持続する",
+      "skip": ["kide"],
+      "steps": [
+        { "down": "j" },
+        { "down": "f" },
+        { "up": "f" },
+        { "down": "d" },
+        { "up": "d" },
+        { "up": "j" }
+      ],
+      "expect": { "text": "がど" }
+    },
+    {
+      "name": "mutual_three_key_progression",
+      "description": "3キー差し替え→ホールド継続で追記: J+W=ぎ → +H で ぎゃ に差し替え → H を離して I で ぎょ を追記",
+      "skip": ["kide"],
+      "steps": [
+        { "down": "j" },
+        { "down": "w" },
+        { "down": "h" },
+        { "up": "h" },
+        { "down": "i" },
+        { "up": "i" },
+        { "up": "w" },
+        { "up": "j" }
+      ],
+      "expect": { "text": "ぎゃぎょ" }
+    },
+    {
+      "name": "mutual_fallthrough_disarm",
+      "description": "fall-through disarm: F+M は未定義 → か 単打解決で F は disarm。以後 F 押下中でも F+J は成立しない（M=な, J=あ が単打で続く）",
+      "skip": ["kide"],
+      "steps": [
+        { "down": "f" },
+        { "down": "m" },
+        { "up": "m" },
+        { "down": "j" },
+        { "up": "j" },
+        { "up": "f" }
+      ],
+      "expect": { "text": "かなあ" }
+    },
+    {
+      "name": "mutual_shift_consumed_no_convert",
+      "description": "消費済みシフトキーの単打抑制: space+E=り の後、space を先に離しても singleTapAction(convert) は発火しない",
+      "skip": ["kide"],
+      "steps": [
+        { "down": "space" },
+        { "down": "e" },
+        { "up": "space" },
+        { "up": "e" }
+      ],
+      "expect": { "text": "り", "composing": "り" }
     },
     {
       "name": "shift_chord_space_e_ri",
@@ -156,7 +187,7 @@
     },
     {
       "name": "special_confirm_MV",
-      "description": "specialActions: M+V chord = confirm。先行の か を確定（M の eager な はロールバックされる）",
+      "description": "specialActions: M+V chord = confirm。先行の か を確定",
       "skip": ["kide"],
       "steps": [
         { "press": "f" },

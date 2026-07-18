@@ -294,7 +294,8 @@ init(keyCode: HIDKeyCode, characters: String, modifierFlags: KeyModifierFlags)
 ### 関連型
 
 - `InputBehavior` enum: `.sequential(characterMap: [Character: Character])`, `.chord(config: ChordConfig)`
-- `ChordConfig` struct: `hidToKey`, `lookupTable`, `specialActions`, `simultaneousWindow`, `englishLookupTable?`, `englishSpecialActions?`, `shiftKeys`
+- `ChordConfig` struct: `hidToKey`, `lookupTable`, `specialActions`, `judgment`, `simultaneousWindow`, `englishLookupTable?`, `englishSpecialActions?`, `shiftKeys`
+- `ChordJudgment` enum: `.window`（時間窓、既定） / `.mutual`（相互シフト。時間を見ず押下の重なりで判定。薙刀式系）。JSON 省略時は `.window`
 - `ShiftKeyConfig` struct: `key: ChordKey`, `singleTapAction: KeyAction?`
 - `ModeKeyTrigger` struct: `keyCode: HIDKeyCode`, `modifiers: KeyModifierFlags`（空 = 修飾キー不問）。`Hashable` 準拠
 - `SuffixRule` struct: `vowel: String`, `suffix: String`
@@ -335,7 +336,8 @@ init(definition: KeymapDefinition)
 | `lookupTable` | `[UInt64: String]` | ビットマスク→出力文字列 |
 | `specialActions` | `[UInt64: KeyAction]` | ビットマスク→特殊アクション |
 | `shiftKeyConfigs` | `[ChordKey: KeyAction?]` | シフトキー→単打時アクション |
-| `simultaneousWindow` | `TimeInterval` | 同時打鍵判定窓（秒） |
+| `judgment` | `KeymapDefinition.ChordJudgment` | 同時打鍵の判定方式 |
+| `simultaneousWindow` | `TimeInterval` | 同時打鍵判定窓（秒）。`judgment == .mutual` では不使用 |
 | `englishLookupTable` | `[UInt64: String]?` | 英語モード用ルックアップ |
 | `englishSpecialActions` | `[UInt64: KeyAction]?` | 英語モード用特殊アクション |
 
@@ -427,6 +429,12 @@ init(configuration: KeymapManagerConfiguration)
 - chord: 2/3キー目の keyDown で即出力
 - シフトホールド: chord 確定後にシフトキーのみ残存 → shiftMode に自動遷移
 
+判定方式は `judgment` で切替:
+- `.window`（既定）: inter-key timing（`simultaneousWindow` 超過でロールオーバー分解）+ idle ゲーティング
+- `.mutual`（相互シフト）: 時間を見ない。押下の重なりとテーブル定義の有無だけで判定し、
+  chord 発火後も押下中のキーは armed のまま次の chord に参加（連続シフトの一般化）。
+  未定義組合せは先行キーを単打解決して disarm。仕様: `docs/keymap-format.md`「judgment: 判定方式」
+
 ```swift
 init()
 func keyDown(_ key: ChordKey)
@@ -436,7 +444,8 @@ func reset()
 
 | プロパティ | 型 | 説明 |
 |---|---|---|
-| `simultaneousWindow` | `TimeInterval` | idle ゲーティング閾値（秒）。直前の確定からこの時間以内のキーは chord 判定をスキップ（ZMK `require-prior-idle-ms` 相当） |
+| `judgment` | `KeymapDefinition.ChordJudgment` | 判定方式（既定 `.window`） |
+| `simultaneousWindow` | `TimeInterval` | inter-key timing / idle ゲーティング閾値（秒）。`.window` のみ使用（ZMK `require-prior-idle-ms` 相当） |
 | `physicalShift` | `Bool` | 物理 Shift フラグ（英数大文字用） |
 | `lookupFunction` | `(UInt64) -> String?` | 文字出力テーブル |
 | `specialActionFunction` | `(UInt64) -> KeyAction?` | 特殊アクションテーブル |

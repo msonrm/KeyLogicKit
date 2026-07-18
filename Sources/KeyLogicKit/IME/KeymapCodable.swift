@@ -519,6 +519,7 @@ extension KeymapDefinition.ChordConfig: Codable {
         case hidToKey
         case lookupTable
         case specialActions
+        case judgment
         case simultaneousWindow
         case englishLookupTable
         case englishSpecialActions
@@ -542,6 +543,10 @@ extension KeymapDefinition.ChordConfig: Codable {
 
         // specialActions: [UInt64: KeyAction] → {"U": "deleteBack", ...}
         try encodeBitmaskActionDict(specialActions, to: &container, forKey: .specialActions)
+
+        if judgment != .window {
+            try container.encode(judgment, forKey: .judgment)
+        }
 
         try container.encode(simultaneousWindow, forKey: .simultaneousWindow)
 
@@ -581,7 +586,14 @@ extension KeymapDefinition.ChordConfig: Codable {
         // specialActions
         self.specialActions = try Self.decodeBitmaskActionDict(from: container, forKey: .specialActions)
 
-        self.simultaneousWindow = try container.decode(TimeInterval.self, forKey: .simultaneousWindow)
+        self.judgment = try container.decodeIfPresent(
+            KeymapDefinition.ChordJudgment.self, forKey: .judgment
+        ) ?? .window
+
+        // mutual では判定に使わないため省略可（既定 0.08）
+        self.simultaneousWindow = try container.decodeIfPresent(
+            TimeInterval.self, forKey: .simultaneousWindow
+        ) ?? 0.08
 
         // englishLookupTable (optional)
         if container.contains(.englishLookupTable) {
