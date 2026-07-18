@@ -144,8 +144,24 @@
     },
     "chordConfig": {
       "type": "object",
-      "required": ["hidToKey", "lookupTable", "specialActions", "simultaneousWindow", "shiftKeys"],
+      "required": ["hidToKey", "lookupTable", "specialActions", "shiftKeys"],
+      "allOf": [
+        {
+          "if": {
+            "not": {
+              "properties": { "judgment": { "const": "mutual" } },
+              "required": ["judgment"]
+            }
+          },
+          "then": { "required": ["simultaneousWindow"] }
+        }
+      ],
       "properties": {
+        "judgment": {
+          "type": "string",
+          "enum": ["window", "mutual"],
+          "description": "同時打鍵の判定方式。window=時間窓（simultaneousWindow 内の打鍵重なりのみを同時とみなす。省略時の既定）、mutual=相互シフト（薙刀式系。物理押下の重なりだけで判定し、時間を見ない）"
+        },
         "hidToKey": {
           "type": "object",
           "additionalProperties": { "$ref": "#/$defs/chordKeyName" },
@@ -170,7 +186,7 @@
         "simultaneousWindow": {
           "type": "number",
           "exclusiveMinimum": 0,
-          "description": "同時打鍵判定ウィンドウ（秒）"
+          "description": "同時打鍵判定ウィンドウ（秒）。judgment=window では必須。judgment=mutual では判定に使用されない（旧実装との互換のため記載してもよい）"
         },
         "englishLookupTable": {
           "type": "object",

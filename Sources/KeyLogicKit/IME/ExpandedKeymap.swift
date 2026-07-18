@@ -100,6 +100,9 @@ public struct ExpandedChordData: Sendable {
     /// シフトキー設定（ChordKey → 単打時アクション）
     public let shiftKeyConfigs: [ChordKey: KeyAction?]
 
+    /// 同時打鍵の判定方式
+    public let judgment: KeymapDefinition.ChordJudgment
+
     /// 同時打鍵判定ウィンドウ（秒）
     public let simultaneousWindow: TimeInterval
 
@@ -114,6 +117,7 @@ public struct ExpandedChordData: Sendable {
         self.hidToChordKey = config.hidToKey
         self.lookupTable = config.lookupTable
         self.specialActions = config.specialActions
+        self.judgment = config.judgment
         self.simultaneousWindow = config.simultaneousWindow
         self.englishLookupTable = config.englishLookupTable
         self.englishSpecialActions = config.englishSpecialActions

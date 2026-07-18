@@ -3,8 +3,15 @@ import Foundation
 /// 同時打鍵バッファ（pressesEnded ベース + inter-key timing + idle ゲーティング）
 ///
 /// 押下中キーの集合（heldKeys）で同時打鍵を判定する。
-/// ロールオーバー（高速逐次打鍵でのキー重なり）と意図的な同時打鍵を区別するため、
-/// 2段階のロールオーバー防止機構を備える。
+/// 判定方式は `judgment` で切り替わる:
+///
+/// - `.window`（既定）: ロールオーバー（高速逐次打鍵でのキー重なり）と意図的な同時打鍵を
+///   区別するため、下記の2段階のロールオーバー防止機構を備える。
+/// - `.mutual`（相互シフト）: 薙刀式の「Aを押しながらB、またはBを押しながらA」。
+///   時間を一切見ず、押下の重なりとテーブル定義の有無だけで判定する。
+///   仕様の詳細は `docs/keymap-format.md` の「judgment: 判定方式」を参照。
+///
+/// 以下は `.window` の機構:
 ///
 /// - **inter-key timing**: chord グループ内の keyDown 間隔を計測し、
 ///   `simultaneousWindow` 以内に2キー目が押された場合のみ chord として評価する。
@@ -77,9 +84,15 @@ public class SimultaneousKeyBuffer {
     /// 直前の chord グループが確定した時刻（idle ゲーティング用）
     private var lastFinalizedTime: CFAbsoluteTime = 0
 
+    /// 同時打鍵の判定方式
+    ///
+    /// `.mutual`（相互シフト）では inter-key timing / idle ゲーティングを使わず、
+    /// `simultaneousWindow` も参照しない。
+    public var judgment: KeymapDefinition.ChordJudgment = .window
+
     /// 同時打鍵判定ウィンドウ（秒）
     ///
-    /// chord グループ内の inter-key timing 閾値として使用する。
+    /// chord グループ内の inter-key timing 閾値として使用する（`.window` のみ）。
     /// 1キー目の keyDown からこの時間以内に2キー目が押された場合のみ chord として評価する。
     /// 超過した場合はロールオーバーと判定し、先行キーを単打出力して新グループを開始する。
     /// idle ゲーティングにはこの値の2倍を閾値として使用する。
@@ -152,6 +165,10 @@ public class SimultaneousKeyBuffer {
 
     /// キーダウンイベント処理
     public func keyDown(_ key: ChordKey) {
+        if judgment == .mutual {
+            mutualKeyDown(key)
+            return
+        }
         heldKeys.insert(key)
 
         switch phase {
@@ -214,6 +231,10 @@ public class SimultaneousKeyBuffer {
 
     /// キーアップイベント処理
     public func keyUp(_ key: ChordKey) {
+        if judgment == .mutual {
+            mutualKeyUp(key)
+            return
+        }
         heldKeys.remove(key)
 
         switch phase {
@@ -270,6 +291,105 @@ public class SimultaneousKeyBuffer {
     /// バッファリセット（確定・キャンセル時に呼ぶ）
     public func reset() {
         resetAll()
+    }
+
+    // MARK: - 相互シフト（judgment == .mutual）
+
+    /// 相互シフト方式の keyDown
+    ///
+    /// 時間を見ず、「押下中キー集合 + 新キー」の組合せがテーブルに定義されているか
+    /// だけで chord / fall-through を判定する。phase は常に `.accumulating` のまま。
+    private func mutualKeyDown(_ key: ChordKey) {
+        // 押下中キーの再 down（オートリピート）は無視
+        guard !heldKeys.contains(key) else { return }
+        heldKeys.insert(key)
+
+        // グループ在籍キーの再打鍵（リリース済みだが未確定のまま残っているキー）
+        // → 現グループを解決してから、新グループとして打鍵し直す
+        if chordGroup.contains(key) {
+            resolveMutualGroup()
+            startMutualGroup(with: key)
+            return
+        }
+
+        guard !chordGroup.isEmpty else {
+            startMutualGroup(with: key)
+            return
+        }
+
+        // 既存グループ + 新キーの組合せがテーブルにあるか
+        let candidateBits = chordGroup.reduce(key.bit) { $0 | $1.bit }
+        if chordCandidateExists(candidateBits) {
+            chordGroup.insert(key)
+            chordGroupOrder.append(key)
+            evaluateChord()
+        } else {
+            // fall-through: 未定義の組合せ → 現グループを解決して disarm し、
+            // 新キーだけで新グループを開始する。
+            // 押しっぱなしの旧キーは armed に復帰しない（仕様: disarm）。
+            resolveMutualGroup()
+            startMutualGroup(with: key)
+        }
+    }
+
+    /// 相互シフト方式の keyUp
+    private func mutualKeyUp(_ key: ChordKey) {
+        heldKeys.remove(key)
+
+        if heldKeys.isEmpty {
+            finalize()
+            return
+        }
+
+        // 部分リリース: chord 確定済み（または specialAction 保留中）グループからの離脱。
+        // 出力をコミットし、残る押下中キーは armed のまま次の chord を待つ
+        // （連続シフトの一般化 — 濁音キー押しっぱなしでの濁音連打等）。
+        if chordGroup.contains(key), chordOutputted || pendingSpecialAction != nil {
+            if let action = pendingSpecialAction {
+                onSpecialAction?(action)
+                pendingSpecialAction = nil
+                chordOutputted = true
+            }
+            chordGroup.remove(key)
+            if let idx = chordGroupOrder.firstIndex(of: key) {
+                chordGroupOrder.remove(at: idx)
+            }
+            // 以後の chord は差し替えでなく追記になる
+            outputCharCount = 0
+        }
+        // 未出力グループのキーの部分リリースは何もしない（finalize まで保留）
+    }
+
+    /// 現グループを解決する（mutual の fall-through / グループ在籍キー再打鍵時）
+    ///
+    /// chord 出力済みなら出力は確定済みなので何もしない。
+    /// specialAction 保留中なら発火し、未出力なら押下順に単打出力する。
+    /// 解決後、グループは空になる（disarm）。
+    private func resolveMutualGroup() {
+        if let action = pendingSpecialAction {
+            onSpecialAction?(action)
+        } else if !chordOutputted {
+            for k in chordGroupOrder {
+                handleSingleTap(k)
+            }
+        }
+        resetChordState()
+    }
+
+    /// 新しい chord グループを開始する（mutual）
+    private func startMutualGroup(with key: ChordKey) {
+        chordGroup = [key]
+        chordGroupOrder = [key]
+    }
+
+    /// 組合せがテーブルに定義されているか（mutual の候補判定）
+    ///
+    /// `evaluateChord` の lookup 手順（physicalShift 合成を含む）と対応させる。
+    private func chordCandidateExists(_ bits: UInt64) -> Bool {
+        let lookupBits = physicalShift ? (ChordKey.space.bit | bits) : bits
+        if lookupFunction(lookupBits) != nil { return true }
+        if physicalShift && lookupFunction(bits) != nil { return true }
+        return specialActionFunction(bits) != nil
     }
 
     // MARK: - chord 評価

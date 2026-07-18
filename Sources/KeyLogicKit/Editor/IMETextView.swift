@@ -645,7 +645,8 @@ public class IMETextView: UITextView {
     /// 古いまま（英数テーブル等）になる可能性があるため、KeyRouter の状態に合わせて復元する。
     private func syncChordBufferTables() {
         guard case .chord(let config) = keyRouter.definition.behavior else { return }
-        // シフトキー設定を注入
+        // 判定方式とシフトキー設定を注入
+        chordBuffer.judgment = config.judgment
         chordBuffer.shiftKeyConfigs = config.shiftKeys.reduce(into: [:]) {
             $0[$1.key] = $1.singleTapAction
         }

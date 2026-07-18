@@ -218,6 +218,7 @@ chord の `specialActions`（F+G 等の同時押し）と共存可能。
     "hidToKey": { "a": "A", "space": "space", ... },
     "lookupTable": { "J": "あ", "F+J": "が", ... },
     "specialActions": { "F+G": "switchToEnglish", ... },
+    "judgment": "mutual",
     "simultaneousWindow": 0.08,
     "shiftKeys": [
       { "key": "space", "singleTapAction": "convert" }
@@ -235,10 +236,31 @@ chord の `specialActions`（F+G 等の同時押し）と共存可能。
 | `hidToKey` | object | 必須 | 物理キー名 → ChordKey マッピング |
 | `lookupTable` | object | 必須 | キー組合せ → 出力文字列 |
 | `specialActions` | object | 必須 | キー組合せ → 特殊アクション |
-| `simultaneousWindow` | number | 必須 | 同時打鍵判定ウィンドウ（秒） |
+| `judgment` | string | 任意 | 判定方式: `"window"`（既定） / `"mutual"`。下記「judgment: 判定方式」参照 |
+| `simultaneousWindow` | number | window では必須 | 同時打鍵判定ウィンドウ（秒）。`mutual` では判定に使用されない（旧実装との互換のため記載してもよい） |
 | `shiftKeys` | array | 必須 | シフトキー定義（0〜2 個） |
 | `englishLookupTable` | object | 任意 | 英数モード用 lookup |
 | `englishSpecialActions` | object | 任意 | 英数モード用アクション |
+
+#### judgment: 判定方式
+
+- **`window`（既定）**: 時間窓ベース。`simultaneousWindow` 内に打鍵が重なった場合のみ同時打鍵とみなす。
+  ロールオーバー（高速逐次打鍵のキー重なり）は inter-key timing で単打に分解される。
+  NICOLA・新下駄など、公式仕様がミリ秒ベースの配列に使う。
+- **`mutual`（相互シフト）**: 状態ベース。薙刀式の「Aを押しながらB、またはBを押しながらA」
+  （作者による正式名「相互シフト」）を実装する。契約は以下:
+  1. **時間を一切見ない**。キーが物理的に押されている間に別のキーが押されたら、間隔に関係なく組合せを評価する
+  2. **chord は2キー目の keyDown で即発火**、3キー目で差し替え
+  3. **ホールド持続（連続シフトの一般化）**: chord 発火後も押されたままのキーは有効（armed）で、
+     次の keyDown で「押下中キー集合 + 新キー」を再評価する（例: 濁音キーを押しっぱなしで濁音を連打できる）。
+     これは `shiftKeys` に限らず任意の chord キーに適用される
+  4. **消費済みキーの単打抑制**: chord に参加したキーはリリース時に自分の単打を出力しない
+  5. **スパース fall-through**: `lookupTable` / `specialActions` に定義のない組合せは同時打鍵にならず、
+     先行キーを押下順に単打解決して続行する。**fall-through で単打解決されたキーは、
+     押しっぱなしでも以後の chord に参加しない（disarm）**
+
+  ロールオーバー打鍵は、組合せが定義されているペアに限り chord になる（薙刀式の仕様どおり。
+  撫で打ち＝キーを離してから次を押す打鍵法が前提）。単打の確定は全キーリリース時。
 
 #### shiftKeys
 
