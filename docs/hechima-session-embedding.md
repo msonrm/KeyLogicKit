@@ -24,7 +24,7 @@ npm run test:hechima     # build:engine + build:hechima → node でゴールデ
 ```
 
 - 形式は **UMD、グローバル名 `Hechima`**（`<script>` / `importScripts` / `require` の 3 通り）。
-- バンドルは約 16KB（KeymapEngine へは**型のみ参照**なので同梱されない = 分離ベンダリング可能）。
+- バンドルは約 25KB（KeymapEngine へは**型のみ参照**なので同梱されない = 分離ベンダリング可能）。
 - v0.4.0+ は **`hechima-worker.js`**（hechima-wasm を動かす Worker 本体、IIFE。min 版も）を
   併せて出力する。`new Worker("hechima-worker.js")` で読み、`Hechima.connectWorker` で接続する
   （電文 v0。仕様は [`docs/hechima-protocol.md`](hechima-protocol.md)）。
@@ -32,10 +32,11 @@ npm run test:hechima     # build:engine + build:hechima → node でゴールデ
   [`hechima.d.ts`](../web/public/hechima/hechima.d.ts)（cb 契約の明文化を兼ねる）。
 - タグ付き GitHub Release（`hechima-v*`）にも添付する。取り込み側は `Hechima.version` を記録する。
 
-## 2. cb 契約（ホストの差し替え点。5 点）
+## 2. cb 契約（ホストの差し替え点。必須 3 + 省略可 7 の計 10 点）
 
 `Hechima.createFep(cb)` に渡すコールバック。**ホスト固有物はすべてここに閉じる**
-（QuuBee = PC-98 VRAM/SJIS、エディタ = DOM、試打サイト = 表示要素）:
+（QuuBee = PC-98 VRAM/SJIS、エディタ = DOM、試打サイト = 表示要素）。
+必須は show / hide / commit の 3 点、残りは省略可（省略時は各行の記載どおり degrade）:
 
 | コールバック | 型 | 意味 |
 |---|---|---|
