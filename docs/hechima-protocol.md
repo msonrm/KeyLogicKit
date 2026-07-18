@@ -44,6 +44,7 @@ hechima スタックの変換エンジン境界を流れるメッセージの正
 | `reconvert` | `id`, `surface`, `maxCands?` | 再変換（v0.10.0+）。表記 → 逆変換でよみ → 変換（応答 result の keys がよみ）。ステートレス |
 | `learn` | `id`, `kana`, `sizes`, `values` | 確定内容の学習（v0.8.0+）。値は**エンジン中立**（候補 index ではなく表示値）— dedupe や UI 並べ替えに頑健で、エンジン差し替えでも電文不変。Mozc worker では変換を再現し値一致で確定 → FinishConversion（all-or-nothing = 誤学習防止） |
 | `revert` | `id` | 直近の `learn` の取り消し（v0.9.0+。確定アンドゥの学習巻き戻し = Mozc RevertConversion。不成立 learn の後は no-op = 誤巻き戻し防止） |
+| `dictList` / `dictAdd` / `dictRemove` | `id`（+ `reading`,`word`,`pos?` / `index`） | ユーザー辞書（v0.11.0+）。応答は `dict`（更新後の一覧）。wasm が /tmp/user_dictionary.db を直接編集し ReloadAndWait で即反映。永続化は worker の OPFS に相乗り（clearLearning では消えない） |
 | `clearLearning` | `id` | OPFS の学習保存分を削除（v0.8.0+。メモリ内学習は再ロードまで残る） |
 
 ### Worker → ホスト
@@ -55,6 +56,7 @@ hechima スタックの変換エンジン境界を流れるメッセージの正
 | `error` | `message` | 初期化失敗（init に対する終端応答） |
 | `result` | `id`, `segments`, `error?` | convert / resize の結果。`segments: null` = 結果なし。`error` は診断用付帯情報で契約上は null と同義 |
 | `learned` | `id`, `ok` | learn / clearLearning の結果（v0.8.0+） |
+| `dict` | `id`, `entries`, `error?` | 辞書操作の結果（v0.11.0+。entries = 一覧、失敗 null） |
 
 ### 相関・互換規約
 
@@ -115,7 +117,6 @@ C API はステートレスになった**。「直近の変換」という接続
 |---|---|
 | `predict` | 予測変換（StartPrediction） |
 | 候補注釈 | `candidates` の要素をオブジェクト化（ひらがな/カタカナ/記号種別等の annotation） |
-| ユーザー辞書 | 登録・削除・列挙 |
 
 ## 5. テスト
 
