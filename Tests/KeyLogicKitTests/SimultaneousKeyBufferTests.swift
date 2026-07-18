@@ -359,4 +359,32 @@ final class SimultaneousKeyBufferTests: XCTestCase {
         XCTAssertTrue(outputs.isEmpty)
         XCTAssertEqual(specials.count, 1)
     }
+
+    /// 部分リリースで発火した specialAction のコールバックが reset() を再入的に呼んでも
+    /// （IMETextView の switchToEnglish 等が該当）、後続打鍵の単打が抑制されないこと。
+    /// 修正前は発火後に stale な chordOutputted=true が残り、次の 1 打鍵が消失していた。
+    func testMutualReentrantResetDoesNotSwallowNextTap() {
+        var outputs: [Output] = []
+        var specialCount = 0
+        let fg = ChordKey.F.bit | ChordKey.G.bit
+        var buffer: SimultaneousKeyBuffer!
+        buffer = makeBuffer(
+            lookup: { self.mutualLookup($0) },
+            special: { $0 == fg ? .switchToEnglish : nil },
+            outputs: { outputs.append($0) },
+            specials: { _ in
+                specialCount += 1
+                buffer.reset()   // executeAction(.switchToEnglish) の chordBuffer.reset() を再現
+            }
+        )
+        buffer.judgment = .mutual
+        buffer.keyDown(.F)
+        buffer.keyDown(.G)   // F+G → specialAction 保留
+        buffer.keyUp(.F)     // 部分リリース → 発火（コールバックが reset を再入）
+        buffer.keyDown(.A)   // G リリース前の次打鍵（ロールオーバー）
+        buffer.keyUp(.G)
+        buffer.keyUp(.A)     // A の単打が抑制されないこと
+        XCTAssertEqual(specialCount, 1)
+        XCTAssertEqual(outputs, [Output(text: "あ", replaceCount: 0)])
+    }
 }

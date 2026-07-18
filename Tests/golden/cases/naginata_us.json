@@ -1,211 +1,609 @@
 {
-  "keymap": "naginata_us",
-  "description": "薙刀式(US): judgment=mutual（相互シフト）。文字キー同士の同時打鍵 + スペースシフト + specialActions（編集系）。時間窓を使わず押下の重なりで判定する。kide は mutual 未対応（window のまま）のため mutual 依存ケースは skip",
-  "cases": [
+ "keymap": "naginata_us",
+ "description": "薙刀式(US): judgment=mutual（相互シフト）。文字キー同士の同時打鍵 + スペースシフト + specialActions（編集系）。時間窓を使わず押下の重なりで判定する。kide は mutual 未対応（window のまま）のため mutual 依存ケースは skip。v1.4.0: 英数モードも chord バッファで解釈（H+J 復帰・SandS 大文字）— swift ゴールデンハーネスは英数モード未配線のため english 系は skip",
+ "cases": [
+  {
+   "name": "single_f_ka",
+   "description": "単打 F = か",
+   "steps": [
     {
-      "name": "single_f_ka",
-      "description": "単打 F = か",
-      "steps": [{ "press": "f" }, { "wait": 120 }],
-      "expect": { "text": "か" }
+     "press": "f"
     },
     {
-      "name": "chord_fj_ga",
-      "description": "2キー同時: F+J = が（文字キー同士の chord。2キー目 down で発火）",
-      "steps": [{ "chord": ["f", "j"] }],
-      "expect": { "text": "が" }
-    },
-    {
-      "name": "overlap_40ms_chord",
-      "description": "40ms 間隔でも押下が重なっていれば chord: F+J = が",
-      "steps": [
-        { "down": "f" },
-        { "wait": 40 },
-        { "down": "j" },
-        { "up": "j" },
-        { "up": "f" }
-      ],
-      "expect": { "text": "が" }
-    },
-    {
-      "name": "mutual_hold_beyond_window_still_chord",
-      "description": "相互シフト: ミリ秒を見ない。F を 200ms 押しっぱなしでも J が来れば chord → が（旧 window 判定では かあ になっていた）。kide は window 実装のまま（mutual 未対応）のため skip",
-      "skip": ["kide"],
-      "steps": [
-        { "down": "f" },
-        { "wait": 200 },
-        { "down": "j" },
-        { "up": "j" },
-        { "up": "f" }
-      ],
-      "expect": { "text": "が" }
-    },
-    {
-      "name": "rolling_stagger_ki_te",
-      "description": "ロールオーバー: w を離す前に e を押下。W+E は chord 未定義 → fall-through で 2単打 き, て",
-      "steps": [
-        { "down": "w" },
-        { "down": "e" },
-        { "up": "w" },
-        { "up": "e" }
-      ],
-      "expect": { "text": "きて" }
-    },
-    {
-      "name": "mutual_continuous_dakuon",
-      "description": "連続シフトの一般化: J（濁音シフト相当）押しっぱなしで F→ が、続けて D → ど。任意の chord キーがシフトキーとして持続する",
-      "skip": ["kide"],
-      "steps": [
-        { "down": "j" },
-        { "down": "f" },
-        { "up": "f" },
-        { "down": "d" },
-        { "up": "d" },
-        { "up": "j" }
-      ],
-      "expect": { "text": "がど" }
-    },
-    {
-      "name": "mutual_three_key_progression",
-      "description": "3キー差し替え→ホールド継続で追記: J+W=ぎ → +H で ぎゃ に差し替え → H を離して I で ぎょ を追記",
-      "skip": ["kide"],
-      "steps": [
-        { "down": "j" },
-        { "down": "w" },
-        { "down": "h" },
-        { "up": "h" },
-        { "down": "i" },
-        { "up": "i" },
-        { "up": "w" },
-        { "up": "j" }
-      ],
-      "expect": { "text": "ぎゃぎょ" }
-    },
-    {
-      "name": "mutual_fallthrough_disarm",
-      "description": "fall-through disarm: F+M は未定義 → か 単打解決で F は disarm。以後 F 押下中でも F+J は成立しない（M=な, J=あ が単打で続く）",
-      "skip": ["kide"],
-      "steps": [
-        { "down": "f" },
-        { "down": "m" },
-        { "up": "m" },
-        { "down": "j" },
-        { "up": "j" },
-        { "up": "f" }
-      ],
-      "expect": { "text": "かなあ" }
-    },
-    {
-      "name": "mutual_shift_consumed_no_convert",
-      "description": "消費済みシフトキーの単打抑制: space+E=り の後、space を先に離しても singleTapAction(convert) は発火しない",
-      "skip": ["kide"],
-      "steps": [
-        { "down": "space" },
-        { "down": "e" },
-        { "up": "space" },
-        { "up": "e" }
-      ],
-      "expect": { "text": "り", "composing": "り" }
-    },
-    {
-      "name": "shift_chord_space_e_ri",
-      "description": "シフト+文字の同時押し: space+E = り（シフト単打とは弁別される）",
-      "steps": [{ "chord": ["space", "e"] }],
-      "expect": { "text": "り" }
-    },
-    {
-      "name": "shift_single_tap_idle_inserts_space",
-      "description": "シフト単打の判別: space を単打（idle）→ singleTapAction=convert → 全角スペース",
-      "skip": ["kide"],
-      "steps": [{ "press": "space" }, { "wait": 120 }],
-      "expect": { "text": "　" }
-    },
-    {
-      "name": "continuous_space_shift",
-      "description": "連続シフト: space 押しっぱなしで e r w → space+E/R/W = り/め/ね（v18 で め⇔ね 入れ替え）",
-      "skip": ["kide"],
-      "steps": [
-        { "down": "space" },
-        { "wait": 120 },
-        { "press": "e" },
-        { "press": "r" },
-        { "press": "w" },
-        { "up": "space" }
-      ],
-      "expect": { "text": "りめね", "composing": "りめね" }
-    },
-    {
-      "name": "special_deleteback_U",
-      "description": "specialActions: U 単打 = deleteBack。かか を打って U で末尾削除 → か",
-      "skip": ["kide"],
-      "steps": [
-        { "press": "f" },
-        { "wait": 120 },
-        { "press": "f" },
-        { "wait": 120 },
-        { "press": "u" },
-        { "wait": 120 }
-      ],
-      "expect": { "text": "か" }
-    },
-    {
-      "name": "special_moveright_Y_confirms",
-      "description": "specialActions: Y 単打 = moveRight。web はカーソル制御を持たないため composing を確定する",
-      "skip": ["swift", "kide"],
-      "steps": [
-        { "press": "f" },
-        { "wait": 120 },
-        { "press": "y" },
-        { "wait": 120 }
-      ],
-      "expect": { "confirmed": "か", "composing": "" }
-    },
-    {
-      "name": "special_moveleft_T_confirms",
-      "description": "specialActions: T 単打 = moveLeft。web は同様に確定する",
-      "skip": ["swift", "kide"],
-      "steps": [
-        { "press": "f" },
-        { "wait": 120 },
-        { "press": "t" },
-        { "wait": 120 }
-      ],
-      "expect": { "confirmed": "か", "composing": "" }
-    },
-    {
-      "name": "special_switch_english_FG",
-      "description": "specialActions: F+G chord = switchToEnglish。切替後は生キー透過（h がそのまま）",
-      "skip": ["swift", "kide"],
-      "steps": [
-        { "down": "f" },
-        { "down": "g" },
-        { "up": "g" },
-        { "up": "f" },
-        { "wait": 120 },
-        { "press": "h", "char": "h" }
-      ],
-      "expect": { "confirmed": "h", "composing": "" }
-    },
-    {
-      "name": "special_confirm_MV",
-      "description": "specialActions: M+V chord = confirm。先行の か を確定",
-      "skip": ["kide"],
-      "steps": [
-        { "press": "f" },
-        { "wait": 120 },
-        { "down": "m" },
-        { "down": "v" },
-        { "up": "v" },
-        { "up": "m" },
-        { "wait": 120 }
-      ],
-      "expect": { "confirmed": "か", "composing": "" }
-    },
-    {
-      "name": "special_insertAndConfirm_space_M",
-      "description": "specialActions: space+M = insertAndConfirm:。 → 。を挿入して確定",
-      "skip": ["kide"],
-      "steps": [{ "chord": ["space", "m"] }, { "wait": 120 }],
-      "expect": { "confirmed": "。", "composing": "" }
+     "wait": 120
     }
-  ]
+   ],
+   "expect": {
+    "text": "か"
+   }
+  },
+  {
+   "name": "chord_fj_ga",
+   "description": "2キー同時: F+J = が（文字キー同士の chord。2キー目 down で発火）",
+   "steps": [
+    {
+     "chord": [
+      "f",
+      "j"
+     ]
+    }
+   ],
+   "expect": {
+    "text": "が"
+   }
+  },
+  {
+   "name": "overlap_40ms_chord",
+   "description": "40ms 間隔でも押下が重なっていれば chord: F+J = が",
+   "steps": [
+    {
+     "down": "f"
+    },
+    {
+     "wait": 40
+    },
+    {
+     "down": "j"
+    },
+    {
+     "up": "j"
+    },
+    {
+     "up": "f"
+    }
+   ],
+   "expect": {
+    "text": "が"
+   }
+  },
+  {
+   "name": "mutual_hold_beyond_window_still_chord",
+   "description": "相互シフト: ミリ秒を見ない。F を 200ms 押しっぱなしでも J が来れば chord → が（旧 window 判定では かあ になっていた）。kide は window 実装のまま（mutual 未対応）のため skip",
+   "skip": [
+    "kide"
+   ],
+   "steps": [
+    {
+     "down": "f"
+    },
+    {
+     "wait": 200
+    },
+    {
+     "down": "j"
+    },
+    {
+     "up": "j"
+    },
+    {
+     "up": "f"
+    }
+   ],
+   "expect": {
+    "text": "が"
+   }
+  },
+  {
+   "name": "rolling_stagger_ki_te",
+   "description": "ロールオーバー: w を離す前に e を押下。W+E は chord 未定義 → fall-through で 2単打 き, て",
+   "steps": [
+    {
+     "down": "w"
+    },
+    {
+     "down": "e"
+    },
+    {
+     "up": "w"
+    },
+    {
+     "up": "e"
+    }
+   ],
+   "expect": {
+    "text": "きて"
+   }
+  },
+  {
+   "name": "mutual_continuous_dakuon",
+   "description": "連続シフトの一般化: J（濁音シフト相当）押しっぱなしで F→ が、続けて D → ど。任意の chord キーがシフトキーとして持続する",
+   "skip": [
+    "kide"
+   ],
+   "steps": [
+    {
+     "down": "j"
+    },
+    {
+     "down": "f"
+    },
+    {
+     "up": "f"
+    },
+    {
+     "down": "d"
+    },
+    {
+     "up": "d"
+    },
+    {
+     "up": "j"
+    }
+   ],
+   "expect": {
+    "text": "がど"
+   }
+  },
+  {
+   "name": "mutual_three_key_progression",
+   "description": "3キー差し替え→ホールド継続で追記: J+W=ぎ → +H で ぎゃ に差し替え → H を離して I で ぎょ を追記",
+   "skip": [
+    "kide"
+   ],
+   "steps": [
+    {
+     "down": "j"
+    },
+    {
+     "down": "w"
+    },
+    {
+     "down": "h"
+    },
+    {
+     "up": "h"
+    },
+    {
+     "down": "i"
+    },
+    {
+     "up": "i"
+    },
+    {
+     "up": "w"
+    },
+    {
+     "up": "j"
+    }
+   ],
+   "expect": {
+    "text": "ぎゃぎょ"
+   }
+  },
+  {
+   "name": "mutual_fallthrough_disarm",
+   "description": "fall-through disarm: F+M は未定義 → か 単打解決で F は disarm。以後 F 押下中でも F+J は成立しない（M=な, J=あ が単打で続く）",
+   "skip": [
+    "kide"
+   ],
+   "steps": [
+    {
+     "down": "f"
+    },
+    {
+     "down": "m"
+    },
+    {
+     "up": "m"
+    },
+    {
+     "down": "j"
+    },
+    {
+     "up": "j"
+    },
+    {
+     "up": "f"
+    }
+   ],
+   "expect": {
+    "text": "かなあ"
+   }
+  },
+  {
+   "name": "mutual_shift_consumed_no_convert",
+   "description": "消費済みシフトキーの単打抑制: space+E=り の後、space を先に離しても singleTapAction(convert) は発火しない",
+   "skip": [
+    "kide"
+   ],
+   "steps": [
+    {
+     "down": "space"
+    },
+    {
+     "down": "e"
+    },
+    {
+     "up": "space"
+    },
+    {
+     "up": "e"
+    }
+   ],
+   "expect": {
+    "text": "り",
+    "composing": "り"
+   }
+  },
+  {
+   "name": "shift_chord_space_e_ri",
+   "description": "シフト+文字の同時押し: space+E = り（シフト単打とは弁別される）",
+   "steps": [
+    {
+     "chord": [
+      "space",
+      "e"
+     ]
+    }
+   ],
+   "expect": {
+    "text": "り"
+   }
+  },
+  {
+   "name": "shift_single_tap_idle_inserts_space",
+   "description": "シフト単打の判別: space を単打（idle）→ singleTapAction=convert → 全角スペース",
+   "skip": [
+    "kide"
+   ],
+   "steps": [
+    {
+     "press": "space"
+    },
+    {
+     "wait": 120
+    }
+   ],
+   "expect": {
+    "text": "　"
+   }
+  },
+  {
+   "name": "continuous_space_shift",
+   "description": "連続シフト: space 押しっぱなしで e r w → space+E/R/W = り/め/ね（v18 で め⇔ね 入れ替え）",
+   "skip": [
+    "kide"
+   ],
+   "steps": [
+    {
+     "down": "space"
+    },
+    {
+     "wait": 120
+    },
+    {
+     "press": "e"
+    },
+    {
+     "press": "r"
+    },
+    {
+     "press": "w"
+    },
+    {
+     "up": "space"
+    }
+   ],
+   "expect": {
+    "text": "りめね",
+    "composing": "りめね"
+   }
+  },
+  {
+   "name": "special_deleteback_U",
+   "description": "specialActions: U 単打 = deleteBack。かか を打って U で末尾削除 → か",
+   "skip": [
+    "kide"
+   ],
+   "steps": [
+    {
+     "press": "f"
+    },
+    {
+     "wait": 120
+    },
+    {
+     "press": "f"
+    },
+    {
+     "wait": 120
+    },
+    {
+     "press": "u"
+    },
+    {
+     "wait": 120
+    }
+   ],
+   "expect": {
+    "text": "か"
+   }
+  },
+  {
+   "name": "special_moveright_Y_confirms",
+   "description": "specialActions: Y 単打 = moveRight。web はカーソル制御を持たないため composing を確定する",
+   "skip": [
+    "swift",
+    "kide"
+   ],
+   "steps": [
+    {
+     "press": "f"
+    },
+    {
+     "wait": 120
+    },
+    {
+     "press": "y"
+    },
+    {
+     "wait": 120
+    }
+   ],
+   "expect": {
+    "confirmed": "か",
+    "composing": ""
+   }
+  },
+  {
+   "name": "special_moveleft_T_confirms",
+   "description": "specialActions: T 単打 = moveLeft。web は同様に確定する",
+   "skip": [
+    "swift",
+    "kide"
+   ],
+   "steps": [
+    {
+     "press": "f"
+    },
+    {
+     "wait": 120
+    },
+    {
+     "press": "t"
+    },
+    {
+     "wait": 120
+    }
+   ],
+   "expect": {
+    "confirmed": "か",
+    "composing": ""
+   }
+  },
+  {
+   "name": "special_switch_english_FG",
+   "description": "specialActions: F+G chord = switchToEnglish。切替後は生キー透過（h がそのまま）",
+   "skip": [
+    "swift",
+    "kide"
+   ],
+   "steps": [
+    {
+     "down": "f"
+    },
+    {
+     "down": "g"
+    },
+    {
+     "up": "g"
+    },
+    {
+     "up": "f"
+    },
+    {
+     "wait": 120
+    },
+    {
+     "press": "h",
+     "char": "h"
+    }
+   ],
+   "expect": {
+    "confirmed": "h",
+    "composing": ""
+   }
+  },
+  {
+   "name": "special_confirm_MV",
+   "description": "specialActions: M+V chord = confirm。先行の か を確定",
+   "skip": [
+    "kide"
+   ],
+   "steps": [
+    {
+     "press": "f"
+    },
+    {
+     "wait": 120
+    },
+    {
+     "down": "m"
+    },
+    {
+     "down": "v"
+    },
+    {
+     "up": "v"
+    },
+    {
+     "up": "m"
+    },
+    {
+     "wait": 120
+    }
+   ],
+   "expect": {
+    "confirmed": "か",
+    "composing": ""
+   }
+  },
+  {
+   "name": "special_insertAndConfirm_space_M",
+   "description": "specialActions: space+M = insertAndConfirm:。 → 。を挿入して確定",
+   "skip": [
+    "kide"
+   ],
+   "steps": [
+    {
+     "chord": [
+      "space",
+      "m"
+     ]
+    },
+    {
+     "wait": 120
+    }
+   ],
+   "expect": {
+    "confirmed": "。",
+    "composing": ""
+   }
+  },
+  {
+   "name": "english_chord_HJ_switch_japanese",
+   "description": "英数モードの chord: F+G で英数 → h 単打は素の英字 → H+J = switchToJapanese で日本語復帰 → F = か。英数モードでも chord バッファでキーを解釈する（keymap-engine v1.4.0+。swift ハーネスは英数モード未配線のため skip）",
+   "skip": [
+    "swift",
+    "kide"
+   ],
+   "steps": [
+    {
+     "chord": [
+      "f",
+      "g"
+     ]
+    },
+    {
+     "press": "h",
+     "char": "h"
+    },
+    {
+     "chord": [
+      "h",
+      "j"
+     ]
+    },
+    {
+     "press": "f"
+    },
+    {
+     "wait": 120
+    }
+   ],
+   "expect": {
+    "confirmed": "h",
+    "composing": "か"
+   }
+  },
+  {
+   "name": "english_sands_uppercase",
+   "description": "英数モードの SandS: space+X = 大文字 X（englishLookupTable のシフト面。消費済み space の単打 convert は抑制）",
+   "skip": [
+    "swift",
+    "kide"
+   ],
+   "steps": [
+    {
+     "chord": [
+      "f",
+      "g"
+     ]
+    },
+    {
+     "down": "space",
+     "char": " "
+    },
+    {
+     "down": "x"
+    },
+    {
+     "up": "x"
+    },
+    {
+     "up": "space"
+    },
+    {
+     "wait": 120
+    }
+   ],
+   "expect": {
+    "confirmed": "X",
+    "composing": ""
+   }
+  },
+  {
+   "name": "english_rollover_letters",
+   "description": "英数モードのロールオーバー: h を離す前に e を押下 → H+E は英数テーブル未定義 → fall-through で he（通常タイプがそのまま流れる）",
+   "skip": [
+    "swift",
+    "kide"
+   ],
+   "steps": [
+    {
+     "chord": [
+      "f",
+      "g"
+     ]
+    },
+    {
+     "down": "h",
+     "char": "h"
+    },
+    {
+     "down": "e",
+     "char": "e"
+    },
+    {
+     "up": "h"
+    },
+    {
+     "up": "e"
+    },
+    {
+     "wait": 120
+    }
+   ],
+   "expect": {
+    "confirmed": "he",
+    "composing": ""
+   }
+  },
+  {
+   "name": "mutual_reentrant_reset_no_swallow",
+   "description": "再入 reset 後の単打消失の回帰: F+G の F を離した瞬間に switchToEnglish が発火（コールバックが chordBuffer.reset() を再入的に呼ぶ）。G を離す前に押した h が抑制されずに出力されること",
+   "skip": [
+    "swift",
+    "kide"
+   ],
+   "steps": [
+    {
+     "down": "f"
+    },
+    {
+     "down": "g"
+    },
+    {
+     "up": "f"
+    },
+    {
+     "down": "h",
+     "char": "h"
+    },
+    {
+     "up": "g"
+    },
+    {
+     "up": "h"
+    },
+    {
+     "wait": 120
+    }
+   ],
+   "expect": {
+    "confirmed": "h",
+    "composing": ""
+   }
+  }
+ ]
 }

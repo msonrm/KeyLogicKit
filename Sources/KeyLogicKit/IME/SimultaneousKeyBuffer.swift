@@ -345,8 +345,8 @@ public class SimultaneousKeyBuffer {
         // 出力をコミットし、残る押下中キーは armed のまま次の chord を待つ
         // （連続シフトの一般化 — 濁音キー押しっぱなしでの濁音連打等）。
         if chordGroup.contains(key), chordOutputted || pendingSpecialAction != nil {
-            if let action = pendingSpecialAction {
-                onSpecialAction?(action)
+            let pending = pendingSpecialAction
+            if pending != nil {
                 pendingSpecialAction = nil
                 chordOutputted = true
             }
@@ -356,6 +356,11 @@ public class SimultaneousKeyBuffer {
             }
             // 以後の chord は差し替えでなく追記になる
             outputCharCount = 0
+            // 発火は状態更新の後（コールバックが reset() を再入的に呼んでも、
+            // 以降このメソッドは状態に触れないため stale なフラグが残らない）
+            if let action = pending {
+                onSpecialAction?(action)
+            }
         }
         // 未出力グループのキーの部分リリースは何もしない（finalize まで保留）
     }

@@ -77,6 +77,9 @@ Tests/golden/
 ```
 
 そのケースを実行しないプラットフォーム ID（`"web"` / `"swift"` / `"kide"`）の配列。
+**英数モード（switchToEnglish 後の挙動）を含むケースは `"swift"` を skip する** — 実機の
+Swift 実装（IMETextView）は英数 chord 対応済みだが、Swift ゴールデンハーネスが
+`isDirectEnglishMode` とテーブル差し替えを未配線のため（配線したら skip を外す）。
 kide は IME を持たないキーボード変換器（HID stroke 出力）のため、以下は `"kide"` を指定して除外する:
 
 1. **IME 意味論のケース**（Enter 確定、親指単打の全角スペース挿入等）

@@ -169,6 +169,13 @@ interface KeyEvent { keyCode: number; characters: string; modifiers: number; }
   （`onStateChange` は従来どおり配線してよいが、mutual ではタイマー起因の遅延通知は発生しない）。
   `setSimultaneousWindow` は無視される。keymap 側の仕様は
   [`docs/keymap-format.md`](keymap-format.md) の「judgment: 判定方式」を参照。
+- **英数モードの chord 解釈（v1.4.0+）**: `englishLookupTable` を持つ配列（薙刀式等）は、
+  英数モード（`switchToEnglish` 後）でも chord バッファでキーを解釈する（iOS と同じ設計）。
+  単打面は素の英字なので通常タイプはそのまま流れ、`englishSpecialActions`
+  （H+J = switchToJapanese）と `englishLookupTable` のシフト面（space+X = 大文字）が機能する。
+  修飾キー付き（Shift+h = H、Ctrl 系ショートカット）とキーマップ外キーは chord に参加せず
+  直接挿入。`englishLookupTable` の無い配列（NICOLA 等）は従来どおり英数モードで全キー直接挿入。
+  英数の chord 出力は composition を経由せず `confirmedText` へ直行する。
 
 ### 5.3 confirmedText の運用
 
