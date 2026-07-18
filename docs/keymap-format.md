@@ -239,8 +239,8 @@ chord の `specialActions`（F+G 等の同時押し）と共存可能。
 | `judgment` | string | 任意 | 判定方式: `"window"`（既定） / `"mutual"`。下記「judgment: 判定方式」参照 |
 | `simultaneousWindow` | number | window では必須 | 同時打鍵判定ウィンドウ（秒）。`mutual` では判定に使用されない（旧実装との互換のため記載してもよい） |
 | `shiftKeys` | array | 必須 | シフトキー定義（0〜2 個） |
-| `englishLookupTable` | object | 任意 | 英数モード用 lookup |
-| `englishSpecialActions` | object | 任意 | 英数モード用アクション |
+| `englishLookupTable` | object | 任意 | 英数モード用 lookup。**あると英数モードでも chord バッファでキーを解釈する**（iOS / web v1.4.0+。単打面を素の英字にしておけば通常タイプはそのまま流れる）。無い配列は英数モードで全キー QWERTY 直接挿入 |
+| `englishSpecialActions` | object | 任意 | 英数モード用アクション（例: `"H+J": "switchToJapanese"`）。`englishLookupTable` がある場合のみ有効 |
 
 #### judgment: 判定方式
 
