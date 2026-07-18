@@ -42,6 +42,7 @@ hechima スタックの変換エンジン境界を流れるメッセージの正
 | `convert` | `id`, `kana`, `maxCands?` | かな漢字変換（maxCands 既定 9） |
 | `resize` | `id`, `segIdx`, `offset`, `maxCands?` | 文節伸縮。直近の convert 結果の `segIdx` 文節（0 起点）のよみを `offset`（よみ文字数 ±）だけ伸縮して再変換 |
 | `learn` | `id`, `kana`, `sizes`, `values` | 確定内容の学習（v0.8.0+）。値は**エンジン中立**（候補 index ではなく表示値）— dedupe や UI 並べ替えに頑健で、エンジン差し替えでも電文不変。Mozc worker では変換を再現し値一致で確定 → FinishConversion（all-or-nothing = 誤学習防止） |
+| `revert` | `id` | 直近の `learn` の取り消し（v0.9.0+。確定アンドゥの学習巻き戻し = Mozc RevertConversion。不成立 learn の後は no-op = 誤巻き戻し防止） |
 | `clearLearning` | `id` | OPFS の学習保存分を削除（v0.8.0+。メモリ内学習は再ロードまで残る） |
 
 ### Worker → ホスト
@@ -114,7 +115,6 @@ C API はステートレスになった**。「直近の変換」という接続
 | `predict` | 予測変換（StartPrediction） |
 | 候補注釈 | `candidates` の要素をオブジェクト化（ひらがな/カタカナ/記号種別等の annotation） |
 | ユーザー辞書 | 登録・削除・列挙 |
-| 確定アンドゥ | RevertConversion（直前の Finish の取り消し） |
 
 ## 5. テスト
 
