@@ -75,19 +75,20 @@ const fep = Hechima.createFep({ show, hide, commit, hostKey, ...conn.callbacks()
 
 ## 4. 既知の制約（v0 の限界と v1 課題）
 
-### resize は stateful
+### resize の状態の持ち方（v0.3.0 wasm + v0.7.0 worker で解決済み）
 
-`hechima_resize` は「**直近の convert 結果**」への操作で、変換状態を wasm 内に
-static に 1 つだけ保持する。このため:
+~~`hechima_resize` は「直近の convert 結果」への stateful 操作で wasm 内に状態を持つ~~
+→ **hechima-wasm v0.3.0 の `hechima_convert2`（かな + 文節境界制約 → 再変換）で
+C API はステートレスになった**。「直近の変換」という接続固有の状態は hechima-worker
+（本質的に 1 ホスト : 1 worker）が持ち、resize 電文（segIdx/offset）を境界制約列に
+翻訳して convert2 を呼ぶ。**電文 v0 は無変更**（resize メッセージの意味は同じ）。
 
-- 成立条件は**トランスポートが 1:1**（1 ホスト : 1 worker インスタンス）の間だけ
-- 複数クライアントの多重化（ネットワーク延伸・共有サーバー）では convert が
-  交錯した時点で壊れる
+- 将来のネットワーク延伸では「接続ごとに状態を持つ」責務がそのままサーバー側の
+  接続ハンドラに移る（C API は純関数なので多重化しても安全）
+- 旧 `hechima_resize`（wasm 内 static）は互換のため残置（非推奨）。worker は
+  `_hechima_convert2` の有無を機能検出し、旧 wasm（v0.2.0）では自動フォールバックする
 
-**v1 課題**: stateless 化（`resize` に かな + 文節境界配列を明示して再変換）または
-明示セッション ID の導入。どちらも wasm 再ビルド案件なので、**学習
-（`FinishConversion` 配線）と同時に 1 回で焼く**こと（hechima-wasm CI への
-actions/cache 導入もその時に）。
+**残る v1 課題**: 学習（`FinishConversion` 配線 = R2、別途判断）。
 
 ### 語彙の不足（将来の予約）
 
