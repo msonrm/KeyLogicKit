@@ -38,18 +38,21 @@ hechima スタックの変換エンジン境界を流れるメッセージの正
 
 | 電文 | フィールド | 意味 |
 |---|---|---|
-| `init` | `wasmJs?`, `dataUrl?` | wasm ロード + 辞書取得。パスは worker スクリプト位置からの相対 URL（既定 `./hechima-wasm.js` / `./mozc.data`）。1 worker につき 1 回 |
+| `init` | `wasmJs?`, `dataUrl?`, `learning?`, `scope?` | wasm ロード + 辞書取得。パスは worker スクリプト位置からの相対 URL（既定 `./hechima-wasm.js` / `./mozc.data`）。`learning` 省略 = true、`scope` 省略 = "default"（v0.8.0+）。1 worker につき 1 回 |
 | `convert` | `id`, `kana`, `maxCands?` | かな漢字変換（maxCands 既定 9） |
 | `resize` | `id`, `segIdx`, `offset`, `maxCands?` | 文節伸縮。直近の convert 結果の `segIdx` 文節（0 起点）のよみを `offset`（よみ文字数 ±）だけ伸縮して再変換 |
+| `learn` | `id`, `kana`, `sizes`, `values` | 確定内容の学習（v0.8.0+）。値は**エンジン中立**（候補 index ではなく表示値）— dedupe や UI 並べ替えに頑健で、エンジン差し替えでも電文不変。Mozc worker では変換を再現し値一致で確定 → FinishConversion（all-or-nothing = 誤学習防止） |
+| `clearLearning` | `id` | OPFS の学習保存分を削除（v0.8.0+。メモリ内学習は再ロードまで残る） |
 
 ### Worker → ホスト
 
 | 電文 | フィールド | 意味 |
 |---|---|---|
 | `progress` | `loaded`, `total` | 辞書ダウンロード進捗（`total` 不明時は 0） |
-| `ready` | `protocol`, `version`, `features` | 初期化完了。`protocol` = 電文版数（現在 0）、`version` = hechima バンドル版、`features.resize` = 実行時機能検出（古い wasm では false） |
+| `ready` | `protocol`, `version`, `features` | 初期化完了。`protocol` = 電文版数（現在 0）、`version` = hechima バンドル版、`features` = 実行時機能検出（`resize` / `learn` / `persist` = OPFS 永続化可） |
 | `error` | `message` | 初期化失敗（init に対する終端応答） |
 | `result` | `id`, `segments`, `error?` | convert / resize の結果。`segments: null` = 結果なし。`error` は診断用付帯情報で契約上は null と同義 |
+| `learned` | `id`, `ok` | learn / clearLearning の結果（v0.8.0+） |
 
 ### 相関・互換規約
 
@@ -90,16 +93,28 @@ C API はステートレスになった**。「直近の変換」という接続
 
 **残る v1 課題**: 学習（`FinishConversion` 配線 = R2、別途判断）。
 
+### 学習の設計（v0.8.0 で実装済み）
+
+- **二層構造**: エンジン内学習（候補選択 = UserSegmentHistoryRewriter、文節境界 =
+  UserBoundaryHistoryRewriter。記録も適用も Mozc 内で完結）+ ホスト側の自由層
+  （`cb.learn` に流れる同じ確定イベントをホストが自前で蓄積し、`cb.convert` を wrap した
+  再ランキング等に使える — 差し替え点は既存の cb 境界で足りる）
+- **永続化は worker 内 OPFS で完結**（`hechima/user/<scope>/segment.db` 等。learn 成功後に
+  debounce して書き戻し、init 時に復元）。ホストにバイト列は流れない。OPFS が無い環境は
+  「セッション中のみ学習」に degrade（`features.persist` で判別可）
+- `scope` は学習の保存単位（将来の「文書/ジャンル/グローバル」スコープ化の入口。
+  カスケード合成はエンジン内学習では行わず、ホスト側の再ランキング層の領分）
+
 ### 語彙の不足（将来の予約）
 
 以下は v0 に無い。追加はフィールド/メッセージ種の追加（= 後方互換）で行う予定:
 
 | 予約語彙 | 用途 |
 |---|---|
-| `learn` | 確定通知（どの候補を選んだか）→ Mozc の FinishConversion。学習の前提 |
 | `predict` | 予測変換（StartPrediction） |
 | 候補注釈 | `candidates` の要素をオブジェクト化（ひらがな/カタカナ/記号種別等の annotation） |
 | ユーザー辞書 | 登録・削除・列挙 |
+| 確定アンドゥ | RevertConversion（直前の Finish の取り消し） |
 
 ## 5. テスト
 

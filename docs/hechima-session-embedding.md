@@ -45,6 +45,7 @@ npm run test:hechima     # build:engine + build:hechima → node でゴールデ
 | `hostKey(name)` | `string`（省略可） | ホスト文書へ実キーを 1 打注入（name = `KeyboardEvent.code` 名: `'ArrowLeft'` / `'Backspace'` 等）。編集キー二重経路の委譲先 |
 | `convert(yomi)` | `(string) → Promise<[{key, candidates}] \| null>`（省略可） | かな漢字変換。null/省略/失敗 = フォールバック（よみ 1 文節・カナ/かな巡回） |
 | `resize(segIdx, offset)` | `(number, number) → Promise<[{key, candidates}] \| null>`（省略可、v0.2.0+） | 文節伸縮（hechima-wasm v0.2.0+ の `hechima_resize`）。offset はよみ文字数（±）。null/空/失敗 = 伸縮不能（現状維持）。未提供なら editSegment* は無害に飲まれる |
+| `learn(segments)` | `({key, value})[] → void`（省略可、v0.8.0+） | 確定内容の学習通知（fire-and-forget）。候補選択中の確定時に よみ+確定表示値 の列で呼ばれる（英字合成の確定では呼ばれない）。connectWorker の callbacks() を繋げば Mozc の学習に流れる。ホストが同じイベントを自前蓄積して独自の再ランキングに使ってもよい |
 
 ## 3. 公開 API（`Hechima.*`）
 
@@ -167,6 +168,8 @@ node ランナー [`web/scripts/run-hechima-golden.mjs`](../web/scripts/run-hech
 10. 英字合成 + 追加候補（v0.6.0+: Shift+英字 → as-typed 筆頭の綴りバリエーション変換・
     混在よみ・BS 全消しでモード終了 / ↑・Shift+Space の段階展開（ひらがな→カタカナ）・
     領域内往復・追加候補の確定）
+11. 学習通知（v0.8.0+: 複数文節確定の learnCalls・追加候補確定の値・英字合成/よみのみ確定では
+    呼ばない。worker テスト側で実 Mozc の学習 E2E = 2 位学習 → 筆頭反転）
 
 タイミングは仮想クロックで決定的に進める（mozc E2E のみ実タイマー — wasm 初期化と干渉するため）。
 
