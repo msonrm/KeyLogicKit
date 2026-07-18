@@ -41,6 +41,7 @@ hechima スタックの変換エンジン境界を流れるメッセージの正
 | `init` | `wasmJs?`, `dataUrl?`, `learning?`, `scope?` | wasm ロード + 辞書取得。パスは worker スクリプト位置からの相対 URL（既定 `./hechima-wasm.js` / `./mozc.data`）。`learning` 省略 = true、`scope` 省略 = "default"（v0.8.0+）。1 worker につき 1 回 |
 | `convert` | `id`, `kana`, `maxCands?` | かな漢字変換（maxCands 既定 9） |
 | `resize` | `id`, `segIdx`, `offset`, `maxCands?` | 文節伸縮。直近の convert 結果の `segIdx` 文節（0 起点）のよみを `offset`（よみ文字数 ±）だけ伸縮して再変換 |
+| `reconvert` | `id`, `surface`, `maxCands?` | 再変換（v0.10.0+）。表記 → 逆変換でよみ → 変換（応答 result の keys がよみ）。ステートレス |
 | `learn` | `id`, `kana`, `sizes`, `values` | 確定内容の学習（v0.8.0+）。値は**エンジン中立**（候補 index ではなく表示値）— dedupe や UI 並べ替えに頑健で、エンジン差し替えでも電文不変。Mozc worker では変換を再現し値一致で確定 → FinishConversion（all-or-nothing = 誤学習防止） |
 | `revert` | `id` | 直近の `learn` の取り消し（v0.9.0+。確定アンドゥの学習巻き戻し = Mozc RevertConversion。不成立 learn の後は no-op = 誤巻き戻し防止） |
 | `clearLearning` | `id` | OPFS の学習保存分を削除（v0.8.0+。メモリ内学習は再ロードまで残る） |

@@ -45,6 +45,7 @@ npm run test:hechima     # build:engine + build:hechima → node でゴールデ
 | `hostKey(name)` | `string`（省略可） | ホスト文書へ実キーを 1 打注入（name = `KeyboardEvent.code` 名: `'ArrowLeft'` / `'Backspace'` 等）。編集キー二重経路の委譲先 |
 | `convert(yomi)` | `(string) → Promise<[{key, candidates}] \| null>`（省略可） | かな漢字変換。null/省略/失敗 = フォールバック（よみ 1 文節・カナ/かな巡回） |
 | `resize(segIdx, offset)` | `(number, number) → Promise<[{key, candidates}] \| null>`（省略可、v0.2.0+） | 文節伸縮（hechima-wasm v0.2.0+ の `hechima_resize`）。offset はよみ文字数（±）。null/空/失敗 = 伸縮不能（現状維持）。未提供なら editSegment* は無害に飲まれる |
+| `reconvert(surface)` | `(string) → Promise<[{key, candidates}] \| null>`（省略可、v0.10.0+） | 再変換。表記→逆変換でよみ→変換（hechima-wasm v0.6.0+）。`FepSession.reconvert()` が使う |
 | `retract(text)` | `(string) → boolean`（省略可、v0.9.0+） | 確定アンドゥの文書側協力。ホスト文書の末尾が text と一致するなら取り除いて true（不一致 = false でアンドゥ不成立）。Ctrl+BS / `undoCommit()` が使う |
 | `unlearn()` | `() → void`（省略可、v0.9.0+） | 確定アンドゥ時の学習巻き戻し。connectWorker の callbacks() で Mozc RevertConversion に流れる |
 | `learn(segments)` | `({key, value})[] → void`（省略可、v0.8.0+） | 確定内容の学習通知（fire-and-forget）。候補選択中の確定時に よみ+確定表示値 の列で呼ばれる（英字合成の確定では呼ばれない）。connectWorker の callbacks() を繋げば Mozc の学習に流れる。ホストが同じイベントを自前蓄積して独自の再ランキングに使ってもよい |
@@ -178,6 +179,8 @@ node ランナー [`web/scripts/run-hechima-golden.mjs`](../web/scripts/run-hech
 12. 確定アンドゥ（v0.9.0+: Ctrl+BS で Phase 2 復元（選択位置保持）・retract 不成立/合成中/
     よみのみ確定は不発・英字確定は復元するが unlearn しない・engine 経路 E2E。
     worker テスト側で実 Mozc の revert E2E = 学習巻き戻しで筆頭復帰）
+13. 再変換（v0.10.0+: reconvert → Phase 2（keys がよみ）・BS でよみ戻し・合成中/候補中/
+    cb 未提供は false・実 Mozc E2E = 東京 → とうきょう → 確定）
 
 タイミングは仮想クロックで決定的に進める（mozc E2E のみ実タイマー — wasm 初期化と干渉するため）。
 
