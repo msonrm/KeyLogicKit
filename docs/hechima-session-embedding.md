@@ -171,7 +171,8 @@ node ランナー [`web/scripts/run-hechima-golden.mjs`](../web/scripts/run-hech
    検出できなかった routing バグの再発防止）
 9. 候補公開 + 直接選択（v0.5.0+: show の candidates/candidateIndex・selectCandidate の
    範囲外/非 Phase 2 で false・focus 移動後の選択・確定への反映）
-10. 英字合成 + 追加候補（v0.6.0+: Shift+英字 → as-typed 筆頭の綴りバリエーション変換・
+10. 英字合成 + 追加候補（v0.6.0+: Shift+英字 → as-typed 筆頭の綴りバリエーション変換
+    （v0.11.1+ は cb.convert の候補 = ASCII よみのユーザー辞書語をマージ）・
     混在よみ・BS 全消しでモード終了 / ↑・Shift+Space の段階展開（ひらがな→カタカナ）・
     領域内往復・追加候補の確定）
 11. 学習通知（v0.8.0+: 複数文節確定の learnCalls・追加候補確定の値・英字合成/よみのみ確定では
