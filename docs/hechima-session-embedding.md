@@ -72,6 +72,7 @@ npm run test:hechima     # build:engine + build:hechima → node でゴールデ
 | `setEngine(engine, keyOf)` | KeymapEngine の `InputEngine` を注入（`null` = 内蔵ローマ字）。`keyOf` には `KeymapEngine.keyEventFromBrowser` をそのまま渡せる |
 | `pumpEngine()` | `engine.onStateChange`（chord 窓満了）から呼ぶ |
 | `selectCandidate(index) → bool`（v0.5.0+） | 候補選択中に注目文節の候補を直接選択。候補 UI の数字キー/クリックからホストが呼ぶ（キー routing には関与しない = どのキーで呼ぶかはホスト方針）。範囲外・非候補選択中は false |
+| `insertKana(kana, replaceCount?) → bool`（v0.13.0+） | かな直接注入（フリック等の非キーボード入力フロント用）。idle = 合成開始 / 合成中 = 末尾 `replaceCount` 字（既定 0）を置換して連結（゛゜小トグルの 1 字置換等）/ 候補選択中 = 現候補を確定して新規合成 / よみ復帰中 = 連結。候補選択中の置換・末尾字数を超える置換・engine（配列）合成中は false（現状維持）。ローマ字 pend が残っていれば flush してから連結 |
 | `reset()` | 全状態クリア |
 
 ## 4. 最小統合例
