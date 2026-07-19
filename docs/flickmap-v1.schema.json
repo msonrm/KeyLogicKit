@@ -92,7 +92,7 @@
           "type": "integer",
           "minimum": 0,
           "default": 0,
-          "description": "押下からペタル表示までの遅延 ms（0 = 即時）"
+          "description": "ホールドでのペタル（ガイド）表示までの遅延 ms（0 = 押下で即時）。フリック判定距離を超えた時点では常に表示される"
         },
         "repeat": {
           "type": "object",
@@ -160,6 +160,10 @@
           "type": "string",
           "description": "キー面の表示。省略時は tap が文字列ならそれを表示（アクションキーでは必須）"
         },
+        "composingLabel": {
+          "type": "string",
+          "description": "合成中（変換中含む）のキー面表示（例: 空白 → 変換、改行 → 確定）。省略時は label のまま"
+        },
         "tap": { "$ref": "#/$defs/value" },
         "flick": {
           "type": "object",
@@ -207,6 +211,7 @@
             "convert",
             "confirm",
             "escape",
+            "undo",
             "moveLeft",
             "moveRight",
             "moveUp",

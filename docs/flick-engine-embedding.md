@@ -37,7 +37,8 @@ npm run test:flick              # ビルド + resolver ゴールデン（node）
 | `DEFAULT_POST_MODIFY_CYCLES` / `nextPostModify(tail, cycles)` | ゛゜小トグルの既定系列と適用関数 |
 
 `FlickKeyboard`: `element`（ルート要素）/ `layer`（現在レイヤ名）/ `setLayer(name)` /
-`destroy()`。
+`setComposing(on)`（v1.1.0+。合成中フラグ = `composingLabel` の表示切替。**cb.show / cb.hide
+から呼ぶ** — 空白⇄変換・改行⇄確定のラベルが切り替わる）/ `destroy()`。
 
 ## 3. FlickOp の配線（ホストの責務）
 

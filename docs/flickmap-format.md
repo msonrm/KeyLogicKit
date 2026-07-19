@@ -78,7 +78,7 @@
 |---|---|---|---|
 | `inputStyle` | `"flick"` | `"flick"` | 入力方式。**`"flick+multitap"`（トグル併用）は予約**（後述「将来拡張」。flick-1 実装ではスキーマが `"flick"` のみ許可） |
 | `threshold` | number (0.1〜1.0) | 0.35 | フリック判定距離。**セル幅に対する比**（デバイス DPI 非依存） |
-| `petalDelayMs` | integer ≥ 0 | 0 | 押下からペタル（花びらガイド）表示までの遅延。0 = 即時表示 |
+| `petalDelayMs` | integer ≥ 0 | 0 | **ホールドでの**ペタル（花びらガイド）表示までの遅延（0 = 押下で即時）。フリック判定距離を超えた時点ではこの値に関わらず常に表示される（タップで完結する打鍵ではペタルを出さない = うるささ回避。標準マップは 350） |
 | `repeat.delayMs` | integer | 500 | `repeat: true` キーの長押しリピート開始まで |
 | `repeat.intervalMs` | integer | 80 | リピート間隔 |
 
@@ -125,6 +125,7 @@
 | `row` / `col` | integer ≥ 0（必須） | グリッド位置（0 起点） |
 | `rowSpan` / `colSpan` | integer ≥ 1 | セル結合（既定 1。空白キーの横長等） |
 | `label` | string | キー面の表示。省略時は `tap` が文字列ならそれを表示（アクションキーでは必須） |
+| `composingLabel` | string | 合成中（変換中含む）のキー面表示（例: 空白 → 「変換」、改行 → 「確定」）。省略時は `label` のまま。表示切替はホストが `FlickKeyboard.setComposing()` で行う |
 | `tap` | Value | 単押しの値（省略可 — 省略時、単押しは何もしない） |
 | `flick.up/down/left/right` | Value | 各方向の値（すべて省略可） |
 | `repeat` | boolean | 長押しリピート（`deleteBack` キー等。既定 false） |
@@ -152,6 +153,7 @@ keymap v1 の specialActions と同じ名前・同じ意味論を使う。実行
 | `convert` | `" "`（Space） | 変換開始・次候補 | ホスト編集（空白挿入） |
 | `confirm` | `Enter` | 確定 / 結合確定 | ホスト編集（改行） |
 | `escape` | `Escape` | 取消 / よみに戻す | （透過） |
+| `undo` | `Ctrl+Backspace` | —（確定アンドゥは非合成中のみ） | セッションの確定アンドゥ。不成立（透過）ならホストの文書 undo 等 |
 | `moveLeft` / `moveRight` | `ArrowLeft` / `ArrowRight` | — / 文節フォーカス移動 | caret 移動 |
 | `moveUp` / `moveDown` | `ArrowUp` / `ArrowDown` | — / 候補ナビ・追加候補展開 | caret 移動 |
 | `resizeLeft` / `resizeRight` | `Shift+ArrowLeft` / `Shift+ArrowRight` | — / 文節伸縮 | （透過） |
