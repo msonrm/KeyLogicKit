@@ -116,6 +116,11 @@
       "type": "object",
       "required": ["grid", "keys"],
       "properties": {
+        "output": {
+          "type": "string",
+          "enum": ["kana", "romaji", "direct"],
+          "description": "このレイヤの出力先（省略時 = トップレベル output）。direct = セッションを経由せずエディタへ直接挿入（英字・数字レイヤ用。レイヤ単位のみ）"
+        },
         "grid": {
           "type": "object",
           "required": ["rows", "cols"],

@@ -95,13 +95,19 @@
 ```jsonc
 "layers": {
   "kana":  { "grid": { "rows": 4, "cols": 5 }, "keys": [ ... ] },
-  "eiji":  { "grid": { "rows": 4, "cols": 5 }, "keys": [ ... ] },
-  "digit": { "grid": { "rows": 4, "cols": 5 }, "keys": [ ... ] }
+  "eiji":  { "output": "direct", "grid": { "rows": 4, "cols": 5 }, "keys": [ ... ] },
+  "digit": { "output": "direct", "grid": { "rows": 4, "cols": 5 }, "keys": [ ... ] }
 }
 ```
 
 レイヤ名は自由（`setLayer` アクションの参照先）。標準 12 キーの慣習は
 `kana` / `eiji` / `digit` の 3 レイヤだが、スキーマは強制しない。
+
+| フィールド | 型 | 説明 |
+|---|---|---|
+| `grid` | object（必須） | `rows` / `cols`（1〜8） |
+| `keys` | array（必須） | キー定義（1 つ以上） |
+| `output` | `"kana"` \| `"romaji"` \| `"direct"` | このレイヤの出力先（省略時 = トップレベル `output`）。**`"direct"` はレイヤ単位のみ**: 値をセッション（合成）を経由せずホストのエディタへ直接挿入する。標準 12 キーの英字・数字レイヤ用（実 IME と同じく英数字は無変換で直接入力） |
 
 ### key: キー定義
 
@@ -178,14 +184,17 @@ keymap v1 の specialActions と同じ名前・同じ意味論を使う。実行
 `postModifyCycles`（トップレベル、string[]）で**完全置換**できる。
 `output: "romaji"` では `postModify` は使用不可（デコードエラー）。
 
-## output: "kana" / "romaji"
+## output: "kana" / "romaji" / "direct"
 
 - **`"kana"`（既定）**: 文字列値は `fep.insertKana(text)` でセッションに直接注入される。
   idle = 合成開始 / 合成中 = 連結 / 候補選択中 = 現候補を確定して新規合成（かな追加の
   標準セマンティクス）/ よみ復帰中 = よみに連結。
 - **`"romaji"`**: 文字列値は 1 字ずつ KeyTap（`{key: 文字}`）としてセッションの
   `feed()` に流し、既存のローマ字解決（`resolveRomaji`）に委ねる。
-  フリックでローマ字ペアを打つ方式（アルテ系）のための出力型。
+  フリックでローマ字ペアを打つ方式（アルテ系）のための出力型。値は ASCII 限定。
+- **`"direct"`（レイヤ単位のみ）**: 文字列値をセッションを経由せずホストのエディタへ
+  直接挿入する（`postModify` は使用不可）。標準 12 キーの英字・数字レイヤ用
+  （実 IME と同じく英数字は無変換で直接入力）。トップレベル `output` には指定できない。
 
 ## 分割レイアウト（設計考慮）
 
