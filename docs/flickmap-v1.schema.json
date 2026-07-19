@@ -1,0 +1,243 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "flickmap-v1.schema.json",
+  "title": "Flickmap Definition flick-1",
+  "description": "フリックマップ定義フォーマット flick-1。タッチスクリーン向けフリック入力方式をデータ駆動で定義する。仕様書: docs/flickmap-format.md",
+  "type": "object",
+  "required": ["formatVersion", "name", "layers"],
+  "properties": {
+    "formatVersion": {
+      "type": "string",
+      "const": "flick-1",
+      "description": "フォーマットバージョン（現在は \"flick-1\" 固定）"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "フリックマップの表示名"
+    },
+    "description": {
+      "type": "string",
+      "description": "入力方式の説明"
+    },
+    "author": {
+      "type": "string",
+      "description": "原作者名"
+    },
+    "contributor": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "array", "items": { "type": "string" } }
+      ],
+      "description": "派生版の改変者。文字列または文字列の配列。"
+    },
+    "basedOn": {
+      "type": "string",
+      "description": "派生元の配列名"
+    },
+    "license": {
+      "type": "string",
+      "description": "ライセンス識別子（SPDX 形式推奨）"
+    },
+    "output": {
+      "type": "string",
+      "enum": ["kana", "romaji"],
+      "default": "kana",
+      "description": "キー値の解釈。kana = insertKana 直接注入 / romaji = 1 字ずつ feed してローマ字解決"
+    },
+    "flickConfig": {
+      "$ref": "#/$defs/flickConfig"
+    },
+    "postModifyCycles": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 2 },
+      "description": "postModify の変換系列（例 \"はばぱ\"）。指定すると内蔵標準テーブルを完全置換する。"
+    },
+    "initialLayer": {
+      "type": "string",
+      "description": "起動時レイヤ名。既定 = \"kana\"（無ければ宣言順の先頭）"
+    },
+    "layers": {
+      "type": "object",
+      "minProperties": 1,
+      "patternProperties": {
+        "^_comment": { "type": "string" }
+      },
+      "additionalProperties": { "$ref": "#/$defs/layer" },
+      "description": "レイヤ定義。キー = レイヤ名（setLayer の参照先）"
+    }
+  },
+  "patternProperties": {
+    "^_comment": { "type": "string" }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "flickConfig": {
+      "type": "object",
+      "properties": {
+        "inputStyle": {
+          "type": "string",
+          "enum": ["flick"],
+          "default": "flick",
+          "description": "入力方式。\"flick+multitap\"（トグル併用）は将来拡張として予約（flick-1 実装では未対応）"
+        },
+        "threshold": {
+          "type": "number",
+          "minimum": 0.1,
+          "maximum": 1.0,
+          "default": 0.35,
+          "description": "フリック判定距離（セル幅に対する比）"
+        },
+        "petalDelayMs": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "description": "押下からペタル表示までの遅延 ms（0 = 即時）"
+        },
+        "repeat": {
+          "type": "object",
+          "properties": {
+            "delayMs": { "type": "integer", "minimum": 0, "default": 500 },
+            "intervalMs": { "type": "integer", "minimum": 16, "default": 80 }
+          },
+          "patternProperties": {
+            "^_comment": { "type": "string" }
+          },
+          "additionalProperties": false,
+          "description": "repeat: true キーの長押しリピート設定"
+        }
+      },
+      "patternProperties": {
+        "^_comment": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "layer": {
+      "type": "object",
+      "required": ["grid", "keys"],
+      "properties": {
+        "grid": {
+          "type": "object",
+          "required": ["rows", "cols"],
+          "properties": {
+            "rows": { "type": "integer", "minimum": 1, "maximum": 8 },
+            "cols": { "type": "integer", "minimum": 1, "maximum": 8 }
+          },
+          "patternProperties": {
+            "^_comment": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
+        "keys": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/key" }
+        }
+      },
+      "patternProperties": {
+        "^_comment": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "key": {
+      "type": "object",
+      "required": ["row", "col"],
+      "anyOf": [
+        { "required": ["tap"] },
+        { "required": ["flick"] }
+      ],
+      "properties": {
+        "row": { "type": "integer", "minimum": 0 },
+        "col": { "type": "integer", "minimum": 0 },
+        "rowSpan": { "type": "integer", "minimum": 1, "default": 1 },
+        "colSpan": { "type": "integer", "minimum": 1, "default": 1 },
+        "label": {
+          "type": "string",
+          "description": "キー面の表示。省略時は tap が文字列ならそれを表示（アクションキーでは必須）"
+        },
+        "tap": { "$ref": "#/$defs/value" },
+        "flick": {
+          "type": "object",
+          "minProperties": 1,
+          "properties": {
+            "up": { "$ref": "#/$defs/value" },
+            "down": { "$ref": "#/$defs/value" },
+            "left": { "$ref": "#/$defs/value" },
+            "right": { "$ref": "#/$defs/value" }
+          },
+          "patternProperties": {
+            "^_comment": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
+        "repeat": {
+          "type": "boolean",
+          "default": false,
+          "description": "長押しで tap 値をリピート発火（deleteBack キー等）"
+        }
+      },
+      "patternProperties": {
+        "^_comment": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "value": {
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1,
+          "description": "出力テキスト（output: kana ならかな、romaji なら ASCII）"
+        },
+        { "$ref": "#/$defs/actionValue" }
+      ]
+    },
+    "actionValue": {
+      "type": "object",
+      "required": ["action"],
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "deleteBack",
+            "convert",
+            "confirm",
+            "escape",
+            "moveLeft",
+            "moveRight",
+            "moveUp",
+            "moveDown",
+            "resizeLeft",
+            "resizeRight",
+            "setLayer",
+            "postModify"
+          ],
+          "description": "アクション名。keymap v1 の specialActions と同じ意味論 + フリック固有（setLayer / postModify）"
+        },
+        "layer": {
+          "type": "string",
+          "description": "setLayer の切替先レイヤ名（setLayer では必須）"
+        }
+      },
+      "patternProperties": {
+        "^_comment": { "type": "string" }
+      },
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": { "action": { "const": "setLayer" } }
+          },
+          "then": { "required": ["layer"] }
+        },
+        {
+          "if": {
+            "properties": { "action": { "not": { "const": "setLayer" } } }
+          },
+          "then": {
+            "properties": { "layer": false }
+          }
+        }
+      ]
+    }
+  }
+}
