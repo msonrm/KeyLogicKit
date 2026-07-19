@@ -99,6 +99,13 @@ renderComposition（show / hide / commit のすべてが通る描画関数）の
   `--fe-fn-bg` / `--fe-fn-fg` / `--fe-active-bg` / `--fe-petal-bg` / `--fe-petal-fg` /
   `--fe-petal-hot-bg`
 - キーボードの高さはホストが container で決める（root は width/height 100% の grid）
+- **候補 UI**: フリック時は candidate ポップアップ（縦長でキーボードと干渉する）ではなく
+  **キーボード上部の横スクロール候補バー**が定石（ラボサイトで実機検証済み）。実装の要点:
+  高さ常時確保（候補の出入りでキーボードがズレない）/ タップ選択は pointer イベント +
+  移動量判別（8px 未満 = 選択、以上 = スクロール）/ バーはズームガード（touchend
+  preventDefault）の**対象外**にする（iOS の慣性スクロールが死ぬ。バー自体は
+  `touch-action: pan-x` でズーム抑止）/ 選択は `FepSession.selectCandidate(index)`。
+  参考実装 = hechima repo `site/src/main.ts` の `renderFlickCandBar`
 
 ## 6. ゴールデンテストの再利用
 
