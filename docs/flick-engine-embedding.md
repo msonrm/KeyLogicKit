@@ -37,8 +37,14 @@ npm run test:flick              # ビルド + resolver ゴールデン（node）
 | `DEFAULT_POST_MODIFY_CYCLES` / `nextPostModify(tail, cycles)` | ゛゜小トグルの既定系列と適用関数 |
 
 `FlickKeyboard`: `element`（ルート要素）/ `layer`（現在レイヤ名）/ `setLayer(name)` /
-`setComposing(on)`（v1.1.0+。合成中フラグ = `composingLabel` の表示切替。**cb.show / cb.hide
-から呼ぶ** — 空白⇄変換・改行⇄確定のラベルが切り替わる）/ `destroy()`。
+`setComposing(on)`（v1.1.0+。合成中フラグ = `composingLabel` の表示切替 —
+空白⇄変換・改行⇄確定）/ `destroy()`。
+
+**setComposing / getComposingTail はホストの「表示更新の一元点」で更新すること**。
+cb.show / cb.hide だけに仕込むと、**確定時に戻らない**（セッションは確定時に cb.hide を
+呼ばず、ホストの cb.commit が合成表示をクリアする契約のため）。ラボサイトの実装は
+renderComposition（show / hide / commit のすべてが通る描画関数）の先頭で
+`flickComposingText` と `setComposing(segments.length > 0)` を更新している。
 
 ## 3. FlickOp の配線（ホストの責務）
 
