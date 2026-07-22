@@ -88,7 +88,7 @@ keydown/keyup を正しく対で送っているテストは最終出力が変わ
 
 opt-in（今回は不要。使う場合は wasm/worker 更新が絡むので別便で）:
 学習（cb.learn、wasm v0.4.0+）/ 確定アンドゥ（cb.retract + unlearn、v0.5.0+）/
-再変換（cb.reconvert、v0.6.0+）/ ユーザー辞書（worker 電文、v0.7.x）。
+再変換（cb.reconvert、v0.6.0+）/ ユーザー辞書（worker へちま蔓、v0.7.x）。
 cb 契約は計 10 点（必須 3 + 省略可 7）に拡張済み — 詳細は `docs/hechima-session-embedding.md`
 と `docs/hechima-protocol.md`。labo 正典の `hechima-worker.js` + `Hechima.connectWorker` に
 乗り換えると配線が縮む（これも任意）。

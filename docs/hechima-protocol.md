@@ -1,7 +1,10 @@
-# hechima 電文 v0 — 「かな → 文節/候補」境界のプロトコル仕様
+# へちま蔓 v0 — 「かな → 文節/候補」境界のプロトコル仕様
 
-hechima スタックの変換エンジン境界を流れるメッセージの正典。
-「**返り値の形 = 将来の IME 通信プロトコルの電文形式として設計する**」という
+hechima スタックの変換エンジン境界（FEP フロントエンド ⇄ 変換エンジン）を流れる
+メッセージ群——総称 **へちま蔓**（Hechima Vine）——の正典。個々のメッセージは
+「convert メッセージ」「learn メッセージ」等と呼び、それらが伝う経路・形式の総体を
+へちま蔓と呼ぶ（へちまは蔓植物なので、層と層をつなぐ配線を蔓に見立てた造語）。
+「**返り値の形 = 将来の IME 通信プロトコルのへちま蔓形式として設計する**」という
 設計方針（統合スペック v1）の実装であり、型定義の正典は
 [`web/src/hechima/protocol.ts`](../web/src/hechima/protocol.ts)（`Hechima.*` として公開）。
 
@@ -29,30 +32,30 @@ hechima スタックの変換エンジン境界を流れるメッセージの正
 これは `hechima_convert` の返す JSON と同形。セッション層の `cb.convert` /
 `cb.resize` が返す `ConvertSegment[]` はこの `segments` 配列そのもの。
 
-## 3. Worker RPC（電文 v0）
+## 3. Worker RPC（へちま蔓 v0）
 
 `hechima-worker.js`（classic worker。`npm run build:hechima` で
 `web/public/hechima/` に出力）とホストの間の postMessage 契約。
 
 ### ホスト → Worker
 
-| 電文 | フィールド | 意味 |
+| メッセージ | フィールド | 意味 |
 |---|---|---|
 | `init` | `wasmJs?`, `dataUrl?`, `learning?`, `scope?` | wasm ロード + 辞書取得。パスは worker スクリプト位置からの相対 URL（既定 `./hechima-wasm.js` / `./mozc.data`）。`learning` 省略 = true、`scope` 省略 = "default"（v0.8.0+）。1 worker につき 1 回 |
 | `convert` | `id`, `kana`, `maxCands?` | かな漢字変換（maxCands 既定 9） |
 | `resize` | `id`, `segIdx`, `offset`, `maxCands?` | 文節伸縮。直近の convert 結果の `segIdx` 文節（0 起点）のよみを `offset`（よみ文字数 ±）だけ伸縮して再変換 |
 | `reconvert` | `id`, `surface`, `maxCands?` | 再変換（v0.10.0+）。表記 → 逆変換でよみ → 変換（応答 result の keys がよみ）。ステートレス |
-| `learn` | `id`, `kana`, `sizes`, `values` | 確定内容の学習（v0.8.0+）。値は**エンジン中立**（候補 index ではなく表示値）— dedupe や UI 並べ替えに頑健で、エンジン差し替えでも電文不変。Mozc worker では変換を再現し値一致で確定 → FinishConversion（all-or-nothing = 誤学習防止） |
+| `learn` | `id`, `kana`, `sizes`, `values` | 確定内容の学習（v0.8.0+）。値は**エンジン中立**（候補 index ではなく表示値）— dedupe や UI 並べ替えに頑健で、エンジン差し替えでもへちま蔓は不変。Mozc worker では変換を再現し値一致で確定 → FinishConversion（all-or-nothing = 誤学習防止） |
 | `revert` | `id` | 直近の `learn` の取り消し（v0.9.0+。確定アンドゥの学習巻き戻し = Mozc RevertConversion。不成立 learn の後は no-op = 誤巻き戻し防止） |
 | `dictList` / `dictAdd` / `dictRemove` | `id`（+ `reading`,`word`,`pos?` / `index`） | ユーザー辞書（v0.11.0+）。応答は `dict`（更新後の一覧）。wasm が /tmp/user_dictionary.db を直接編集し ReloadAndWait で即反映。永続化は worker の OPFS に相乗り（clearLearning では消えない） |
 | `clearLearning` | `id` | OPFS の学習保存分を削除（v0.8.0+。メモリ内学習は再ロードまで残る） |
 
 ### Worker → ホスト
 
-| 電文 | フィールド | 意味 |
+| メッセージ | フィールド | 意味 |
 |---|---|---|
 | `progress` | `loaded`, `total` | 辞書ダウンロード進捗（`total` 不明時は 0） |
-| `ready` | `protocol`, `version`, `features` | 初期化完了。`protocol` = 電文版数（現在 0）、`version` = hechima バンドル版、`features` = 実行時機能検出（`resize` / `learn` / `persist` = OPFS 永続化可） |
+| `ready` | `protocol`, `version`, `features` | 初期化完了。`protocol` = へちま蔓プロトコル版数（現在 0）、`version` = hechima バンドル版、`features` = 実行時機能検出（`resize` / `learn` / `persist` = OPFS 永続化可） |
 | `error` | `message` | 初期化失敗（init に対する終端応答） |
 | `result` | `id`, `segments`, `error?` | convert / resize の結果。`segments: null` = 結果なし。`error` は診断用付帯情報で契約上は null と同義 |
 | `learned` | `id`, `ok` | learn / clearLearning の結果（v0.8.0+） |
@@ -87,8 +90,8 @@ const fep = Hechima.createFep({ show, hide, commit, hostKey, ...conn.callbacks()
 ~~`hechima_resize` は「直近の convert 結果」への stateful 操作で wasm 内に状態を持つ~~
 → **hechima-wasm v0.3.0 の `hechima_convert2`（かな + 文節境界制約 → 再変換）で
 C API はステートレスになった**。「直近の変換」という接続固有の状態は hechima-worker
-（本質的に 1 ホスト : 1 worker）が持ち、resize 電文（segIdx/offset）を境界制約列に
-翻訳して convert2 を呼ぶ。**電文 v0 は無変更**（resize メッセージの意味は同じ）。
+（本質的に 1 ホスト : 1 worker）が持ち、resize メッセージ（segIdx/offset）を境界制約列に
+翻訳して convert2 を呼ぶ。**へちま蔓 v0 は無変更**（resize メッセージの意味は同じ）。
 
 - 将来のネットワーク延伸では「接続ごとに状態を持つ」責務がそのままサーバー側の
   接続ハンドラに移る（C API は純関数なので多重化しても安全）
@@ -132,5 +135,5 @@ C API はステートレスになった**。「直近の変換」という接続
 - **オンライン日本語入力ラボ**（新設サイト、Cloudflare）: `hechima-worker.js` +
   `connectWorker` をそのまま使う想定
 - **QuuBee**: 独自の `mozc-worker.js`（本 worker の原型）を使用中。`hechima-worker.js` +
-  `connectWorker` への置き換えは**任意**（電文は同系だが init の応答形など細部が異なる。
+  `connectWorker` への置き換えは**任意**（へちま蔓は同系だが init の応答形など細部が異なる。
   置き換える場合は bridge.js の RPC 相関コードを `connectWorker` に委譲できる）
