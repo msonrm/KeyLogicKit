@@ -28,8 +28,8 @@
       ">": "＞",
       "^": "＾",
       "_": "＿",
-      "\"": "\u201d",
-      "'": "\u2019",
+      "\"": "”",
+      "'": "’",
       "`": "｀",
       "+": "＋",
       "=": "＝",
@@ -56,7 +56,6 @@
     "i": "u",
     "o": "y",
     "p": ";",
-
     "_comment_middle": "中段: QWERTY→Colemak",
     "s": "r",
     "d": "s",
@@ -66,14 +65,14 @@
     "k": "e",
     "l": "i",
     ";": "o",
-
     "_comment_bottom": "下段: QWERTY→Colemak",
     "n": "k"
   },
   "modeKeys": {
     "ctrl+space": "toggleInputMode",
     "ctrl+shift+j": "switchToJapanese",
-    "ctrl+shift+semicolon": "switchToEnglish"
+    "ctrl+shift+semicolon": "switchToEnglish",
+    "space": "convert"
   },
   "prefixShiftKeys": [],
   "inputBase": "romaji",

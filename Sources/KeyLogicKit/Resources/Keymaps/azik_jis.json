@@ -26,8 +26,8 @@
       ">": "＞",
       "^": "＾",
       "_": "＿",
-      "\"": "\u201d",
-      "'": "\u2019",
+      "\"": "”",
+      "'": "’",
       "`": "｀",
       "+": "＋",
       "=": "＝",
@@ -49,21 +49,52 @@
     "lang1": "switchToJapanese",
     "ctrl+space": "toggleInputMode",
     "ctrl+shift+j": "switchToJapanese",
-    "ctrl+shift+semicolon": "switchToEnglish"
+    "ctrl+shift+semicolon": "switchToEnglish",
+    "space": "convert"
   },
   "prefixShiftKeys": [],
   "inputBase": "romaji",
   "suffixRules": {
-    "z": { "vowel": "a", "suffix": "ん" },
-    "n": { "vowel": "a", "suffix": "ん" },
-    "k": { "vowel": "i", "suffix": "ん" },
-    "j": { "vowel": "u", "suffix": "ん" },
-    "d": { "vowel": "e", "suffix": "ん" },
-    "l": { "vowel": "o", "suffix": "ん" },
-    "q": { "vowel": "a", "suffix": "い" },
-    "h": { "vowel": "u", "suffix": "う" },
-    "w": { "vowel": "e", "suffix": "い" },
-    "p": { "vowel": "o", "suffix": "う" }
+    "z": {
+      "vowel": "a",
+      "suffix": "ん"
+    },
+    "n": {
+      "vowel": "a",
+      "suffix": "ん"
+    },
+    "k": {
+      "vowel": "i",
+      "suffix": "ん"
+    },
+    "j": {
+      "vowel": "u",
+      "suffix": "ん"
+    },
+    "d": {
+      "vowel": "e",
+      "suffix": "ん"
+    },
+    "l": {
+      "vowel": "o",
+      "suffix": "ん"
+    },
+    "q": {
+      "vowel": "a",
+      "suffix": "い"
+    },
+    "h": {
+      "vowel": "u",
+      "suffix": "う"
+    },
+    "w": {
+      "vowel": "e",
+      "suffix": "い"
+    },
+    "p": {
+      "vowel": "o",
+      "suffix": "う"
+    }
   },
   "inputMappings": {
     "_comment_special": "単打特殊キー",
@@ -77,7 +108,6 @@
     "/": "・",
     "[": "「",
     "]": "」",
-
     "_comment_z_symbols": "z + 記号",
     "z/": "・",
     "z.": "…",
@@ -85,7 +115,6 @@
     "z-": "〜",
     "z[": "『",
     "z]": "』",
-
     "_comment_aliases": "AZIK 拗音別名（g = y ショートカット）",
     "kga": "きゃ",
     "kgu": "きゅ",
@@ -115,7 +144,6 @@
     "pgu": "ぴゅ",
     "pge": "ぴぇ",
     "pgo": "ぴょ",
-
     "_comment_shortcuts_f": "子音 + f ショートカット",
     "kf": "き",
     "jf": "じゅ",
@@ -128,19 +156,16 @@
     "pf": "ぽん",
     "wf": "わい",
     "sf": "さい",
-
     "_comment_shortcuts_double": "子音連打ショートカット",
     "ss": "せい",
     "rr": "られ",
     "tt": "たち",
-
     "_comment_shortcuts_z": "z + 子音ショートカット",
     "zc": "ざ",
     "zv": "ざい",
     "zf": "ぜ",
     "zx": "ぜい",
     "zr": "ざる",
-
     "_comment_shortcuts_word": "単語ショートカット",
     "kt": "こと",
     "wt": "わた",
@@ -166,14 +191,12 @@
     "yr": "よる",
     "tb": "たび",
     "gt": "ごと",
-
     "_comment_azik_foreign": "AZIK 固有の外来音ショートカット",
     "tgi": "てぃ",
     "tgu": "とぅ",
     "dci": "でぃ",
     "dcu": "どぅ",
     "wso": "うぉ",
-
     "_comment_irregular_suffix": "不規則なサフィックス（suffix 展開と異なる出力）",
     "fp": "ふぉー",
     "vp": "ヴぉー",
