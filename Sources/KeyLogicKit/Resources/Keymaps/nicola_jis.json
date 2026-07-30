@@ -8,7 +8,8 @@
   "modeKeys": {
     "ctrl+space": "toggleInputMode",
     "ctrl+shift+j": "switchToJapanese",
-    "ctrl+shift+semicolon": "switchToEnglish"
+    "ctrl+shift+semicolon": "switchToEnglish",
+    "space": "convert"
   },
   "behavior": {
     "type": "chord",
@@ -50,8 +51,12 @@
         "international4": "rightThumb"
       },
       "shiftKeys": [
-        { "key": "leftThumb" },
-        { "key": "rightThumb" }
+        {
+          "key": "leftThumb"
+        },
+        {
+          "key": "rightThumb"
+        }
       ],
       "lookupTable": {
         "Q": "。",
@@ -84,7 +89,6 @@
         "comma": "ね",
         "dot": "ほ",
         "slash": "・",
-
         "leftThumb+Q": "ぁ",
         "leftThumb+W": "え",
         "leftThumb+E": "り",
@@ -115,7 +119,6 @@
         "leftThumb+comma": "ぺ",
         "leftThumb+dot": "ぼ",
         "leftThumb+slash": "ぉ",
-
         "rightThumb+Q": "ぁ",
         "rightThumb+W": "が",
         "rightThumb+E": "だ",
