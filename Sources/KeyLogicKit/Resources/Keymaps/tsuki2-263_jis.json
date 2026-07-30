@@ -50,8 +50,7 @@
     "lang1": "switchToJapanese",
     "ctrl+space": "toggleInputMode",
     "ctrl+shift+j": "switchToJapanese",
-    "ctrl+shift+semicolon": "switchToEnglish",
-    "space": "convert"
+    "ctrl+shift+semicolon": "switchToEnglish"
   },
   "prefixShiftKeys": [
     "d",
