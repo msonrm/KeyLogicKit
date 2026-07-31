@@ -229,7 +229,6 @@ public enum DefaultKeymaps {
             ("builtin:tsuki2-263_jis", "tsuki2-263_jis"),
             ("builtin:nicola_us", "nicola_us"),
             ("builtin:nicola_jis", "nicola_jis"),
-            ("builtin:oyayubi_pyun_jis", "oyayubi_pyun_jis"),
             ("builtin:naginata_us", "naginata_us"),
             ("builtin:naginata_jis", "naginata_jis"),
             ("builtin:romaji_colemak_us", "romaji_colemak_us"),
