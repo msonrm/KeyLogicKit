@@ -39,6 +39,11 @@
       "type": "string",
       "description": "ライセンス識別子（SPDX 形式推奨）"
     },
+    "addedAt": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+      "description": "ハブサイトの「新着」に使う追加日（YYYY-MM-DD）。省略時は git の初回コミット日から推定するが、shallow clone のビルド環境では推定できないため、明示しておくのが確実"
+    },
     "keyboardLayout": {
       "type": "string",
       "enum": ["us", "jis"],
