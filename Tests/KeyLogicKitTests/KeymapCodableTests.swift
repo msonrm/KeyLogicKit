@@ -183,6 +183,42 @@ final class KeymapCodableTests: XCTestCase {
         XCTAssertEqual(def.requires, ["judgment:mutual"])
     }
 
+    // MARK: - 未知のトップレベルフィールド
+
+    /// 未知のフィールドは**黙って飛ばさず拒否する**
+    ///
+    /// v2 で足すフィールド（roles / layouts / base）を、古い実装が「知らないものを
+    /// 飛ばして読む」ことを防ぐため。許可リストは `CodingKeys` ではなく
+    /// `knownFields`（schema の properties と一致）である点が要。
+    func testUnknownTopLevelFields() throws {
+        func json(_ extra: String) -> Data {
+            Data("""
+            {
+              "formatVersion": "1.0",
+              \(extra)
+              "name": "テスト配列",
+              "keyboardLayout": "us",
+              "behavior": { "type": "sequential", "characterMap": {} }
+            }
+            """.utf8)
+        }
+
+        // v2 で足す予定のフィールドは今は拒否
+        for field in ["roles", "layouts", "base"] {
+            XCTAssertThrowsError(try KeymapStore.decode(from: json("\"\(field)\": {},")),
+                                 "\(field) は拒否されるべき")
+        }
+
+        // $schema / _comment は許す
+        XCTAssertNoThrow(try KeymapStore.decode(
+            from: json("\"$schema\": \"./keymap-v1.schema.json\", \"_comment\": \"メモ\",")))
+
+        // **この実装が読まない既知フィールドは拒否しない**（配列としては正しい）。
+        // CodingKeys を許可リストに使うとここで落ちる — knownFields を使う理由。
+        XCTAssertNoThrow(try KeymapStore.decode(
+            from: json("\"addedAt\": \"2026-08-01\", \"bufferDisplayMap\": {\"h\": \"k\"},")))
+    }
+
     /// JSON を JSONSerialization + sortedKeys で正規化した文字列（辞書キー順の差を吸収）
     private static func normalizedJSON(_ data: Data) throws -> String {
         let obj = try JSONSerialization.jsonObject(with: data)

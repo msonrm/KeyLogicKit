@@ -743,6 +743,24 @@ extension KeymapDefinition.InputBehavior: Codable {
 // MARK: - KeymapDefinition: Codable
 
 extension KeymapDefinition: Codable {
+    /// キーマップのトップレベルに書けるフィールド。
+    ///
+    /// **`docs/keymap-v1.schema.json` の properties と一致していなければならない**
+    /// （CI: `scripts/check_action_registry.py` が照合する）。`CodingKeys` とは一致しない
+    /// —— `addedAt` / `bufferDisplayMap` のように「仕様にはあるがこの実装が読まない」
+    /// フィールドがあるため。**CodingKeys を許可リストに使うと、それらを持つ配列が
+    /// 読めなくなる**。
+    ///
+    /// 未知のフィールドは黙って無視せず拒否する。v2 で足すフィールド（roles / layouts /
+    /// base）を、古い実装が「知らないものを飛ばして読む」ことを防ぐため。
+    static let knownFields: Set<String> = [
+        "$schema",
+        "formatVersion", "requires", "name", "description", "author", "contributor",
+        "basedOn", "license", "addedAt", "keyboardLayout", "targetScript", "behavior",
+        "controlBindings", "inputBase", "keyRemap", "suffixRules", "inputMappings",
+        "prefixShiftKeys", "bufferDisplayMap", "modeKeys", "extensions",
+    ]
+
     private enum CodingKeys: String, CodingKey {
         case formatVersion
         case requires
@@ -819,6 +837,25 @@ extension KeymapDefinition: Codable {
     }
 
     public init(from decoder: Decoder) throws {
+        // 未知のトップレベルフィールドは黙って飛ばさず拒否する
+        let rawKeys = try decoder.container(keyedBy: DynamicCodingKey.self).allKeys
+            .map(\.stringValue)
+        let unknownFields = rawKeys.filter {
+            !Self.knownFields.contains($0) && !$0.hasPrefix("_comment")
+        }
+        guard unknownFields.isEmpty else {
+            throw DecodingError.dataCorrupted(
+                DecodingError.Context(
+                    codingPath: decoder.codingPath,
+                    debugDescription: """
+                        未知のフィールドがあります: \
+                        \(unknownFields.sorted().joined(separator: ", "))。\
+                        新しい仕様を要求する配列を、それを知らない実装で読もうとしています
+                        """
+                )
+            )
+        }
+
         let container = try decoder.container(keyedBy: CodingKeys.self)
         // メタデータ
         // 版ゲート: メジャーが違う JSON は**黙って部分デコードせず**拒否する。

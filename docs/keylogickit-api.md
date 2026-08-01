@@ -168,6 +168,16 @@ func route(_ event: KeyEvent, isComposing: Bool, state: InputManager.ConversionS
 動いてしまうため（`docs/keymap-v2-requirements.md` R3）。`KeymapStore.decode` /
 `load(from:)` / バンドル読み込みのいずれもこの経路を通る。
 
+### 未知のトップレベルフィールド
+
+`init(from:)` は、`KeymapDefinition.knownFields`（`docs/keymap-v1.schema.json` の
+properties と一致）に無いフィールドがあると読み込みを拒否する
+（`$schema` / `_comment` プレフィックスは除く）。
+
+**許可リストは `CodingKeys` ではない。** `addedAt` / `bufferDisplayMap` のように
+「仕様にはあるがこの実装が読まない」フィールドがあり、`CodingKeys` を使うと
+それらを持つ正しい配列が読めなくなる。
+
 ### requires — 必須セマンティクスの宣言
 
 `KeymapDefinition.requires: [String]?` に理解できない名前があると
