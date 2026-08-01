@@ -118,6 +118,12 @@ public struct KeymapDefinition: Sendable {
     /// 現在のフォーマットバージョン
     public static let currentFormatVersion = "1.0"
 
+    /// デコードを受け付けるフォーマットのメジャーバージョン。
+    ///
+    /// これと違うメジャーの JSON は `init(from:)` が拒否する（部分デコードしない）。
+    /// 未知のセマンティクスを黙って無視したまま動くと、配列が意図と違う挙動をするため。
+    public static let supportedFormatMajor = 1
+
     public init(name: String, behavior: InputBehavior, keyboardLayout: String,
          inputBase: String? = nil,
          keyRemap: [String: String]? = nil,

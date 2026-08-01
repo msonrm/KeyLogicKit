@@ -110,6 +110,42 @@ final class KeymapCodableTests: XCTestCase {
         }
     }
 
+    // MARK: - 版ゲート
+
+    /// `formatVersion` のメジャーが違う JSON は**黙って部分デコードせず**拒否する
+    ///
+    /// 旧実装が新セマンティクスを無視したまま動く silent 縮退を防ぐため
+    /// （薙刀式の `judgment` を旧エンジンが黙って時間窓で動かした事故と同じ形）。
+    func testFormatVersionGate() throws {
+        func json(_ version: String) -> Data {
+            Data("""
+            {
+              "formatVersion": "\(version)",
+              "name": "テスト配列",
+              "keyboardLayout": "us",
+              "behavior": { "type": "sequential", "characterMap": {} }
+            }
+            """.utf8)
+        }
+
+        // 対応メジャー（1.x）は通る。マイナーの差は許容する
+        for version in ["1.0", "1.1", "1.10"] {
+            XCTAssertNoThrow(try KeymapStore.decode(from: json(version)),
+                             "formatVersion \(version) は読めるべき")
+        }
+
+        // メジャーが違う / 数値でない → 拒否
+        for version in ["2.0", "0.9", "abc", ""] {
+            XCTAssertThrowsError(try KeymapStore.decode(from: json(version)),
+                                 "formatVersion \(version) は拒否されるべき") { error in
+                guard case DecodingError.dataCorrupted = error else {
+                    XCTFail("formatVersion \(version): dataCorrupted を期待したが \(error)")
+                    return
+                }
+            }
+        }
+    }
+
     /// JSON を JSONSerialization + sortedKeys で正規化した文字列（辞書キー順の差を吸収）
     private static func normalizedJSON(_ data: Data) throws -> String {
         let obj = try JSONSerialization.jsonObject(with: data)

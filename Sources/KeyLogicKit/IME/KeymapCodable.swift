@@ -819,7 +819,22 @@ extension KeymapDefinition: Codable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         // メタデータ
-        self.formatVersion = try container.decode(String.self, forKey: .formatVersion)
+        // 版ゲート: メジャーが違う JSON は**黙って部分デコードせず**拒否する。
+        // 旧実装が新セマンティクスを黙って無視して動いてしまう silent 縮退を防ぐため
+        // （薙刀式の judgment で実際に起きた事故。docs/keymap-v2-requirements.md R3）。
+        let rawFormatVersion = try container.decode(String.self, forKey: .formatVersion)
+        guard let major = Int(rawFormatVersion.split(separator: ".").first ?? ""),
+              major == KeymapDefinition.supportedFormatMajor else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .formatVersion,
+                in: container,
+                debugDescription: """
+                    非対応の formatVersion "\(rawFormatVersion)"\
+                    （この実装は \(KeymapDefinition.supportedFormatMajor).x に対応）
+                    """
+            )
+        }
+        self.formatVersion = rawFormatVersion
         self.name = try container.decode(String.self, forKey: .name)
         self.description = try container.decodeIfPresent(String.self, forKey: .description)
         self.author = try container.decodeIfPresent(String.self, forKey: .author)

@@ -158,6 +158,16 @@ func route(_ event: KeyEvent, isComposing: Bool, state: InputManager.ConversionS
 | `.selectSentenceDown` | 文選択を下に拡張（Shift+Option+↓、未選択なら現在の文を選択） |
 | `.pass` | UIKit に委任 |
 
+### formatVersion の版ゲート
+
+`KeymapDefinition.init(from:)` は `formatVersion` のメジャーが
+`KeymapDefinition.supportedFormatMajor`（現在 `1`）と違う JSON を**拒否する**
+（`DecodingError.dataCorrupted`）。マイナーの差は許容する。
+
+未知のセマンティクスを黙って無視したまま部分デコードすると、配列が意図と違う挙動で
+動いてしまうため（`docs/keymap-v2-requirements.md` R3）。`KeymapStore.decode` /
+`load(from:)` / バンドル読み込みのいずれもこの経路を通る。
+
 ### enum の case ≠ キーマップ JSON に書ける語彙
 
 `KeyAction` は `Codable` だが、**JSON から書けるのは配列定義の語彙だけ**。次の 2 群は
