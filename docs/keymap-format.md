@@ -375,14 +375,17 @@ v1.0 の本節は両者を区別せず並べていたため、実装ごとに解
 ### ランタイム内部イベント（JSON からは書かない）
 
 `printable` / `chordInput` / `chordShiftDown` / `chordKeyUp` は、KeyRouter がキーイベントから
-生成する内部表現であり、配列定義の語彙ではない。**v1.0 schema は歴史的経緯で
-`printable:` / `chordInput:` / `chordShiftDown:` を許しているが、書いても意味のある動作はしない。**
+生成する内部表現であり、配列定義の語彙ではない。
 
 `moveSentenceStart` / `moveSentenceEnd` / `swapSentenceUp` / `swapSentenceDown` /
 `smartSelectExpand` / `smartSelectShrink` / `selectSentenceUp` / `selectSentenceDown` は
-**KanaEditor 固有のホスト文書操作**であり、本フォーマットの語彙ではない
-（KeyLogicKit の Swift デコーダが歴史的に受理する）。将来 JSON から書けるようにする場合は
-`x-kanaeditor:` 名前空間を使う。
+**KanaEditor 固有のホスト文書操作**であり、本フォーマットの語彙ではない。
+将来 JSON から書けるようにする場合は `x-kanaeditor:` 名前空間を使う。
+
+いずれも **JSON からは書けない**（schema でも KeyLogicKit / KeymapEngine のデコーダでも
+受け付けない）。2026-08-01 まで schema が `printable:` / `chordInput:` / `chordShiftDown:` を、
+Swift デコーダが上記 11 種すべてを受理していたが、**書いても意味のある動作はしなかった**ため
+除去した。配布中のキーマップに使用例は無い。
 
 ### アプリ固有アクション（`x-` プレフィックス）
 

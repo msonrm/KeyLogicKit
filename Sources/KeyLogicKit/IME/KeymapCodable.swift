@@ -365,6 +365,20 @@ extension KeyAction: Codable {
         }
     }
 
+    /// JSON 文字列 → KeyAction。
+    ///
+    /// **ここで受理するのはキーマップ定義の語彙だけ**（正典 = `docs/key-action-registry.json`、
+    /// CI = `scripts/check_action_registry.py`）。次の 2 群は enum には存在するが
+    /// **JSON からは書けない**:
+    ///
+    /// - `printable` / `chordInput` / `chordShiftDown` / `chordKeyUp` — KeyRouter が
+    ///   キーイベントから生成する内部表現。配列定義の語彙ではない
+    /// - `moveSentenceStart` 等 8 種 — KanaEditor 固有のホスト文書操作。
+    ///   `routeOptionArrow`（Option+矢印）が実行時に生成するだけで、
+    ///   `KeymapDefinition` に入る経路は無い。将来 JSON から書くなら `x-kanaeditor:` 名前空間
+    ///
+    /// `encode(to:)` は enum の網羅性のため全 case を持つが、上記が定義に入る経路が無いため
+    /// 実際に書き出されることはない（ラウンドトリップの非対称は生じない）。
     public init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         let string = try container.decode(String.self)
@@ -390,22 +404,6 @@ extension KeyAction: Codable {
         case "switchToJapanese":          self = .switchToJapanese
         case "toggleInputMode":           self = .toggleInputMode
         case "pass":                     self = .pass
-        case "moveSentenceStart":        self = .moveSentenceStart
-        case "moveSentenceEnd":          self = .moveSentenceEnd
-        case "swapSentenceUp":           self = .swapSentenceUp
-        case "swapSentenceDown":         self = .swapSentenceDown
-        case "smartSelectExpand":        self = .smartSelectExpand
-        case "smartSelectShrink":        self = .smartSelectShrink
-        case "selectSentenceUp":         self = .selectSentenceUp
-        case "selectSentenceDown":       self = .selectSentenceDown
-        case "printable":
-            guard parts.count == 2, parts[1].count == 1, let c = parts[1].first else {
-                throw DecodingError.dataCorruptedError(
-                    in: container,
-                    debugDescription: "printable には1文字が必要: \(string)"
-                )
-            }
-            self = .printable(c)
         case "selectCandidate":
             guard parts.count == 2, let i = Int(parts[1]) else {
                 throw DecodingError.dataCorruptedError(
@@ -414,14 +412,6 @@ extension KeyAction: Codable {
                 )
             }
             self = .selectCandidate(i)
-        case "chordInput":
-            guard parts.count == 2, let key = ChordKeyNames.key(for: parts[1]) else {
-                throw DecodingError.dataCorruptedError(
-                    in: container,
-                    debugDescription: "chordInput には有効な ChordKey 名が必要: \(string)"
-                )
-            }
-            self = .chordInput(key)
         case "insertAndConfirm":
             guard parts.count == 2 else {
                 throw DecodingError.dataCorruptedError(
@@ -430,14 +420,6 @@ extension KeyAction: Codable {
                 )
             }
             self = .insertAndConfirm(parts[1])
-        case "chordShiftDown":
-            guard parts.count == 2, let key = ChordKeyNames.key(for: parts[1]) else {
-                throw DecodingError.dataCorruptedError(
-                    in: container,
-                    debugDescription: "chordShiftDown には有効な ChordKey 名が必要: \(string)"
-                )
-            }
-            self = .chordShiftDown(key)
         case "directInsert":
             guard parts.count == 2 else {
                 throw DecodingError.dataCorruptedError(

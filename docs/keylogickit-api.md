@@ -158,6 +158,24 @@ func route(_ event: KeyEvent, isComposing: Bool, state: InputManager.ConversionS
 | `.selectSentenceDown` | 文選択を下に拡張（Shift+Option+↓、未選択なら現在の文を選択） |
 | `.pass` | UIKit に委任 |
 
+### enum の case ≠ キーマップ JSON に書ける語彙
+
+`KeyAction` は `Codable` だが、**JSON から書けるのは配列定義の語彙だけ**。次の 2 群は
+enum には存在するがデコードできない（`init(from:)` が `不明な KeyAction` を投げる）:
+
+- **ランタイム内部イベント**: `.printable` / `.chordInput` / `.chordShiftDown` —
+  KeyRouter がキーイベントから生成する内部表現
+- **KanaEditor 固有のホスト文書操作**: `.moveSentenceStart` / `.moveSentenceEnd` /
+  `.swapSentenceUp` / `.swapSentenceDown` / `.smartSelectExpand` / `.smartSelectShrink` /
+  `.selectSentenceUp` / `.selectSentenceDown` — `routeOptionArrow` が実行時に生成するだけで、
+  `KeymapDefinition` に入る経路は無い。JSON から書くなら `x-kanaeditor:` 名前空間
+
+`encode(to:)` は enum の網羅性のため全 case を持つが、上記が定義に入る経路が無いため
+実際に書き出されることはない。
+
+語彙の正典は `docs/key-action-registry.json`（面ごとの可否・実装ごとの対応状況）。
+仕様は `docs/keymap-format.md`。
+
 ## SentenceBoundary — 文境界検出ユーティリティ（enum）
 
 日本語テキストの文・句・カッコ境界を検出する。UIKit 非依存。

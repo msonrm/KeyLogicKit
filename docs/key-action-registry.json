@@ -29,8 +29,8 @@
   "knownGaps": [
     "web は controlBindings を実装していない（emacsBindings / ctrlSemicolonAction は無視される）。Swift のみ。",
     "flick-1 は『keymap v1 と同じ名前・同じ意味論』と宣言しているが、13 語中 4 語が別名（escape / resizeLeft / resizeRight）または keymap 側に無い（undo）。本表では alias として記録し、正規名は keymap 側に寄せる。",
-    "Swift は仕様外のアクション（KanaEditor 固有 8 種・printable・chordInput 等）を JSON から受理する。D5 に従い PR-C で JSON デコードから外す。",
-    "面ごとの可否を実行時に強制するのは web だけ（v1.9.0）。Swift は全面で全語彙を受理する。揃えるのは段 2。"
+    "面ごとの可否を実行時に強制するのは web だけ（v1.9.0）。Swift は全面で全語彙を受理する。揃えるのは段 2。",
+    "KanaEditor 固有 8 種と内部イベント 3 種は、v1.9.1（PR-C）で Swift デコーダと schema から除去済み。enum は KeyRouter が実行時に使うため残る（encode は網羅性のため全 case を持つが、定義に入る経路が無いので書き出されない）。"
   ],
   "actions": [
     {
@@ -522,10 +522,8 @@
       "summary": "文字入力（内部イベント）",
       "internal": true,
       "surfaces": [],
-      "parsers": [
-        "swift"
-      ],
-      "notes": "KeyRouter が文字キーから生成する。JSON からは書かない（Swift は歴史的に受理する）"
+      "parsers": [],
+      "notes": "KeyRouter がキーイベントから生成する内部表現。v1.9.1 で Swift デコーダと schema から除去し、JSON からは書けなくなった"
     },
     {
       "name": "chordInput",
@@ -533,10 +531,8 @@
       "summary": "同時打鍵バッファへキー投入（内部イベント）",
       "internal": true,
       "surfaces": [],
-      "parsers": [
-        "swift"
-      ],
-      "notes": "同上"
+      "parsers": [],
+      "notes": "KeyRouter がキーイベントから生成する内部表現。v1.9.1 で Swift デコーダと schema から除去し、JSON からは書けなくなった"
     },
     {
       "name": "chordShiftDown",
@@ -544,10 +540,8 @@
       "summary": "シフト役キーの押下（内部イベント）",
       "internal": true,
       "surfaces": [],
-      "parsers": [
-        "swift"
-      ],
-      "notes": "同上"
+      "parsers": [],
+      "notes": "KeyRouter がキーイベントから生成する内部表現。v1.9.1 で Swift デコーダと schema から除去し、JSON からは書けなくなった"
     },
     {
       "name": "chordKeyUp",
@@ -564,9 +558,7 @@
       "summary": "文頭へ移動（KanaEditor 固有）",
       "internal": true,
       "surfaces": [],
-      "parsers": [
-        "swift"
-      ],
+      "parsers": [],
       "reservedNamespace": "x-kanaeditor:",
       "notes": "D5: 仕様の語彙から外す。ホスト文書の操作であり keymap の管轄外。PR-C で JSON デコードから削除（enum は KeyRouter が内部で使うため残す）"
     },
@@ -576,10 +568,9 @@
       "summary": "文末へ移動（KanaEditor 固有）",
       "internal": true,
       "surfaces": [],
-      "parsers": [
-        "swift"
-      ],
-      "reservedNamespace": "x-kanaeditor:"
+      "parsers": [],
+      "reservedNamespace": "x-kanaeditor:",
+      "notes": ""
     },
     {
       "name": "swapSentenceUp",
@@ -587,10 +578,9 @@
       "summary": "文を上と入れ替え（KanaEditor 固有）",
       "internal": true,
       "surfaces": [],
-      "parsers": [
-        "swift"
-      ],
-      "reservedNamespace": "x-kanaeditor:"
+      "parsers": [],
+      "reservedNamespace": "x-kanaeditor:",
+      "notes": ""
     },
     {
       "name": "swapSentenceDown",
@@ -598,10 +588,9 @@
       "summary": "文を下と入れ替え（KanaEditor 固有）",
       "internal": true,
       "surfaces": [],
-      "parsers": [
-        "swift"
-      ],
-      "reservedNamespace": "x-kanaeditor:"
+      "parsers": [],
+      "reservedNamespace": "x-kanaeditor:",
+      "notes": ""
     },
     {
       "name": "smartSelectExpand",
@@ -609,10 +598,9 @@
       "summary": "選択範囲を拡大（KanaEditor 固有）",
       "internal": true,
       "surfaces": [],
-      "parsers": [
-        "swift"
-      ],
-      "reservedNamespace": "x-kanaeditor:"
+      "parsers": [],
+      "reservedNamespace": "x-kanaeditor:",
+      "notes": ""
     },
     {
       "name": "smartSelectShrink",
@@ -620,10 +608,9 @@
       "summary": "選択範囲を縮小（KanaEditor 固有）",
       "internal": true,
       "surfaces": [],
-      "parsers": [
-        "swift"
-      ],
-      "reservedNamespace": "x-kanaeditor:"
+      "parsers": [],
+      "reservedNamespace": "x-kanaeditor:",
+      "notes": ""
     },
     {
       "name": "selectSentenceUp",
@@ -631,10 +618,9 @@
       "summary": "上の文まで選択（KanaEditor 固有）",
       "internal": true,
       "surfaces": [],
-      "parsers": [
-        "swift"
-      ],
-      "reservedNamespace": "x-kanaeditor:"
+      "parsers": [],
+      "reservedNamespace": "x-kanaeditor:",
+      "notes": ""
     },
     {
       "name": "selectSentenceDown",
@@ -642,10 +628,9 @@
       "summary": "下の文まで選択（KanaEditor 固有）",
       "internal": true,
       "surfaces": [],
-      "parsers": [
-        "swift"
-      ],
-      "reservedNamespace": "x-kanaeditor:"
+      "parsers": [],
+      "reservedNamespace": "x-kanaeditor:",
+      "notes": ""
     }
   ]
 }
