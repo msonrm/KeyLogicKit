@@ -802,6 +802,15 @@
         "web"
       ],
       "notes": "拒否には使わない。ホストが自分の段と突き合わせて配列を隠す／警告するための情報"
+    },
+    {
+      "name": "actionGuard",
+      "kind": "interpretation",
+      "summary": "アクションの局面ガード（{ action, when } オブジェクト形式）",
+      "implementedBy": [
+        "web"
+      ],
+      "notes": "KeyLogicKit（Swift）は未対応。ガード付き配列を渡すとデコードエラーになる（黙って無視はしない）。requires: [\"actionGuard\"] を書けば明確なメッセージで拒否される"
     }
   ]
 }

@@ -185,7 +185,7 @@
     "modeKeys": {
       "type": "object",
       "additionalProperties": {
-        "$ref": "#/$defs/keyActionString"
+        "$ref": "#/$defs/keyActionValue"
       },
       "propertyNames": {
         "$ref": "#/$defs/modeKeyName"
@@ -311,7 +311,7 @@
             }
           },
           "additionalProperties": {
-            "$ref": "#/$defs/keyActionString"
+            "$ref": "#/$defs/keyActionValue"
           },
           "propertyNames": {
             "$ref": "#/$defs/bitmaskOrCommentName"
@@ -341,7 +341,7 @@
             }
           },
           "additionalProperties": {
-            "$ref": "#/$defs/keyActionString"
+            "$ref": "#/$defs/keyActionValue"
           },
           "propertyNames": {
             "$ref": "#/$defs/bitmaskOrCommentName"
@@ -370,7 +370,7 @@
           "$ref": "#/$defs/chordKeyName"
         },
         "singleTapAction": {
-          "$ref": "#/$defs/keyActionString"
+          "$ref": "#/$defs/keyActionValue"
         }
       },
       "additionalProperties": false
@@ -381,7 +381,7 @@
         "emacsBindings": {
           "type": "object",
           "additionalProperties": {
-            "$ref": "#/$defs/keyActionString"
+            "$ref": "#/$defs/keyActionValue"
           },
           "propertyNames": {
             "$ref": "#/$defs/keyName"
@@ -389,11 +389,11 @@
           "description": "Ctrl+キー → KeyAction のマッピング"
         },
         "ctrlSemicolonAction": {
-          "$ref": "#/$defs/keyActionString",
+          "$ref": "#/$defs/keyActionValue",
           "description": "Ctrl+; のアクション"
         },
         "ctrlColonAction": {
-          "$ref": "#/$defs/keyActionString",
+          "$ref": "#/$defs/keyActionValue",
           "description": "Ctrl+: のアクション"
         }
       },
@@ -591,6 +591,44 @@
         },
         {
           "pattern": "^x-.+$"
+        }
+      ]
+    },
+    "keymapPhase": {
+      "type": "string",
+      "enum": [
+        "idle",
+        "composing",
+        "selecting"
+      ],
+      "description": "入力の局面。idle=何も合成していない / composing=よみ入力中 / selecting=変換中・候補選択中"
+    },
+    "keyActionValue": {
+      "description": "アクション。文字列、または局面ガード付きのオブジェクト。ガードが外れたエントリは「定義が無い」ものとして扱われ、ルーティングは次の優先順位へ落ちる。",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/keyActionString"
+        },
+        {
+          "type": "object",
+          "required": [
+            "action"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "$ref": "#/$defs/keyActionString"
+            },
+            "when": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/keymapPhase"
+              },
+              "minItems": 1,
+              "uniqueItems": true,
+              "description": "このアクションが有効な局面。省略時は全局面。"
+            }
+          }
         }
       ]
     }
