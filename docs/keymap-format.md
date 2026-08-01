@@ -16,23 +16,38 @@
 
 ## トップレベル構造
 
-```json
+```jsonc
 {
-  "formatVersion": "1.0",
+  "$schema": "../../../docs/keymap-v2.schema.json",  // 任意（エディタ補完用）
+  "formatVersion": "2.0",
+  "requires": ["judgment:mutual", "roles"],          // 任意（後述。使う機能を宣言する）
+  "requiresInput": "L3",                             // 任意（省略時は behavior から導出）
   "name": "キーマップ名",
   "description": "説明（任意）",
   "author": "原作者名（任意）",
   "contributor": "派生版作者名（任意）",
   "basedOn": "派生元の配列名（任意）",
   "license": "SPDX-License-Identifier（任意）",
-  "keyboardLayout": "us",
+  "addedAt": "2026-08-01",                           // 任意（配列ハブの新着順）
   "targetScript": "hiragana（任意）",
+  "base": "positional",                              // 任意（逐次系のみ。既定は characters）
+  "roles":   { ... },                                // 任意（役の宣言。chord のシフトキー）
+  "layouts": { ... },                                // 任意（レイアウト固有の追加バインド）
   "behavior": { ... },
   "controlBindings": { ... },
   "inputMappings": { ... },
+  "modeKeys": { ... },
   "extensions": { ... }
 }
 ```
+
+**v1 からの主な違い**（詳細は各節）:
+
+- `formatVersion` は `"2.0"`。**v1 のファイルは読めない**（版ゲートが明確なエラーで弾く）
+- **`keyboardLayout` は廃止**。JIS / US は 1 ファイルにまとまり、`layouts` が対象を列挙する
+- **親指キー・シフトキーは `behavior.config.shiftKeys` ではなく `roles` に書く**。
+  `hidToKey` は 30 キー枠だけになった
+- `requires` で**使っている機能を宣言する**。理解できない実装は読み込みを拒否する
 
 ### 必須フィールド
 
@@ -472,23 +487,29 @@ chord の `specialActions`（F+G 等の同時押し）と共存可能。
 
 ### chord（同時打鍵）
 
-```json
+```jsonc
 {
-  "type": "chord",
-  "config": {
-    "hidToKey": { "a": "A", "space": "space", ... },
-    "lookupTable": { "J": "あ", "F+J": "が", ... },
-    "specialActions": { "F+G": "switchToEnglish", ... },
-    "judgment": "mutual",
-    "simultaneousWindow": 0.08,
-    "shiftKeys": [
-      { "key": "space", "singleTapAction": "convert" }
-    ],
-    "englishLookupTable": { "A": "a", ... },
-    "englishSpecialActions": { "H+J": "switchToJapanese", ... }
+  // シフト役は roles に置く（v1 の behavior.config.shiftKeys は廃止）
+  "roles": {
+    "holder1": { "label": "センターシフト", "keys": ["space"] }
+  },
+  "behavior": {
+    "type": "chord",
+    "config": {
+      // **30 キー枠だけ**。親指キー・シフトキーは書かない（roles が持つ）
+      "hidToKey": { "a": "A", "f": "F", "j": "J", ... },
+      "lookupTable": { "J": "あ", "holder1+J": "が", ... },
+      "specialActions": { "F+G": "switchToEnglish", ... },
+      "judgment": "mutual",
+      "englishLookupTable": { "A": "a", ... },
+      "englishSpecialActions": { "H+J": "switchToJapanese", ... }
+    }
   }
 }
 ```
+
+`lookupTable` / `specialActions` のキーは `holder1+J` の形（`leftThumb+J` も別名で読める）。
+`simultaneousWindow` は `judgment: "window"` のときだけ必要。
 
 #### config フィールド
 
@@ -575,7 +596,7 @@ QWERTY 30 キー + 親指 3 キー:
 > 配布中のキーマップ JSON を照合する。**アクションを増減するときはレジストリを先に直す。**
 
 アクションは「**配列作者が JSON に書けるもの**」と「**ランタイム内部イベント**」に分かれる。
-v1.0 の本節は両者を区別せず並べていたため、実装ごとに解釈が割れる原因になっていた。
+v1 の本節は両者を区別せず並べていたため、実装ごとに解釈が割れる原因になっていた。
 
 ### 書けるアクション（パラメータなし）
 
@@ -615,7 +636,7 @@ v1.0 の本節は両者を区別せず並べていたため、実装ごとに解
 
 ### アクションを書ける面
 
-同じ語彙がどこでも書けるわけではない。v1.0 の JSON Schema は 5 つの面すべてに同じ
+同じ語彙がどこでも書けるわけではない。JSON Schema は 5 つの面すべてに同じ
 `keyActionString` を許しているが、**意味を持つ面はレジストリの `surfaces` が定める**
 （面ごとの分割は v2 の課題）。
 
