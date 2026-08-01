@@ -504,17 +504,23 @@
     },
     {
       "name": "postModify",
-      "param": null,
+      "param": "cycle | cycleDakuten | dakuten | handakuten | small（省略時 cycle）",
       "summary": "直前入力文字の濁点 / 半濁点 / 小書きトグル",
       "whenComposing": "合成テキスト末尾 1 字をサイクルに沿って置換",
       "whenIdle": "何もしない",
       "surfaces": [
+        "keymap.specialActions",
+        "keymap.englishSpecialActions",
+        "keymap.singleTapAction",
+        "keymap.modeKeys",
         "flickmap.key"
       ],
       "parsers": [
+        "web",
         "flick"
       ],
-      "notes": "R6 で keymap.specialActions / keymap.modeKeys へ拡張予定（JIS かな入力・親指ぴゅん 1 キー版が届く）。「直前の 1 字」の正は合成テキストの所有者が持つ（D4）"
+      "notes": "「出た文字を変える」操作で、「直前のキーの解釈を変える」後置シフトとは別物。表がキーに依存しないのでキーボード / フリック / ゲームパッドで同じ表が使える。対象の正は合成テキストの所有者が持つ（D4）。KeyLogicKit（Swift）は未対応",
+      "example": "postModify:dakuten"
     },
     {
       "name": "printable",
@@ -762,8 +768,10 @@
       "name": "postModify",
       "kind": "interpretation",
       "summary": "後置変調（濁点・半濁点・小書きのトグル）",
-      "implementedBy": [],
-      "notes": "flickmap には実装があるが keymap 側は未着手。段 3（要件 R6）"
+      "implementedBy": [
+        "web"
+      ],
+      "notes": "flickmap にも実装がある（別フォーマット）。KeyLogicKit（Swift）は未対応で、postModify を使う配列は読み込みを拒否する"
     },
     {
       "name": "roles",

@@ -11,6 +11,10 @@
     "behavior"
   ],
   "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema へのパス（エディタの補完用）。ランタイムは無視する。"
+    },
     "formatVersion": {
       "type": "string",
       "const": "1.0",
@@ -574,11 +578,15 @@
             "switchToJapanese",
             "toggleInputMode",
             "insertSpace",
+            "postModify",
             "pass"
           ]
         },
         {
           "pattern": "^insertSpace:shifted$"
+        },
+        {
+          "pattern": "^postModify:(cycle|cycleDakuten|dakuten|handakuten|small)$"
         },
         {
           "pattern": "^selectCandidate:[0-9]+$"
