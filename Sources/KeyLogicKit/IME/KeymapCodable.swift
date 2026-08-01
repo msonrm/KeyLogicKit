@@ -756,8 +756,8 @@ extension KeymapDefinition: Codable {
     static let knownFields: Set<String> = [
         "$schema",
         "formatVersion", "requires", "name", "description", "author", "contributor",
-        "requiresInput", "basedOn", "license", "addedAt", "keyboardLayout", "targetScript",
-        "behavior",
+        "requiresInput", "roles", "layouts", "base",
+        "basedOn", "license", "addedAt", "keyboardLayout", "targetScript", "behavior",
         "controlBindings", "inputBase", "keyRemap", "suffixRules", "inputMappings",
         "prefixShiftKeys", "bufferDisplayMap", "modeKeys", "extensions",
     ]

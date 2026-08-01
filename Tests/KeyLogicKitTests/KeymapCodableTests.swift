@@ -203,11 +203,17 @@ final class KeymapCodableTests: XCTestCase {
             """.utf8)
         }
 
-        // v2 で足す予定のフィールドは今は拒否
-        for field in ["roles", "layouts", "base"] {
+        // 仕様に無いフィールドは拒否
+        for field in ["nosuchfield", "behaviour", "keymap"] {
             XCTAssertThrowsError(try KeymapStore.decode(from: json("\"\(field)\": {},")),
                                  "\(field) は拒否されるべき")
         }
+
+        // **v2 のフィールドは「知っている」扱いにする。** この実装は v2 を読まないが、
+        // 拒否理由は「未知のフィールド」ではなく「非対応の formatVersion」であるべき
+        // （v2 ファイルは版ゲートで弾かれる）。addedAt と同じ「仕様にはあるが読まない」枠。
+        XCTAssertNoThrow(try KeymapStore.decode(
+            from: json("\"roles\": {}, \"layouts\": {}, \"base\": \"positional\",")))
 
         // $schema / _comment は許す
         XCTAssertNoThrow(try KeymapStore.decode(

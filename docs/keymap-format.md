@@ -1,4 +1,4 @@
-# キーマップ定義フォーマット仕様書 v1.0
+# キーマップ定義フォーマット仕様書 v2.0
 
 ## 概要
 
@@ -38,9 +38,8 @@
 
 | フィールド | 型 | 説明 |
 |---|---|---|
-| `formatVersion` | string | `"1.0"` 固定 |
+| `formatVersion` | string | `"2.0"` 固定 |
 | `name` | string | 表示名 |
-| `keyboardLayout` | string | 対象物理配列（`"us"` / `"jis"`） |
 | `behavior` | object | 入力方式定義（後述） |
 
 ### 任意フィールド
@@ -49,6 +48,10 @@
 |---|---|---|
 | `requires` | string[] | 必須セマンティクスの宣言（後述）。理解できない名前があるランタイムは読み込みを拒否する |
 | `requiresInput` | string | 成立に必要な入力段（`"L1"` / `"L2"` / `"L3"`。後述）。省略時は `behavior` から導出 |
+| `keyboardLayout` | string | **v2 で廃止**（`layouts` が対象を列挙する）。残っていても無視される |
+| `roles` | object | 役の宣言（後述）。chord 系の親指キー・シフトキーはここに置く |
+| `layouts` | object | レイアウト固有の**追加**バインド（後述） |
+| `base` | string | 定義のベース（`"characters"` 既定 / `"positional"`。後述） |
 | `description` | string | 入力方式の説明 |
 | `author` | string | 配列の原作者名 |
 | `contributor` | string / array | 派生版の改変者（後述） |
@@ -232,6 +235,62 @@ push（変化のたびに通知）ではなく pull なのは、通知の呼び�
 
 **`modeKeys` が局面を問わない**点に注意。ここに編集系を置くと「空バッファでも撃たれる」
 型の罠になるため、この面に書ける語彙はモード切替系に限定されている。
+
+## roles / layouts: 役と物理キーの分離（v2）
+
+**配列は役を決め、どこで押すかは環境の関心事**。これが v2 の芯である。
+
+```jsonc
+{
+  "roles": {
+    "holder1": { "label": "左親指", "keys": ["international5", "lang2"] },
+    "holder2": { "label": "右親指", "keys": ["international4", "lang1"] }
+  },
+  "layouts": {
+    "us": { "holder1": ["space"], "holder2": ["rightAlt"] }
+  }
+}
+```
+
+- **`keys` は候補の配列**。単一キーではない —— NICOLA は 1 役に 2 つの物理キーを
+  割り当てている（左親指＝無変換と英数の両方）。届かないキー（そのレイアウトに無い /
+  OS が奪う）は無視されるだけ
+- **`layouts` は追加であって上書きではない**。`roles.keys` の候補にレイアウト固有の
+  キーを足す。持つ必要があるのは NICOLA 型だけ
+- **正規名は機能ベース**（`holder1` / `holder2` …）。`leftThumb` / `rightThumb` は
+  可読性のための別名として受理する。身体部位を名前に焼き込むと、ペダル・ゲームパッド・
+  膝スイッチで名前が嘘になる
+- **個数の上限なし**（v1 の `shiftKeys` 0〜2 上限は撤廃）
+- `singleTapAction` は**役に対する**宣言。省略時はランタイムの既定
+  （スペースバーに載っている役なら `convert`）
+
+`lookupTable` / `specialActions` のキーは `holder1+W` の形で書く（`leftThumb+W` も受理）。
+
+### 役が届かないことは配列の不備ではない
+
+`international4/5` も `lang1/lang2` も **iPadOS は奪う**ので、iPad では NICOLA の既定
+バインドが 1 つも届かない。これは**配列の不備ではなく OS の予約**である。
+
+| 層 | 責務 |
+|---|---|
+| ランタイム | 役と**既定の候補キー**を公開する。未バインドの役を機械可読に報告する |
+| **ホスト** | **実際にキーが届くかを知っている唯一の層**。既定を UI に出し、届かなければ再バインドを促す |
+
+ランタイムは「そのキーが OS に奪われているか」を知りようがない。役 → 物理の**実行時
+再バインド**は一級市民であり、ホストがいつでも差し替えられる。
+
+## base: 定義のベース（v2・逐次系のみ）
+
+| 値 | 意味 |
+|---|---|
+| `characters`（既定） | OS が報告した文字で照合する。OS のレイアウト設定（Colemak / Dvorak 等）を尊重する |
+| `positional` | **物理キー位置**で照合する。ランタイムが HID コード → US 刻印に正規化してから引く |
+
+**かな配列は `positional`**。作者の意図は「この物理位置＝れ」であって「`:`＝れ」ではない。
+月配列の `[`（US）と `@`（JIS）は同じ物理キーなので、`positional` にすると 1 本化できる。
+
+**正規化は修飾キーが押されていないときだけ**適用される。Shift まで正規化すると
+`{`（Shift+`[`）が `[` に潰れ、`characterMap` のシフト記号が全部死ぬため。
 
 ## requiresInput: 入力段の宣言（任意）
 
@@ -641,7 +700,7 @@ USB HID Keyboard/Keypad Page に対応する独自の簡潔な命名を使用す
 
 | ファイル | 役割 |
 |---|---|
-| `docs/keymap-v1.schema.json` | 構造のバリデーション（エディタ補完・CI 事前検証） |
+| `docs/keymap-v2.schema.json` | 構造のバリデーション（エディタ補完・CI 事前検証） |
 | `docs/key-action-registry.json` | **アクション語彙の正典**。面ごとの可否・合成中／非合成中の意味論・実装ごとの対応状況 |
 
 CI は `scripts/check_keymap_sync.py`（構造・二重管理）と
@@ -651,6 +710,6 @@ CI は `scripts/check_keymap_sync.py`（構造・二重管理）と
 
 ```json
 {
-  "$schema": "./keymap-v1.schema.json"
+  "$schema": "./keymap-v2.schema.json"
 }
 ```

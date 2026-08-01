@@ -776,16 +776,20 @@
     {
       "name": "roles",
       "kind": "interpretation",
-      "summary": "役の宣言と役→物理キーの分離",
-      "implementedBy": [],
-      "notes": "段 4（要件 R1）。v2 の芯"
+      "summary": "役の宣言（roles）と役→物理キーの分離。layouts によるレイアウト固有の追加バインドを含む",
+      "implementedBy": [
+        "web"
+      ],
+      "notes": "KeyLogicKit（Swift）は未対応（段 4-C1）"
     },
     {
       "name": "layouts",
       "kind": "interpretation",
       "summary": "レイアウト別の役バインド（NICOLA 親指等）",
-      "implementedBy": [],
-      "notes": "段 4（要件 R2）"
+      "implementedBy": [
+        "web"
+      ],
+      "notes": "roles の一部として実装。requires には roles と書けば足りる"
     },
     {
       "name": "judgment:stroke",
@@ -819,6 +823,15 @@
         "web"
       ],
       "notes": "KeyLogicKit（Swift）は未対応。ガード付き配列を渡すとデコードエラーになる（黙って無視はしない）。requires: [\"actionGuard\"] を書けば明確なメッセージで拒否される"
+    },
+    {
+      "name": "positionalBase",
+      "kind": "interpretation",
+      "summary": "base: positional — 物理キー位置で照合する（かな配列）",
+      "implementedBy": [
+        "web"
+      ],
+      "notes": "HID コード → US 刻印の正規化。修飾キー無しのときだけ適用する（Shift まで正規化すると characterMap のシフト記号が死ぬ）"
     }
   ]
 }

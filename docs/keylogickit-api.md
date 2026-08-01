@@ -179,7 +179,7 @@ JSON の `requiresInput` 宣言は**厳しくする方向にのみ**効く。ホ
 
 ### 未知のトップレベルフィールド
 
-`init(from:)` は、`KeymapDefinition.knownFields`（`docs/keymap-v1.schema.json` の
+`init(from:)` は、`KeymapDefinition.knownFields`（`docs/keymap-v2.schema.json` の
 properties と一致）に無いフィールドがあると読み込みを拒否する
 （`$schema` / `_comment` プレフィックスは除く）。
 

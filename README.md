@@ -107,7 +107,7 @@ let config = KeymapManagerConfiguration(
 
 ## キーマップ JSON フォーマット
 
-キーマップは [JSON フォーマット仕様 v1](docs/keymap-format.md) で定義する。[JSON Schema](docs/keymap-v1.schema.json) によるバリデーションも可能。
+キーマップは [JSON フォーマット仕様](docs/keymap-format.md) で定義する。[JSON Schema](docs/keymap-v2.schema.json) によるバリデーションも可能。
 
 逐次入力の例（最小構成）:
 

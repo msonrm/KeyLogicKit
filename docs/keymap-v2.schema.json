@@ -7,7 +7,6 @@
   "required": [
     "formatVersion",
     "name",
-    "keyboardLayout",
     "behavior"
   ],
   "properties": {
@@ -17,8 +16,8 @@
     },
     "formatVersion": {
       "type": "string",
-      "const": "1.0",
-      "description": "フォーマットバージョン（現在は \"1.0\" 固定）"
+      "const": "2.0",
+      "description": "フォーマットバージョン。v2 は \"2.0\" 固定"
     },
     "requires": {
       "type": "array",
@@ -37,6 +36,34 @@
         "L3"
       ],
       "description": "この配列の成立に必要な入力イベントの最低段。L1=文字列のみ / L2=keydown 列 / L3=keydown+keyup（押下集合が構成できる）。省略時は behavior から導出される。宣言は導出値より厳しい方向にのみ効く（緩める宣言は無視される）。ホストが「この環境では動かない配列」を隠す／警告するための情報であって、読み込みの可否には影響しない。"
+    },
+    "roles": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/roleDefinition"
+      },
+      "description": "役の宣言（v2）。正規名は機能ベース（holder1 / holder2 …）。leftThumb / rightThumb は別名として受理する"
+    },
+    "layouts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/keyName"
+          }
+        }
+      },
+      "description": "レイアウト固有の**追加**バインド（v2）。roles.keys に足す（上書きではない）"
+    },
+    "base": {
+      "type": "string",
+      "enum": [
+        "characters",
+        "positional"
+      ],
+      "description": "定義のベース（v2・逐次系のみ）。positional = 物理キー位置で照合する（かな配列）。既定は characters"
     },
     "name": {
       "type": "string",
@@ -254,8 +281,7 @@
       "required": [
         "hidToKey",
         "lookupTable",
-        "specialActions",
-        "shiftKeys"
+        "specialActions"
       ],
       "allOf": [
         {
@@ -359,7 +385,7 @@
           },
           "minItems": 0,
           "maxItems": 2,
-          "description": "シフトキー定義（0〜2個）"
+          "description": "**v2 で廃止**（roles へ移動）。残っていても読まれる実装があるため型だけ保持する"
         }
       },
       "additionalProperties": false
@@ -537,8 +563,8 @@
     },
     "bitmaskString": {
       "type": "string",
-      "pattern": "^[A-Za-z]+(\\+[A-Za-z]+)*$",
-      "description": "ChordKey の組合せ表記（\"+\" 区切り、親指キー先頭・他はアルファベット順）"
+      "pattern": "^[A-Za-z][A-Za-z0-9]*(\\+[A-Za-z][A-Za-z0-9]*)*$",
+      "description": "ChordKey / 役の組合せ表記（\"+\" 区切り）。役は holder1 のように数字を含みうる"
     },
     "bitmaskOrCommentName": {
       "anyOf": [
@@ -639,6 +665,28 @@
           }
         }
       ]
+    },
+    "roleDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "表示名（可読性のためだけ。ランタイムは使わない）"
+        },
+        "keys": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/keyName"
+          },
+          "uniqueItems": true,
+          "description": "既定の物理キー**候補**。単一キーではなく配列（NICOLA は 1 役に 2 キーを割り当てている）。届かないキーは無視される"
+        },
+        "singleTapAction": {
+          "$ref": "#/$defs/keyActionValue",
+          "description": "単打時のフォールバック。省略時はランタイムの既定"
+        }
+      }
     }
   }
 }
