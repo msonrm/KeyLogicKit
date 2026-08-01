@@ -308,41 +308,74 @@ QWERTY 30 キー + 親指 3 キー:
 
 ## KeyAction 一覧
 
-### well-known アクション（パラメータなし）
+> **語彙の正典は `docs/key-action-registry.json`**（機械可読）。本節はその読み下しで、
+> 実装ごとの対応状況・面ごとの可否・合成中／非合成中の意味論はレジストリ側に持つ。
+> CI（`scripts/check_action_registry.py`）が、レジストリと本 schema・各実装のパーサ・
+> 配布中のキーマップ JSON を照合する。**アクションを増減するときはレジストリを先に直す。**
 
-| アクション | 説明 |
-|---|---|
-| `convert` | 変換 / 次候補 |
-| `convertPrev` | 前候補 |
-| `confirm` | 確定 |
-| `cancel` | キャンセル |
-| `deleteBack` | 1 文字削除 |
-| `moveLeft` | 左移動 |
-| `moveRight` | 右移動 |
-| `moveUp` | 上移動 |
-| `moveDown` | 下移動 |
-| `editSegmentLeft` | 文節左縮小 |
-| `editSegmentRight` | 文節右拡大 |
-| `confirmHiragana` | ひらがな確定 |
-| `confirmKatakana` | カタカナ確定 |
-| `confirmHalfWidthKatakana` | 半角カタカナ確定 |
-| `confirmFullWidthRoman` | 全角英数確定 |
-| `confirmHalfWidthRoman` | 半角英数確定 |
-| `switchToEnglish` | 英数直接入力に切替 |
-| `switchToJapanese` | 日本語入力に復帰 |
-| `toggleInputMode` | 日本語↔英数トグル |
-| `pass` | ランタイムに委譲 |
+アクションは「**配列作者が JSON に書けるもの**」と「**ランタイム内部イベント**」に分かれる。
+v1.0 の本節は両者を区別せず並べていたため、実装ごとに解釈が割れる原因になっていた。
 
-### well-known アクション（パラメータ付き `"アクション名:パラメータ"` 形式）
+### 書けるアクション（パラメータなし）
+
+「合成中 / 非合成中」は、変換セッション（hechima 等）を挿した構成での意味。
+非合成中の「ホスト編集」は、セッションが消費せずホストの文書操作へ透過することを指す。
+
+| アクション | 説明 | 合成中 | 非合成中 |
+|---|---|---|---|
+| `convert` | 変換 / 次候補 | 変換開始・次候補 | ホスト編集（全角スペース） |
+| `convertPrev` | 前候補 | 前候補 | — |
+| `confirm` | 確定 | 確定 / 結合確定 | ホスト編集（改行） |
+| `cancel` | キャンセル | 取消 / よみに戻す | 透過 |
+| `deleteBack` | 1 文字削除 | 末尾 1 字削除 / よみに戻す | ホスト編集（1 字削除） |
+| `moveLeft` / `moveRight` | 左右移動 | 注目文節の移動 | caret 移動 |
+| `moveUp` / `moveDown` | 上下移動 | 候補ナビ・追加候補の展開 | caret 移動 |
+| `editSegmentLeft` | 文節左縮小 | 文節伸縮 | 透過 |
+| `editSegmentRight` | 文節右拡大 | 文節伸縮 | 透過 |
+| `confirmHiragana` | ひらがな確定 | ひらがなのまま確定 | — |
+| `confirmKatakana` | カタカナ確定 | カタカナへ変換して確定 | — |
+| `confirmHalfWidthKatakana` | 半角カタカナ確定 | 半角カタカナへ変換して確定 | — |
+| `confirmFullWidthRoman` | 全角英数確定 | 全角英数へ変換して確定 | — |
+| `confirmHalfWidthRoman` | 半角英数確定 | 半角英数へ変換して確定 | — |
+| `switchToEnglish` | 英数直接入力に切替 | 確定してから切替 | 切替 |
+| `switchToJapanese` | 日本語入力に復帰 | — | 切替 |
+| `toggleInputMode` | 日本語↔英数トグル | 確定してからトグル | トグル |
+| `insertSpace` | スペース挿入（全角） | — | ホスト文書へスペース |
+| `pass` | ランタイムに委譲 | 透過 | 透過 |
+
+### 書けるアクション（パラメータ付き `"アクション名:パラメータ"` 形式）
 
 | アクション | パラメータ | 例 |
 |---|---|---|
-| `printable` | 1 文字 | `"printable:a"` |
-| `selectCandidate` | 整数（0〜8） | `"selectCandidate:0"` |
-| `chordInput` | ChordKey 名 | `"chordInput:A"` |
-| `chordShiftDown` | ChordKey 名 | `"chordShiftDown:space"` |
 | `insertAndConfirm` | 文字列 | `"insertAndConfirm:。"` |
 | `directInsert` | 文字列 | `"directInsert:a"` |
+| `insertSpace` | `shifted`（固定） | `"insertSpace:shifted"`（半角スペース） |
+| `selectCandidate` | 整数（0〜8） | `"selectCandidate:0"` |
+
+### アクションを書ける面
+
+同じ語彙がどこでも書けるわけではない。v1.0 の JSON Schema は 5 つの面すべてに同じ
+`keyActionString` を許しているが、**意味を持つ面はレジストリの `surfaces` が定める**
+（面ごとの分割は v2 の課題）。
+
+| 面 | 書けるもの |
+|---|---|
+| `specialActions` / `englishSpecialActions` | 上記のすべて |
+| `shiftKeys[].singleTapAction` | 上記のすべて |
+| `modeKeys` | モード切替系（`switchToEnglish` / `switchToJapanese` / `toggleInputMode`）と `pass` |
+| `controlBindings` | モード切替系を除く上記 |
+
+### ランタイム内部イベント（JSON からは書かない）
+
+`printable` / `chordInput` / `chordShiftDown` / `chordKeyUp` は、KeyRouter がキーイベントから
+生成する内部表現であり、配列定義の語彙ではない。**v1.0 schema は歴史的経緯で
+`printable:` / `chordInput:` / `chordShiftDown:` を許しているが、書いても意味のある動作はしない。**
+
+`moveSentenceStart` / `moveSentenceEnd` / `swapSentenceUp` / `swapSentenceDown` /
+`smartSelectExpand` / `smartSelectShrink` / `selectSentenceUp` / `selectSentenceDown` は
+**KanaEditor 固有のホスト文書操作**であり、本フォーマットの語彙ではない
+（KeyLogicKit の Swift デコーダが歴史的に受理する）。将来 JSON から書けるようにする場合は
+`x-kanaeditor:` 名前空間を使う。
 
 ### アプリ固有アクション（`x-` プレフィックス）
 
@@ -392,10 +425,17 @@ USB HID Keyboard/Keypad Page に対応する独自の簡潔な命名を使用す
 - **メジャーバージョン**（1.0 → 2.0）: 破壊的変更
 - デコーダは `formatVersion` を確認し、未対応バージョンは明確なエラーを返す
 
-## JSON Schema
+## JSON Schema / アクション語彙レジストリ
 
-バリデーション用の JSON Schema は `docs/keymap-v1.schema.json` に配置している。
-エディタの自動補完や CI での事前検証に利用できる。
+| ファイル | 役割 |
+|---|---|
+| `docs/keymap-v1.schema.json` | 構造のバリデーション（エディタ補完・CI 事前検証） |
+| `docs/key-action-registry.json` | **アクション語彙の正典**。面ごとの可否・合成中／非合成中の意味論・実装ごとの対応状況 |
+
+CI は `scripts/check_keymap_sync.py`（構造・二重管理）と
+`scripts/check_action_registry.py`（語彙）の 2 本で検証する。後者は schema・各実装の
+パーサ・配布中のキーマップ JSON をレジストリと突き合わせ、**黙って落ちる記述**
+（その面では解釈されないアクション）と**黙った実装差**を検出する。
 
 ```json
 {
