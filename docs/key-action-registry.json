@@ -5,6 +5,7 @@
     "",
     "surfaces = 仕様上そのアクションを書いてよい面。schema v1 は 5 つの keymap 面すべてに",
     "  同じ keyActionString を許しているため、本表のほうが厳しい（面ごとの分割は v2 = 段 4）。",
+    "  web ランタイムは v1.9.0 からこの surfaces を実行時にも強制する。",
     "parsers  = 現に受理する実装（実測値）。scripts/check_action_registry.py が実ソースと照合し、",
     "  ズレたら CI が落ちる。surfaces にあって parsers に無いものが「仕様と実装のギャップ」で、",
     "  段 2・段 3 で埋める対象。ここを黙って埋めない（R3-4「潰すのは許す。黙るのを禁じる」）。",
@@ -22,15 +23,14 @@
   },
   "parserDefs": {
     "swift": "Sources/KeyLogicKit/IME/KeymapCodable.swift — KeyAction.init(from:)",
-    "web.modeKeys": "web/src/engine/keymap-decoder.ts — decodeKeyAction()",
-    "web.chord": "web/src/engine/keymap-expander.ts — parseSpecialAction()",
+    "web": "web/src/engine/key-action-parser.ts — parseKeyAction()（v1.9.0 で 1 本化。面ごとの可否も持つ）",
     "flick": "web/src/flick/flickmap-decoder.ts — ACTION_NAMES"
   },
   "knownGaps": [
-    "web には keymap 用のアクションパーサが 2 つあり語彙が違う（web.modeKeys / web.chord）。統合は段 1 の PR-B。",
     "web は controlBindings を実装していない（emacsBindings / ctrlSemicolonAction は無視される）。Swift のみ。",
     "flick-1 は『keymap v1 と同じ名前・同じ意味論』と宣言しているが、13 語中 4 語が別名（escape / resizeLeft / resizeRight）または keymap 側に無い（undo）。本表では alias として記録し、正規名は keymap 側に寄せる。",
-    "Swift は仕様外のアクション（KanaEditor 固有 8 種・printable・chordInput 等）を JSON から受理する。D5 に従い PR-C で JSON デコードから外す。"
+    "Swift は仕様外のアクション（KanaEditor 固有 8 種・printable・chordInput 等）を JSON から受理する。D5 に従い PR-C で JSON デコードから外す。",
+    "面ごとの可否を実行時に強制するのは web だけ（v1.9.0）。Swift は全面で全語彙を受理する。揃えるのは段 2。"
   ],
   "actions": [
     {
@@ -39,8 +39,18 @@
       "summary": "変換 / 次候補",
       "whenComposing": "変換開始・次候補",
       "whenIdle": "ホスト編集（全角スペース挿入）",
-      "surfaces": ["keymap.specialActions", "keymap.englishSpecialActions", "keymap.singleTapAction", "keymap.controlBindings", "flickmap.key"],
-      "parsers": ["swift", "web.modeKeys", "web.chord", "flick"],
+      "surfaces": [
+        "keymap.specialActions",
+        "keymap.englishSpecialActions",
+        "keymap.singleTapAction",
+        "keymap.controlBindings",
+        "flickmap.key"
+      ],
+      "parsers": [
+        "swift",
+        "web",
+        "flick"
+      ],
       "notes": "space 役の singleTapAction の既定（web v1.8.0）。既定を insertSpace にすると未確定に「　」が居座る"
     },
     {
@@ -49,8 +59,15 @@
       "summary": "前候補",
       "whenComposing": "前候補",
       "whenIdle": "—",
-      "surfaces": ["keymap.specialActions", "keymap.englishSpecialActions", "keymap.singleTapAction", "keymap.controlBindings"],
-      "parsers": ["swift"]
+      "surfaces": [
+        "keymap.specialActions",
+        "keymap.englishSpecialActions",
+        "keymap.singleTapAction",
+        "keymap.controlBindings"
+      ],
+      "parsers": [
+        "swift"
+      ]
     },
     {
       "name": "confirm",
@@ -58,18 +75,40 @@
       "summary": "確定",
       "whenComposing": "確定 / 結合確定",
       "whenIdle": "ホスト編集（改行）",
-      "surfaces": ["keymap.specialActions", "keymap.englishSpecialActions", "keymap.singleTapAction", "keymap.controlBindings", "flickmap.key"],
-      "parsers": ["swift", "web.modeKeys", "web.chord", "flick"]
+      "surfaces": [
+        "keymap.specialActions",
+        "keymap.englishSpecialActions",
+        "keymap.singleTapAction",
+        "keymap.controlBindings",
+        "flickmap.key"
+      ],
+      "parsers": [
+        "swift",
+        "web",
+        "flick"
+      ]
     },
     {
       "name": "cancel",
       "param": null,
       "summary": "取消",
-      "aliases": ["escape"],
+      "aliases": [
+        "escape"
+      ],
       "whenComposing": "取消 / よみに戻す",
       "whenIdle": "透過",
-      "surfaces": ["keymap.specialActions", "keymap.englishSpecialActions", "keymap.singleTapAction", "keymap.controlBindings", "flickmap.key"],
-      "parsers": ["swift", "web.modeKeys", "web.chord", "flick"],
+      "surfaces": [
+        "keymap.specialActions",
+        "keymap.englishSpecialActions",
+        "keymap.singleTapAction",
+        "keymap.controlBindings",
+        "flickmap.key"
+      ],
+      "parsers": [
+        "swift",
+        "web",
+        "flick"
+      ],
       "notes": "flick-1 は escape という名前で持つ（alias）。正規名は cancel"
     },
     {
@@ -78,8 +117,18 @@
       "summary": "1 文字削除",
       "whenComposing": "末尾 1 字削除 / よみに戻す（Phase 2）",
       "whenIdle": "ホスト編集（1 字削除）",
-      "surfaces": ["keymap.specialActions", "keymap.englishSpecialActions", "keymap.singleTapAction", "keymap.controlBindings", "flickmap.key"],
-      "parsers": ["swift", "web.modeKeys", "web.chord", "flick"]
+      "surfaces": [
+        "keymap.specialActions",
+        "keymap.englishSpecialActions",
+        "keymap.singleTapAction",
+        "keymap.controlBindings",
+        "flickmap.key"
+      ],
+      "parsers": [
+        "swift",
+        "web",
+        "flick"
+      ]
     },
     {
       "name": "moveLeft",
@@ -87,8 +136,18 @@
       "summary": "左移動",
       "whenComposing": "注目文節を左へ（Phase 2）",
       "whenIdle": "caret 移動（ホストへ透過）",
-      "surfaces": ["keymap.specialActions", "keymap.englishSpecialActions", "keymap.singleTapAction", "keymap.controlBindings", "flickmap.key"],
-      "parsers": ["swift", "web.chord", "flick"]
+      "surfaces": [
+        "keymap.specialActions",
+        "keymap.englishSpecialActions",
+        "keymap.singleTapAction",
+        "keymap.controlBindings",
+        "flickmap.key"
+      ],
+      "parsers": [
+        "swift",
+        "web",
+        "flick"
+      ]
     },
     {
       "name": "moveRight",
@@ -96,8 +155,18 @@
       "summary": "右移動",
       "whenComposing": "注目文節を右へ（Phase 2）",
       "whenIdle": "caret 移動（ホストへ透過）",
-      "surfaces": ["keymap.specialActions", "keymap.englishSpecialActions", "keymap.singleTapAction", "keymap.controlBindings", "flickmap.key"],
-      "parsers": ["swift", "web.chord", "flick"]
+      "surfaces": [
+        "keymap.specialActions",
+        "keymap.englishSpecialActions",
+        "keymap.singleTapAction",
+        "keymap.controlBindings",
+        "flickmap.key"
+      ],
+      "parsers": [
+        "swift",
+        "web",
+        "flick"
+      ]
     },
     {
       "name": "moveUp",
@@ -105,8 +174,18 @@
       "summary": "上移動",
       "whenComposing": "候補ナビ / 追加候補の展開（Phase 2）",
       "whenIdle": "caret 移動（ホストへ透過）",
-      "surfaces": ["keymap.specialActions", "keymap.englishSpecialActions", "keymap.singleTapAction", "keymap.controlBindings", "flickmap.key"],
-      "parsers": ["swift", "web.chord", "flick"]
+      "surfaces": [
+        "keymap.specialActions",
+        "keymap.englishSpecialActions",
+        "keymap.singleTapAction",
+        "keymap.controlBindings",
+        "flickmap.key"
+      ],
+      "parsers": [
+        "swift",
+        "web",
+        "flick"
+      ]
     },
     {
       "name": "moveDown",
@@ -114,29 +193,63 @@
       "summary": "下移動",
       "whenComposing": "候補ナビ（Phase 2）",
       "whenIdle": "caret 移動（ホストへ透過）",
-      "surfaces": ["keymap.specialActions", "keymap.englishSpecialActions", "keymap.singleTapAction", "keymap.controlBindings", "flickmap.key"],
-      "parsers": ["swift", "web.chord", "flick"]
+      "surfaces": [
+        "keymap.specialActions",
+        "keymap.englishSpecialActions",
+        "keymap.singleTapAction",
+        "keymap.controlBindings",
+        "flickmap.key"
+      ],
+      "parsers": [
+        "swift",
+        "web",
+        "flick"
+      ]
     },
     {
       "name": "editSegmentLeft",
       "param": null,
       "summary": "文節左縮小",
-      "aliases": ["resizeLeft"],
+      "aliases": [
+        "resizeLeft"
+      ],
       "whenComposing": "文節伸縮（Phase 2）",
       "whenIdle": "透過",
-      "surfaces": ["keymap.specialActions", "keymap.englishSpecialActions", "keymap.singleTapAction", "keymap.controlBindings", "flickmap.key"],
-      "parsers": ["swift", "web.chord", "flick"],
+      "surfaces": [
+        "keymap.specialActions",
+        "keymap.englishSpecialActions",
+        "keymap.singleTapAction",
+        "keymap.controlBindings",
+        "flickmap.key"
+      ],
+      "parsers": [
+        "swift",
+        "web",
+        "flick"
+      ],
       "notes": "flick-1 は resizeLeft という名前で持つ（alias）。正規名は editSegmentLeft"
     },
     {
       "name": "editSegmentRight",
       "param": null,
       "summary": "文節右拡大",
-      "aliases": ["resizeRight"],
+      "aliases": [
+        "resizeRight"
+      ],
       "whenComposing": "文節伸縮（Phase 2）",
       "whenIdle": "透過",
-      "surfaces": ["keymap.specialActions", "keymap.englishSpecialActions", "keymap.singleTapAction", "keymap.controlBindings", "flickmap.key"],
-      "parsers": ["swift", "web.chord", "flick"],
+      "surfaces": [
+        "keymap.specialActions",
+        "keymap.englishSpecialActions",
+        "keymap.singleTapAction",
+        "keymap.controlBindings",
+        "flickmap.key"
+      ],
+      "parsers": [
+        "swift",
+        "web",
+        "flick"
+      ],
       "notes": "flick-1 は resizeRight という名前で持つ（alias）。正規名は editSegmentRight"
     },
     {
@@ -145,8 +258,15 @@
       "summary": "ひらがな確定",
       "whenComposing": "ひらがなのまま確定",
       "whenIdle": "—",
-      "surfaces": ["keymap.specialActions", "keymap.englishSpecialActions", "keymap.singleTapAction", "keymap.controlBindings"],
-      "parsers": ["swift"],
+      "surfaces": [
+        "keymap.specialActions",
+        "keymap.englishSpecialActions",
+        "keymap.singleTapAction",
+        "keymap.controlBindings"
+      ],
+      "parsers": [
+        "swift"
+      ],
       "notes": "web は KeyRouter が Ctrl+J をハードコードで confirm に潰している（key-router.ts:89）= 黙った縮退。段 2 で明示化"
     },
     {
@@ -155,8 +275,15 @@
       "summary": "カタカナ確定",
       "whenComposing": "カタカナへ変換して確定",
       "whenIdle": "—",
-      "surfaces": ["keymap.specialActions", "keymap.englishSpecialActions", "keymap.singleTapAction", "keymap.controlBindings"],
-      "parsers": ["swift"]
+      "surfaces": [
+        "keymap.specialActions",
+        "keymap.englishSpecialActions",
+        "keymap.singleTapAction",
+        "keymap.controlBindings"
+      ],
+      "parsers": [
+        "swift"
+      ]
     },
     {
       "name": "confirmHalfWidthKatakana",
@@ -164,8 +291,15 @@
       "summary": "半角カタカナ確定",
       "whenComposing": "半角カタカナへ変換して確定",
       "whenIdle": "—",
-      "surfaces": ["keymap.specialActions", "keymap.englishSpecialActions", "keymap.singleTapAction", "keymap.controlBindings"],
-      "parsers": ["swift"]
+      "surfaces": [
+        "keymap.specialActions",
+        "keymap.englishSpecialActions",
+        "keymap.singleTapAction",
+        "keymap.controlBindings"
+      ],
+      "parsers": [
+        "swift"
+      ]
     },
     {
       "name": "confirmFullWidthRoman",
@@ -173,8 +307,15 @@
       "summary": "全角英数確定",
       "whenComposing": "全角英数へ変換して確定",
       "whenIdle": "—",
-      "surfaces": ["keymap.specialActions", "keymap.englishSpecialActions", "keymap.singleTapAction", "keymap.controlBindings"],
-      "parsers": ["swift"]
+      "surfaces": [
+        "keymap.specialActions",
+        "keymap.englishSpecialActions",
+        "keymap.singleTapAction",
+        "keymap.controlBindings"
+      ],
+      "parsers": [
+        "swift"
+      ]
     },
     {
       "name": "confirmHalfWidthRoman",
@@ -182,8 +323,15 @@
       "summary": "半角英数確定",
       "whenComposing": "半角英数へ変換して確定",
       "whenIdle": "—",
-      "surfaces": ["keymap.specialActions", "keymap.englishSpecialActions", "keymap.singleTapAction", "keymap.controlBindings"],
-      "parsers": ["swift"]
+      "surfaces": [
+        "keymap.specialActions",
+        "keymap.englishSpecialActions",
+        "keymap.singleTapAction",
+        "keymap.controlBindings"
+      ],
+      "parsers": [
+        "swift"
+      ]
     },
     {
       "name": "switchToEnglish",
@@ -191,8 +339,17 @@
       "summary": "英数直接入力に切替",
       "whenComposing": "確定してから切替",
       "whenIdle": "切替",
-      "surfaces": ["keymap.specialActions", "keymap.englishSpecialActions", "keymap.singleTapAction", "keymap.modeKeys", "keymap.controlBindings"],
-      "parsers": ["swift", "web.modeKeys", "web.chord"]
+      "surfaces": [
+        "keymap.specialActions",
+        "keymap.englishSpecialActions",
+        "keymap.singleTapAction",
+        "keymap.modeKeys",
+        "keymap.controlBindings"
+      ],
+      "parsers": [
+        "swift",
+        "web"
+      ]
     },
     {
       "name": "switchToJapanese",
@@ -200,8 +357,17 @@
       "summary": "日本語入力に復帰",
       "whenComposing": "—",
       "whenIdle": "切替",
-      "surfaces": ["keymap.specialActions", "keymap.englishSpecialActions", "keymap.singleTapAction", "keymap.modeKeys", "keymap.controlBindings"],
-      "parsers": ["swift", "web.modeKeys", "web.chord"]
+      "surfaces": [
+        "keymap.specialActions",
+        "keymap.englishSpecialActions",
+        "keymap.singleTapAction",
+        "keymap.modeKeys",
+        "keymap.controlBindings"
+      ],
+      "parsers": [
+        "swift",
+        "web"
+      ]
     },
     {
       "name": "toggleInputMode",
@@ -209,9 +375,18 @@
       "summary": "日本語 ↔ 英数トグル",
       "whenComposing": "確定してからトグル",
       "whenIdle": "トグル",
-      "surfaces": ["keymap.specialActions", "keymap.englishSpecialActions", "keymap.singleTapAction", "keymap.modeKeys", "keymap.controlBindings"],
-      "parsers": ["swift", "web.modeKeys"],
-      "notes": "web.chord が受理しないため specialActions に書くと黙って落ちる（PR-B で解消）"
+      "surfaces": [
+        "keymap.specialActions",
+        "keymap.englishSpecialActions",
+        "keymap.singleTapAction",
+        "keymap.modeKeys",
+        "keymap.controlBindings"
+      ],
+      "parsers": [
+        "swift",
+        "web"
+      ],
+      "notes": "v1.8.0 まで web.chord が受理せず specialActions に書くと黙って落ちた（v1.9.0 のパーサ 1 本化で解消）"
     },
     {
       "name": "insertAndConfirm",
@@ -220,8 +395,15 @@
       "summary": "文字列を挿入して即確定",
       "whenComposing": "現合成を確定してから挿入",
       "whenIdle": "挿入",
-      "surfaces": ["keymap.specialActions", "keymap.englishSpecialActions", "keymap.singleTapAction"],
-      "parsers": ["swift", "web.chord"]
+      "surfaces": [
+        "keymap.specialActions",
+        "keymap.englishSpecialActions",
+        "keymap.singleTapAction"
+      ],
+      "parsers": [
+        "swift",
+        "web"
+      ]
     },
     {
       "name": "directInsert",
@@ -230,8 +412,15 @@
       "summary": "合成を経由せずホスト文書へ直接挿入",
       "whenComposing": "—",
       "whenIdle": "挿入",
-      "surfaces": ["keymap.specialActions", "keymap.englishSpecialActions", "keymap.singleTapAction"],
-      "parsers": ["swift"]
+      "surfaces": [
+        "keymap.specialActions",
+        "keymap.englishSpecialActions",
+        "keymap.singleTapAction"
+      ],
+      "parsers": [
+        "swift",
+        "web"
+      ]
     },
     {
       "name": "insertSpace",
@@ -240,8 +429,15 @@
       "summary": "スペース挿入（全角 / shifted で半角）",
       "whenComposing": "—",
       "whenIdle": "ホスト文書へスペース",
-      "surfaces": ["keymap.specialActions", "keymap.englishSpecialActions", "keymap.singleTapAction"],
-      "parsers": ["swift"],
+      "surfaces": [
+        "keymap.specialActions",
+        "keymap.englishSpecialActions",
+        "keymap.singleTapAction"
+      ],
+      "parsers": [
+        "swift",
+        "web"
+      ],
       "notes": "両ランタイムの既定経路（idle 時のスペースキー）だが v1 仕様書・schema に載っていなかった。space 役の singleTapAction 既定にしてはならない（convert の項を参照）"
     },
     {
@@ -251,8 +447,15 @@
       "summary": "候補を番号で選択",
       "whenComposing": "候補選択（Phase 2）",
       "whenIdle": "—",
-      "surfaces": ["keymap.specialActions", "keymap.englishSpecialActions", "keymap.singleTapAction", "keymap.controlBindings"],
-      "parsers": ["swift"]
+      "surfaces": [
+        "keymap.specialActions",
+        "keymap.englishSpecialActions",
+        "keymap.singleTapAction",
+        "keymap.controlBindings"
+      ],
+      "parsers": [
+        "swift"
+      ]
     },
     {
       "name": "pass",
@@ -260,8 +463,17 @@
       "summary": "ランタイムに委譲（消費しない）",
       "whenComposing": "透過",
       "whenIdle": "透過",
-      "surfaces": ["keymap.specialActions", "keymap.englishSpecialActions", "keymap.singleTapAction", "keymap.modeKeys", "keymap.controlBindings"],
-      "parsers": ["swift", "web.modeKeys"]
+      "surfaces": [
+        "keymap.specialActions",
+        "keymap.englishSpecialActions",
+        "keymap.singleTapAction",
+        "keymap.modeKeys",
+        "keymap.controlBindings"
+      ],
+      "parsers": [
+        "swift",
+        "web"
+      ]
     },
     {
       "name": "undo",
@@ -269,8 +481,12 @@
       "summary": "確定アンドゥ",
       "whenComposing": "—（確定アンドゥは非合成中のみ）",
       "whenIdle": "セッションの確定アンドゥ。不成立ならホストの文書 undo へ透過",
-      "surfaces": ["flickmap.key"],
-      "parsers": ["flick"],
+      "surfaces": [
+        "flickmap.key"
+      ],
+      "parsers": [
+        "flick"
+      ],
       "notes": "keymap 側に対応語彙が無い。keymap から撃ちたくなったら surfaces を広げる"
     },
     {
@@ -279,8 +495,12 @@
       "summary": "レイヤ切替（flickmap 固有・ランタイム内部で解決）",
       "whenComposing": "レイヤ切替",
       "whenIdle": "レイヤ切替",
-      "surfaces": ["flickmap.key"],
-      "parsers": ["flick"]
+      "surfaces": [
+        "flickmap.key"
+      ],
+      "parsers": [
+        "flick"
+      ]
     },
     {
       "name": "postModify",
@@ -288,18 +508,23 @@
       "summary": "直前入力文字の濁点 / 半濁点 / 小書きトグル",
       "whenComposing": "合成テキスト末尾 1 字をサイクルに沿って置換",
       "whenIdle": "何もしない",
-      "surfaces": ["flickmap.key"],
-      "parsers": ["flick"],
+      "surfaces": [
+        "flickmap.key"
+      ],
+      "parsers": [
+        "flick"
+      ],
       "notes": "R6 で keymap.specialActions / keymap.modeKeys へ拡張予定（JIS かな入力・親指ぴゅん 1 キー版が届く）。「直前の 1 字」の正は合成テキストの所有者が持つ（D4）"
     },
-
     {
       "name": "printable",
       "param": "1 文字",
       "summary": "文字入力（内部イベント）",
       "internal": true,
       "surfaces": [],
-      "parsers": ["swift"],
+      "parsers": [
+        "swift"
+      ],
       "notes": "KeyRouter が文字キーから生成する。JSON からは書かない（Swift は歴史的に受理する）"
     },
     {
@@ -308,7 +533,9 @@
       "summary": "同時打鍵バッファへキー投入（内部イベント）",
       "internal": true,
       "surfaces": [],
-      "parsers": ["swift"],
+      "parsers": [
+        "swift"
+      ],
       "notes": "同上"
     },
     {
@@ -317,7 +544,9 @@
       "summary": "シフト役キーの押下（内部イベント）",
       "internal": true,
       "surfaces": [],
-      "parsers": ["swift"],
+      "parsers": [
+        "swift"
+      ],
       "notes": "同上"
     },
     {
@@ -329,14 +558,15 @@
       "parsers": [],
       "notes": "web ランタイムのみが持つ内部 KeyAction。どのパーサも文字列からは受理しない"
     },
-
     {
       "name": "moveSentenceStart",
       "param": null,
       "summary": "文頭へ移動（KanaEditor 固有）",
       "internal": true,
       "surfaces": [],
-      "parsers": ["swift"],
+      "parsers": [
+        "swift"
+      ],
       "reservedNamespace": "x-kanaeditor:",
       "notes": "D5: 仕様の語彙から外す。ホスト文書の操作であり keymap の管轄外。PR-C で JSON デコードから削除（enum は KeyRouter が内部で使うため残す）"
     },
@@ -346,7 +576,9 @@
       "summary": "文末へ移動（KanaEditor 固有）",
       "internal": true,
       "surfaces": [],
-      "parsers": ["swift"],
+      "parsers": [
+        "swift"
+      ],
       "reservedNamespace": "x-kanaeditor:"
     },
     {
@@ -355,7 +587,9 @@
       "summary": "文を上と入れ替え（KanaEditor 固有）",
       "internal": true,
       "surfaces": [],
-      "parsers": ["swift"],
+      "parsers": [
+        "swift"
+      ],
       "reservedNamespace": "x-kanaeditor:"
     },
     {
@@ -364,7 +598,9 @@
       "summary": "文を下と入れ替え（KanaEditor 固有）",
       "internal": true,
       "surfaces": [],
-      "parsers": ["swift"],
+      "parsers": [
+        "swift"
+      ],
       "reservedNamespace": "x-kanaeditor:"
     },
     {
@@ -373,7 +609,9 @@
       "summary": "選択範囲を拡大（KanaEditor 固有）",
       "internal": true,
       "surfaces": [],
-      "parsers": ["swift"],
+      "parsers": [
+        "swift"
+      ],
       "reservedNamespace": "x-kanaeditor:"
     },
     {
@@ -382,7 +620,9 @@
       "summary": "選択範囲を縮小（KanaEditor 固有）",
       "internal": true,
       "surfaces": [],
-      "parsers": ["swift"],
+      "parsers": [
+        "swift"
+      ],
       "reservedNamespace": "x-kanaeditor:"
     },
     {
@@ -391,7 +631,9 @@
       "summary": "上の文まで選択（KanaEditor 固有）",
       "internal": true,
       "surfaces": [],
-      "parsers": ["swift"],
+      "parsers": [
+        "swift"
+      ],
       "reservedNamespace": "x-kanaeditor:"
     },
     {
@@ -400,7 +642,9 @@
       "summary": "下の文まで選択（KanaEditor 固有）",
       "internal": true,
       "surfaces": [],
-      "parsers": ["swift"],
+      "parsers": [
+        "swift"
+      ],
       "reservedNamespace": "x-kanaeditor:"
     }
   ]

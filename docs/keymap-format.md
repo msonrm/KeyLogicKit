@@ -363,7 +363,14 @@ v1.0 の本節は両者を区別せず並べていたため、実装ごとに解
 | `specialActions` / `englishSpecialActions` | 上記のすべて |
 | `shiftKeys[].singleTapAction` | 上記のすべて |
 | `modeKeys` | モード切替系（`switchToEnglish` / `switchToJapanese` / `toggleInputMode`）と `pass` |
-| `controlBindings` | モード切替系を除く上記 |
+| `controlBindings` | 上記のすべて |
+
+`modeKeys` を絞ってあるのは、この面が**状態を見ずに最優先で発火する**ため。編集系を置くと
+「`space` に `convert` を書いたら空バッファでも撃たれる」型の罠になる。
+
+面の可否をランタイムが強制するかは実装による（web の KeymapEngine は v1.9.0 から強制し、
+許されない面のエントリは読み飛ばす）。配布前の検証は
+`scripts/check_action_registry.py` が行う。
 
 ### ランタイム内部イベント（JSON からは書かない）
 
