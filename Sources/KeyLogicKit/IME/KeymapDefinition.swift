@@ -19,6 +19,43 @@ public struct KeymapDefinition: Sendable {
     /// 黙って時間窓で動かす）。`extensions` / `x-` の「安全に無視してよい」の逆。
     public let requires: [String]?
 
+    /// 役の宣言（v2・任意）。キーが役名、値が既定の物理キー候補ほか。
+    ///
+    /// **配列は役を決め、どこで押すかは環境の関心事**（v2 の芯）。
+    /// `keys` は候補の**配列**で、届かないキー（そのレイアウトに無い / OS が奪う）は
+    /// 無視されるだけ。NICOLA は 1 役に 2 つの物理キーを割り当てている。
+    public let roles: [String: RoleDefinition]?
+
+    /// レイアウト固有の**追加**バインド（v2・任意）。`roles[].keys` に足す（上書きではない）
+    public let layouts: [String: [String: [String]]]?
+
+    /// 定義のベース（v2・逐次系のみ）。`positional` = 物理キー位置で照合する
+    public let base: DefinitionBase?
+
+    /// 役の定義（v2）
+    public struct RoleDefinition: Sendable {
+        /// 表示名（可読性のためだけ。ランタイムは使わない）
+        public let label: String?
+        /// 既定の物理キー候補
+        public let keys: [String]
+        /// 単打時のフォールバック（省略時はランタイムの既定）
+        public let singleTapAction: KeyAction?
+
+        public init(label: String? = nil, keys: [String] = [], singleTapAction: KeyAction? = nil) {
+            self.label = label
+            self.keys = keys
+            self.singleTapAction = singleTapAction
+        }
+    }
+
+    /// 定義のベース（v2）
+    public enum DefinitionBase: String, Sendable, Codable {
+        /// OS が報告した文字で照合する（既定）。OS のレイアウト設定を尊重する
+        case characters
+        /// 物理キー位置で照合する（かな配列）。HID コード → US 刻印に正規化してから引く
+        case positional
+    }
+
     /// 成立に必要な入力イベントの最低段（任意）。省略時は `behavior` から導出される。
     ///
     /// **読み込みの可否には使わない。** ホストが自分の段と突き合わせて、
@@ -91,7 +128,9 @@ public struct KeymapDefinition: Sendable {
     public let license: String?
 
     /// 対象キーボードの物理配列（"us", "jis" 等）
-    public let keyboardLayout: String
+    /// 対象物理配列（**v2 で廃止**。`layouts` が対象を列挙する）。
+    /// 残っている v1 由来の定義のために保持するが、新しい配列は書かない
+    public let keyboardLayout: String?
 
     /// 出力文字体系（"hiragana", "katakana" 等、任意）
     public let targetScript: String?
@@ -177,13 +216,66 @@ public struct KeymapDefinition: Sendable {
     public let extensions: [String: String]?
 
     /// 現在のフォーマットバージョン
-    public static let currentFormatVersion = "1.0"
+    public static let currentFormatVersion = "2.0"
+
+    /// 役（`roles` / `layouts`）を chord の `hidToKey` / `shiftKeys` に畳み込んだ定義を返す。
+    ///
+    /// **v2 の役は「配列が決めるのは役、物理キーは環境の関心事」という宣言**なので、
+    /// 実際に打鍵を解決する層（`KeyRouter` / `SimultaneousKeyBuffer`）が見るときには
+    /// 物理キーへ解決済みでなければならない。解決は 1 箇所で行い、以降は v1 と同じ形で流す。
+    ///
+    /// - Parameter layout: どのレイアウトの**追加**バインドを適用するか。
+    ///   nil なら役の既定候補（`roles[].keys`）だけ。**実際にキーが届くかを知っているのは
+    ///   ホスト**なので、ここはホストが決める。
+    public func foldingRoles(layout: String?) -> KeymapDefinition {
+        guard let roles, case .chord(let config) = behavior else { return self }
+
+        var hid = config.hidToKey
+        var shifts = config.shiftKeys
+        for (rawName, role) in roles {
+            guard let chordKey = ChordKeyNames.roleKey(for: rawName) else { continue }
+            var keys = role.keys
+            if let layout, let extra = layouts?[layout]?[rawName] {
+                keys.append(contentsOf: extra)
+            }
+            for physName in keys {
+                if let code = HIDUsageNames.keyCode(for: physName) { hid[code] = chordKey }
+            }
+            // singleTapAction の宣言が無く、その役がスペースバーに載っているなら
+            // 既定の convert を付ける（v1.8.0 の教訓: スペースの単打の意味は物理キーに属する）
+            let action = role.singleTapAction ?? (keys.contains("space") ? .convert : nil)
+            if !shifts.contains(where: { $0.key == chordKey }) {
+                shifts.append(ShiftKeyConfig(key: chordKey, singleTapAction: action))
+            }
+        }
+
+        let folded = ChordConfig(
+            hidToKey: hid,
+            lookupTable: config.lookupTable,
+            specialActions: config.specialActions,
+            judgment: config.judgment,
+            simultaneousWindow: config.simultaneousWindow,
+            englishLookupTable: config.englishLookupTable,
+            englishSpecialActions: config.englishSpecialActions,
+            shiftKeys: shifts
+        )
+        return KeymapDefinition(
+            name: name, behavior: .chord(config: folded), keyboardLayout: keyboardLayout,
+            inputBase: inputBase, keyRemap: keyRemap, suffixRules: suffixRules,
+            inputMappings: explicitInputMappings ?? inputMappings,
+            prefixShiftKeys: prefixShiftKeys, controlBindings: controlBindings,
+            modeKeys: modeKeys, formatVersion: formatVersion, description: description,
+            author: author, contributor: contributor, basedOn: basedOn, license: license,
+            targetScript: targetScript, requires: requires, requiresInput: requiresInput,
+            roles: roles, layouts: layouts, base: base, extensions: extensions
+        )
+    }
 
     /// デコードを受け付けるフォーマットのメジャーバージョン。
     ///
     /// これと違うメジャーの JSON は `init(from:)` が拒否する（部分デコードしない）。
     /// 未知のセマンティクスを黙って無視したまま動くと、配列が意図と違う挙動をするため。
-    public static let supportedFormatMajor = 1
+    public static let supportedFormatMajor = 2
 
     /// この実装が理解できるセマンティクスの名前。
     ///
@@ -203,9 +295,12 @@ public struct KeymapDefinition: Sendable {
         "chord:shiftKeys",
         "chord:englishTables",
         "requiresInput",
+        "roles",
+        "layouts",
+        "positionalBase",
     ]
 
-    public init(name: String, behavior: InputBehavior, keyboardLayout: String,
+    public init(name: String, behavior: InputBehavior, keyboardLayout: String? = nil,
          inputBase: String? = nil,
          keyRemap: [String: String]? = nil,
          suffixRules: [String: SuffixRule]? = nil,
@@ -219,10 +314,16 @@ public struct KeymapDefinition: Sendable {
          license: String? = nil, targetScript: String? = nil,
          requires: [String]? = nil,
          requiresInput: InputLevel? = nil,
+         roles: [String: RoleDefinition]? = nil,
+         layouts: [String: [String: [String]]]? = nil,
+         base: DefinitionBase? = nil,
          extensions: [String: String]? = nil) {
         self.formatVersion = formatVersion
         self.requires = requires
         self.requiresInput = requiresInput
+        self.roles = roles
+        self.layouts = layouts
+        self.base = base
         self.name = name
         self.description = description
         self.author = author

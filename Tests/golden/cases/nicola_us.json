@@ -1,128 +1,289 @@
 {
-  "keymap": "nicola_us",
-  "description": "NICOLA US: 単打 + 親指シフト同時打鍵（space=左親指、rightAlt=右親指）",
+  "keymap": "nicola",
+  "skip": [
+    "kide"
+  ],
+  "layout": "us",
+  "description": "NICOLA US: 単打 + 親指シフト同時打鍵（space=左親指、rightAlt=右親指） / kide は keymap v1 のままで統合名を解決できないため skip（TODO.md の kide 移行で外す）",
   "cases": [
     {
       "name": "single_w_ka",
-      "steps": [{ "press": "w" }],
-      "expect": { "text": "か" }
+      "steps": [
+        {
+          "press": "w"
+        }
+      ],
+      "expect": {
+        "text": "か"
+      }
     },
     {
       "name": "single_q_kuten",
-      "steps": [{ "press": "q" }],
-      "expect": { "text": "。" }
+      "steps": [
+        {
+          "press": "q"
+        }
+      ],
+      "expect": {
+        "text": "。"
+      }
     },
     {
       "name": "left_thumb_shift_w_e",
-      "steps": [{ "chord": ["space", "w"] }],
-      "expect": { "text": "え" }
+      "steps": [
+        {
+          "chord": [
+            "space",
+            "w"
+          ]
+        }
+      ],
+      "expect": {
+        "text": "え"
+      }
     },
     {
       "name": "sequence_kaka_with_window",
       "steps": [
-        { "press": "w" },
-        { "wait": 150 },
-        { "press": "w" }
+        {
+          "press": "w"
+        },
+        {
+          "wait": 150
+        },
+        {
+          "press": "w"
+        }
       ],
-      "expect": { "text": "かか" }
+      "expect": {
+        "text": "かか"
+      }
     },
     {
       "name": "rolling_two_letters_no_chord_entry",
-      "steps": [{ "press": "w" }, { "press": "q" }],
-      "expect": { "text": "か。" }
+      "steps": [
+        {
+          "press": "w"
+        },
+        {
+          "press": "q"
+        }
+      ],
+      "expect": {
+        "text": "か。"
+      }
     },
     {
       "name": "thumb_single_tap_idle_inserts_space",
-      "skip": ["kide"],
-      "steps": [{ "press": "space" }, { "wait": 150 }],
-      "expect": { "text": "　" }
+      "steps": [
+        {
+          "press": "space"
+        },
+        {
+          "wait": 150
+        }
+      ],
+      "expect": {
+        "text": "　"
+      }
     },
     {
       "name": "thumb_single_tap_confirms_composing",
-      "skip": ["kide"],
       "steps": [
-        { "press": "w" },
-        { "wait": 150 },
-        { "press": "space" },
-        { "wait": 150 }
+        {
+          "press": "w"
+        },
+        {
+          "wait": 150
+        },
+        {
+          "press": "space"
+        },
+        {
+          "wait": 150
+        }
       ],
-      "expect": { "confirmed": "か", "composing": "" }
+      "expect": {
+        "confirmed": "か",
+        "composing": ""
+      }
     },
     {
       "name": "rolling_stagger_two_letters",
       "description": "ロールオーバー: w を離す前に e を押下（指残り）。chord 非成立で2単打",
       "steps": [
-        { "down": "w" },
-        { "down": "e" },
-        { "up": "w" },
-        { "up": "e" }
+        {
+          "down": "w"
+        },
+        {
+          "down": "e"
+        },
+        {
+          "up": "w"
+        },
+        {
+          "up": "e"
+        }
       ],
-      "expect": { "text": "かた" }
+      "expect": {
+        "text": "かた"
+      }
     },
     {
       "name": "rolling_stagger_three_letters",
       "description": "3キーのロールオーバー: w↓ e↓ r↓（順に指残り）。chord 非成立で3単打",
       "steps": [
-        { "down": "w" },
-        { "down": "e" },
-        { "down": "r" },
-        { "up": "w" },
-        { "up": "e" },
-        { "up": "r" }
+        {
+          "down": "w"
+        },
+        {
+          "down": "e"
+        },
+        {
+          "down": "r"
+        },
+        {
+          "up": "w"
+        },
+        {
+          "up": "e"
+        },
+        {
+          "up": "r"
+        }
       ],
-      "expect": { "text": "かたこ" }
+      "expect": {
+        "text": "かたこ"
+      }
     },
     {
       "name": "continuous_left_thumb_shift",
       "description": "連続シフト: 左親指(space)を押しっぱなしで w e r を打つ。leftThumb+W/E/R = え/り/ゃ",
-      "skip": ["kide"],
       "steps": [
-        { "down": "space" },
-        { "wait": 150 },
-        { "press": "w" },
-        { "press": "e" },
-        { "press": "r" },
-        { "up": "space" }
+        {
+          "down": "space"
+        },
+        {
+          "wait": 150
+        },
+        {
+          "press": "w"
+        },
+        {
+          "press": "e"
+        },
+        {
+          "press": "r"
+        },
+        {
+          "up": "space"
+        }
       ],
-      "expect": { "text": "えりゃ", "composing": "えりゃ" }
+      "expect": {
+        "text": "えりゃ",
+        "composing": "えりゃ"
+      }
     },
     {
       "name": "mode_toggle_roundtrip",
       "description": "モード切替往復: Ctrl+Space で英字→戻す。英字モードは生キー透過、日本語モードは chord",
-      "skip": ["swift", "kide"],
-      "steps": [
-        { "press": "space", "modifiers": ["ctrl"] },
-        { "press": "w", "char": "w" },
-        { "press": "space", "modifiers": ["ctrl"] },
-        { "press": "w" },
-        { "wait": 150 }
+      "skip": [
+        "swift"
       ],
-      "expect": { "text": "wか", "confirmed": "w" }
+      "steps": [
+        {
+          "press": "space",
+          "modifiers": [
+            "ctrl"
+          ]
+        },
+        {
+          "press": "w",
+          "char": "w"
+        },
+        {
+          "press": "space",
+          "modifiers": [
+            "ctrl"
+          ]
+        },
+        {
+          "press": "w"
+        },
+        {
+          "wait": 150
+        }
+      ],
+      "expect": {
+        "text": "wか",
+        "confirmed": "w"
+      }
     },
     {
       "name": "mode_switch_via_modekeys",
       "description": "modeKeys 経由の往復: Ctrl+Shift+; で英字 → Ctrl+Shift+J で日本語",
-      "skip": ["swift", "kide"],
-      "steps": [
-        { "press": "semicolon", "modifiers": ["ctrl", "shift"] },
-        { "press": "a", "char": "a" },
-        { "press": "j", "modifiers": ["ctrl", "shift"] },
-        { "press": "w" },
-        { "wait": 150 }
+      "skip": [
+        "swift"
       ],
-      "expect": { "text": "aか", "confirmed": "a" }
+      "steps": [
+        {
+          "press": "semicolon",
+          "modifiers": [
+            "ctrl",
+            "shift"
+          ]
+        },
+        {
+          "press": "a",
+          "char": "a"
+        },
+        {
+          "press": "j",
+          "modifiers": [
+            "ctrl",
+            "shift"
+          ]
+        },
+        {
+          "press": "w"
+        },
+        {
+          "wait": 150
+        }
+      ],
+      "expect": {
+        "text": "aか",
+        "confirmed": "a"
+      }
     },
     {
       "name": "mode_switch_confirms_composing",
       "description": "composing 中の切替は確定してから切替: か を打鍵中に Ctrl+Space → か 確定 + 英字 x",
-      "skip": ["swift", "kide"],
-      "steps": [
-        { "press": "w" },
-        { "wait": 150 },
-        { "press": "space", "modifiers": ["ctrl"] },
-        { "press": "x", "char": "x" }
+      "skip": [
+        "swift"
       ],
-      "expect": { "confirmed": "かx", "composing": "" }
+      "steps": [
+        {
+          "press": "w"
+        },
+        {
+          "wait": 150
+        },
+        {
+          "press": "space",
+          "modifiers": [
+            "ctrl"
+          ]
+        },
+        {
+          "press": "x",
+          "char": "x"
+        }
+      ],
+      "expect": {
+        "confirmed": "かx",
+        "composing": ""
+      }
     }
   ]
 }

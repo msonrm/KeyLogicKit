@@ -778,15 +778,17 @@
       "kind": "interpretation",
       "summary": "役の宣言（roles）と役→物理キーの分離。layouts によるレイアウト固有の追加バインドを含む",
       "implementedBy": [
+        "swift",
         "web"
       ],
-      "notes": "KeyLogicKit（Swift）は未対応（段 4-C1）"
+      "notes": "**Swift は役を 3 つまで**（ChordKey が固定 enum で親指ビットが 3 つのため）。web は宣言順の可変ビットで上限なし"
     },
     {
       "name": "layouts",
       "kind": "interpretation",
       "summary": "レイアウト別の役バインド（NICOLA 親指等）",
       "implementedBy": [
+        "swift",
         "web"
       ],
       "notes": "roles の一部として実装。requires には roles と書けば足りる"
@@ -829,6 +831,7 @@
       "kind": "interpretation",
       "summary": "base: positional — 物理キー位置で照合する（かな配列）",
       "implementedBy": [
+        "swift",
         "web"
       ],
       "notes": "HID コード → US 刻印の正規化。修飾キー無しのときだけ適用する（Shift まで正規化すると characterMap のシフト記号が死ぬ）"

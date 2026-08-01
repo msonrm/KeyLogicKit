@@ -36,7 +36,14 @@ public struct ExpandedKeymap: Sendable {
     public let chordData: ExpandedChordData?
 
     /// `KeymapDefinition` から構築する
-    public init(definition: KeymapDefinition) {
+    /// - Parameter layout: どのレイアウトの**追加**バインドを適用するか（`layouts` のキー）。
+    ///   nil なら役の既定候補（`roles[].keys`）だけを使う。
+    ///   **実際にキーが届くかを知っているのはホスト**なので、ここはホストが決める。
+    public init(definition: KeymapDefinition, layout: String? = nil) {
+        // 役を物理キーへ畳み込んでから流す。以降の層（KeyRouter / SimultaneousKeyBuffer）は
+        // v1 と同じ形しか見ない。**`definition` には畳み込み後を入れる**ので、
+        // ホストは `expanded.definition` から KeyRouter を作れば役が効く。
+        let definition = definition.foldingRoles(layout: layout)
         self.definition = definition
 
         // inputMappings: _comment フィルタ済み
@@ -112,7 +119,7 @@ public struct ExpandedChordData: Sendable {
     /// 英語モード用特殊アクション（nil = 英語モードなし）
     public let englishSpecialActions: [UInt64: KeyAction]?
 
-    /// `ChordConfig` から構築
+    /// `ChordConfig` から構築（役は `KeymapDefinition.foldingRoles` で解決済み）
     public init(config: KeymapDefinition.ChordConfig) {
         self.hidToChordKey = config.hidToKey
         self.lookupTable = config.lookupTable

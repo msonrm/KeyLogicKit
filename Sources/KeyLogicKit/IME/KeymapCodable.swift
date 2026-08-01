@@ -23,7 +23,7 @@ private struct DynamicCodingKey: CodingKey {
 /// HIDKeyCode と JSON 用文字列名の相互変換
 ///
 /// フォーマット仕様の独自命名を使用。Apple の UIKeyboardHIDUsage 名には依存しない。
-private enum HIDUsageNames {
+enum HIDUsageNames {
 
     /// HIDKeyCode → 文字列名
     static func name(for keyCode: HIDKeyCode) -> String? {
@@ -34,6 +34,22 @@ private enum HIDUsageNames {
     static func keyCode(for name: String) -> HIDKeyCode? {
         nameToCode[name]
     }
+
+    /// HIDKeyCode → **US 刻印の 1 文字**（`base: positional` 用）。
+    ///
+    /// 例: 月配列の「ち」は US で `[`、JIS で `@` と刻印されるが**同じ物理キー**。
+    /// US 刻印を代表名として 1 本化する（HID の命名が US 基準のため）。
+    static func usLegend(for keyCode: HIDKeyCode) -> Character? {
+        guard let name = codeToName[keyCode] else { return nil }
+        if name.count == 1, let c = name.first, c.isLetter || c.isNumber { return c }
+        return symbolLegend[name]
+    }
+
+    private static let symbolLegend: [String: Character] = [
+        "hyphen": "-", "equal": "=", "bracketLeft": "[", "bracketRight": "]",
+        "backslash": "\\", "semicolon": ";", "quote": "'", "backquote": "`",
+        "comma": ",", "period": ".", "slash": "/",
+    ]
 
     private static let table: [(HIDKeyCode, String)] = [
         // アルファベット
@@ -201,7 +217,7 @@ public enum ModeKeyTriggerCoding {
 // MARK: - ChordKey ↔ 文字列名
 
 /// ChordKey と JSON 用文字列名の相互変換
-private enum ChordKeyNames {
+enum ChordKeyNames {
 
     /// ChordKey → 文字列名（case 名をそのまま使用）
     static func name(for key: ChordKey) -> String {
@@ -223,13 +239,33 @@ private enum ChordKeyNames {
         .space: "space", .leftThumb: "leftThumb", .rightThumb: "rightThumb",
     ]
 
+    /// 役名 → ChordKey（v2）。
+    ///
+    /// **この実装は役を 3 つまでしか持てない。** `ChordKey` が固定の enum で、親指用の
+    /// ビットが `space` / `leftThumb` / `rightThumb` の 3 つしか無いため。
+    /// 手元の配列は最大 2 役（NICOLA）なので当面足りる。4 役以上の配列が来たら
+    /// enum を広げること（web 側は宣言順の可変ビットで既に上限が無い）。
+    ///
+    /// `holder1` / `holder2` は身体部位を名前に焼き込まないための正規名で、
+    /// `leftThumb` / `rightThumb` は可読性のための別名（keymap-v2-draft.md D1）。
+    static let roleSlots: [ChordKey] = [.leftThumb, .rightThumb, .space]
+
     static let nameToKey: [String: ChordKey] = {
         var dict: [String: ChordKey] = [:]
         for (key, name) in keyToName {
             dict[name] = key
         }
+        // 役の正規名。宣言順ではなく固定スロットに割り当てる（Swift は enum が固定のため）
+        for (i, slot) in roleSlots.enumerated() {
+            dict["holder\(i + 1)"] = slot
+        }
         return dict
     }()
+
+    /// 役名を ChordKey に解決する（別名も受理）
+    static func roleKey(for name: String) -> ChordKey? {
+        nameToKey[name]
+    }
 }
 
 // MARK: - ビットマスク ↔ キー名文字列
@@ -491,6 +527,30 @@ extension ControlBindings: Codable {
 
         self.ctrlSemicolonAction = try container.decodeIfPresent(KeyAction.self, forKey: .ctrlSemicolonAction)
         self.ctrlColonAction = try container.decodeIfPresent(KeyAction.self, forKey: .ctrlColonAction)
+    }
+}
+
+// MARK: - KeymapDefinition.RoleDefinition: Codable
+
+extension KeymapDefinition.RoleDefinition: Codable {
+    private enum CodingKeys: String, CodingKey {
+        case label, keys, singleTapAction
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encodeIfPresent(label, forKey: .label)
+        if !keys.isEmpty { try c.encode(keys, forKey: .keys) }
+        try c.encodeIfPresent(singleTapAction, forKey: .singleTapAction)
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            label: try c.decodeIfPresent(String.self, forKey: .label),
+            keys: try c.decodeIfPresent([String].self, forKey: .keys) ?? [],
+            singleTapAction: try c.decodeIfPresent(KeyAction.self, forKey: .singleTapAction)
+        )
     }
 }
 
@@ -766,6 +826,9 @@ extension KeymapDefinition: Codable {
         case formatVersion
         case requires
         case requiresInput
+        case roles
+        case layouts
+        case base
         case name
         case description
         case author
@@ -791,6 +854,9 @@ extension KeymapDefinition: Codable {
         try container.encode(formatVersion, forKey: .formatVersion)
         try container.encodeIfPresent(requires, forKey: .requires)
         try container.encodeIfPresent(requiresInput, forKey: .requiresInput)
+        try container.encodeIfPresent(roles, forKey: .roles)
+        try container.encodeIfPresent(layouts, forKey: .layouts)
+        try container.encodeIfPresent(base, forKey: .base)
         try container.encode(name, forKey: .name)
         try container.encodeIfPresent(description, forKey: .description)
         try container.encodeIfPresent(author, forKey: .author)
@@ -803,7 +869,7 @@ extension KeymapDefinition: Codable {
         }
         try container.encodeIfPresent(basedOn, forKey: .basedOn)
         try container.encodeIfPresent(license, forKey: .license)
-        try container.encode(keyboardLayout, forKey: .keyboardLayout)
+        try container.encodeIfPresent(keyboardLayout, forKey: .keyboardLayout)
         try container.encodeIfPresent(targetScript, forKey: .targetScript)
         // 入力定義
         try container.encode(behavior, forKey: .behavior)
@@ -899,6 +965,15 @@ extension KeymapDefinition: Codable {
         self.requiresInput = try container.decodeIfPresent(
             KeymapDefinition.InputLevel.self, forKey: .requiresInput
         )
+        self.roles = try container.decodeIfPresent(
+            [String: KeymapDefinition.RoleDefinition].self, forKey: .roles
+        )
+        self.layouts = try container.decodeIfPresent(
+            [String: [String: [String]]].self, forKey: .layouts
+        )
+        self.base = try container.decodeIfPresent(
+            KeymapDefinition.DefinitionBase.self, forKey: .base
+        )
         self.name = try container.decode(String.self, forKey: .name)
         self.description = try container.decodeIfPresent(String.self, forKey: .description)
         self.author = try container.decodeIfPresent(String.self, forKey: .author)
@@ -912,7 +987,8 @@ extension KeymapDefinition: Codable {
         }
         self.basedOn = try container.decodeIfPresent(String.self, forKey: .basedOn)
         self.license = try container.decodeIfPresent(String.self, forKey: .license)
-        self.keyboardLayout = try container.decode(String.self, forKey: .keyboardLayout)
+        // v2 で廃止。書かれていなければ nil（layouts が対象を列挙する）
+        self.keyboardLayout = try container.decodeIfPresent(String.self, forKey: .keyboardLayout)
         self.targetScript = try container.decodeIfPresent(String.self, forKey: .targetScript)
         // 入力定義
         self.behavior = try container.decode(InputBehavior.self, forKey: .behavior)

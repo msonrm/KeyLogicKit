@@ -222,21 +222,15 @@ public enum DefaultKeymaps {
             ("builtin:romaji_jis", romajiJIS),
         ]
         // Bundle 内の JSON キーマップを読み込み
+        // v2 で JIS/US を統合したので 1 配列 1 ファイル（keymap-v2-draft.md）。
+        // どのレイアウトで使うかは roles / layouts が吸収する。
         let jsonKeymaps: [(id: String, fileName: String)] = [
-            ("builtin:azik_us", "azik_us"),
-            ("builtin:azik_jis", "azik_jis"),
-            ("builtin:tsuki2-263_us", "tsuki2-263_us"),
-            ("builtin:tsuki2-263_jis", "tsuki2-263_jis"),
-            ("builtin:nicola_us", "nicola_us"),
-            ("builtin:nicola_jis", "nicola_jis"),
-            ("builtin:naginata_us", "naginata_us"),
-            ("builtin:naginata_jis", "naginata_jis"),
-            ("builtin:romaji_colemak_us", "romaji_colemak_us"),
-            ("builtin:romaji_colemak_jis", "romaji_colemak_jis"),
-            ("builtin:shingeta_us", "shingeta_us"),
-            ("builtin:shingeta_jis", "shingeta_jis"),
-            ("builtin:tsubame_us", "tsubame_us"),
-            ("builtin:tsubame_jis", "tsubame_jis"),
+            ("builtin:azik", "azik"),
+            ("builtin:tsuki2-263", "tsuki2-263"),
+            ("builtin:nicola", "nicola"),
+            ("builtin:naginata", "naginata"),
+            ("builtin:romaji_colemak", "romaji_colemak"),
+            ("builtin:oyayubi_pyun_1key", "oyayubi_pyun_1key"),
         ]
         for (id, name) in jsonKeymaps {
             if let def = loadBundleKeymap(name) {

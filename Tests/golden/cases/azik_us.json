@@ -1,52 +1,124 @@
 {
-  "keymap": "azik_us",
-  "description": "AZIK US: ローマ字ベース + 拡張マッピング + suffixRules",
+  "keymap": "azik",
+  "skip": [
+    "kide"
+  ],
+  "layout": "us",
+  "description": "AZIK US: ローマ字ベース + 拡張マッピング + suffixRules / kide は keymap v1 のままで統合名を解決できないため skip（TODO.md の kide 移行で外す）",
   "cases": [
     {
       "name": "base_romaji_ka",
-      "steps": [{ "press": "k" }, { "press": "a" }],
-      "expect": { "text": "か" }
+      "steps": [
+        {
+          "press": "k"
+        },
+        {
+          "press": "a"
+        }
+      ],
+      "expect": {
+        "text": "か"
+      }
     },
     {
       "name": "suffix_kan",
-      "steps": [{ "press": "k" }, { "press": "z" }],
-      "expect": { "text": "かん" }
+      "steps": [
+        {
+          "press": "k"
+        },
+        {
+          "press": "z"
+        }
+      ],
+      "expect": {
+        "text": "かん"
+      }
     },
     {
       "name": "suffix_kin",
       "description": "kk は base の kka（っか）のプレフィックスでもあるため保留され、composing の仮解決として きん が表示される。確定ベースの kide は対象外",
-      "skip": ["kide"],
-      "steps": [{ "press": "k" }, { "press": "k" }],
-      "expect": { "text": "きん" }
+      "steps": [
+        {
+          "press": "k"
+        },
+        {
+          "press": "k"
+        }
+      ],
+      "expect": {
+        "text": "きん"
+      }
     },
     {
       "name": "sokuon_beats_suffix_kka",
       "description": "kk（きん）で保留した後に a が来たら、より長い kka（っか）が勝つ",
-      "steps": [{ "press": "k" }, { "press": "k" }, { "press": "a" }],
-      "expect": { "text": "っか" }
+      "steps": [
+        {
+          "press": "k"
+        },
+        {
+          "press": "k"
+        },
+        {
+          "press": "a"
+        }
+      ],
+      "expect": {
+        "text": "っか"
+      }
     },
     {
       "name": "single_q_n",
-      "steps": [{ "press": "q" }],
-      "expect": { "text": "ん" }
+      "steps": [
+        {
+          "press": "q"
+        }
+      ],
+      "expect": {
+        "text": "ん"
+      }
     },
     {
       "name": "semicolon_sokuon",
-      "steps": [{ "press": "semicolon" }],
-      "expect": { "text": "っ" }
+      "steps": [
+        {
+          "press": "semicolon"
+        }
+      ],
+      "expect": {
+        "text": "っ"
+      }
     },
     {
       "name": "hyphen_chouon",
-      "steps": [{ "press": "hyphen" }],
-      "expect": { "text": "ー" }
+      "steps": [
+        {
+          "press": "hyphen"
+        }
+      ],
+      "expect": {
+        "text": "ー"
+      }
     },
     {
       "name": "word_kanzi",
       "steps": [
-        { "press": "k" }, { "press": "z" },
-        { "press": "z" }, { "press": "i" }
+        {
+          "press": "k"
+        },
+        {
+          "press": "z"
+        },
+        {
+          "press": "z"
+        },
+        {
+          "press": "i"
+        }
       ],
-      "expect": { "text": "かんじ" }
+      "expect": {
+        "text": "かんじ"
+      }
     }
   ]
 }

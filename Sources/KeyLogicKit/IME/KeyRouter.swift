@@ -260,7 +260,19 @@ public struct KeyRouter {
             return .pass
         }
 
-        let chars = event.characters
+        // base: positional — 位置で定義された配列（かな配列）は、OS のレイアウト設定に
+        // 関わらず同じ物理キーを引く。US 刻印を代表名として正規化する。
+        //
+        // **修飾キーが押されていないときだけ**適用する。Shift 付きまで正規化すると
+        // `{`（Shift+`[`）が `[` に潰れ、characterMap のシフト記号が全部死ぬ。
+        let chars: String
+        if definition.base == .positional,
+           event.modifierFlags.isEmpty,
+           let legend = HIDUsageNames.usLegend(for: event.keyCode) {
+            chars = String(legend)
+        } else {
+            chars = event.characters
+        }
         guard chars.count == 1, let c = chars.first else {
             return .pass
         }

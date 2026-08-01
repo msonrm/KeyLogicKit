@@ -12,7 +12,7 @@ final class KeymapCodableTests: XCTestCase {
     func testChordTablesIgnoreCommentKeys() throws {
         let json = """
         {
-          "formatVersion": "1.0",
+          "formatVersion": "2.0",
           "name": "テスト配列",
           "keyboardLayout": "us",
           "behavior": {
@@ -60,9 +60,9 @@ final class KeymapCodableTests: XCTestCase {
     func testBundleKeymapsRoundtrip() throws {
         let cases: [(String, KeymapDefinition?)] = [
             ("romaji_us(builtin)", DefaultKeymaps.romajiUS),
-            ("azik_us", DefaultKeymaps.loadBundleKeymap("azik_us")),
-            ("tsuki2-263_us", DefaultKeymaps.loadBundleKeymap("tsuki2-263_us")),
-            ("nicola_us", DefaultKeymaps.loadBundleKeymap("nicola_us")),
+            ("azik", DefaultKeymaps.loadBundleKeymap("azik")),
+            ("tsuki2-263", DefaultKeymaps.loadBundleKeymap("tsuki2-263")),
+            ("nicola", DefaultKeymaps.loadBundleKeymap("nicola")),
         ]
 
         for (label, maybe) in cases {
@@ -129,13 +129,13 @@ final class KeymapCodableTests: XCTestCase {
         }
 
         // 対応メジャー（1.x）は通る。マイナーの差は許容する
-        for version in ["1.0", "1.1", "1.10"] {
+        for version in ["2.0", "2.1", "2.10"] {
             XCTAssertNoThrow(try KeymapStore.decode(from: json(version)),
                              "formatVersion \(version) は読めるべき")
         }
 
         // メジャーが違う / 数値でない → 拒否
-        for version in ["2.0", "0.9", "abc", ""] {
+        for version in ["1.0", "3.0", "abc", ""] {
             XCTAssertThrowsError(try KeymapStore.decode(from: json(version)),
                                  "formatVersion \(version) は拒否されるべき") { error in
                 guard case DecodingError.dataCorrupted = error else {
@@ -156,7 +156,7 @@ final class KeymapCodableTests: XCTestCase {
         func json(_ requiresLine: String) -> Data {
             Data("""
             {
-              "formatVersion": "1.0",
+              "formatVersion": "2.0",
               \(requiresLine)
               "name": "テスト配列",
               "keyboardLayout": "us",
@@ -170,8 +170,8 @@ final class KeymapCodableTests: XCTestCase {
         XCTAssertNoThrow(try KeymapStore.decode(
             from: json("\"requires\": [\"behavior:sequential\", \"controlBindings\"],")))
 
-        // 未実装のセマンティクス（段 3 / 段 4 で実装予定）→ 拒否
-        for name in ["roles", "layouts", "postModify", "judgment:stroke"] {
+        // 未実装のセマンティクス → 拒否（roles / layouts は段 4-C1 で実装済み）
+        for name in ["postModify", "judgment:stroke", "orderedChord", "bufferDisplayMap"] {
             XCTAssertThrowsError(
                 try KeymapStore.decode(from: json("\"requires\": [\"\(name)\"],")),
                 "requires \(name) は拒否されるべき"
@@ -194,7 +194,7 @@ final class KeymapCodableTests: XCTestCase {
         func json(_ extra: String) -> Data {
             Data("""
             {
-              "formatVersion": "1.0",
+              "formatVersion": "2.0",
               \(extra)
               "name": "テスト配列",
               "keyboardLayout": "us",
@@ -236,7 +236,7 @@ final class KeymapCodableTests: XCTestCase {
         func json(_ behavior: String, _ extra: String = "") -> Data {
             Data("""
             {
-              "formatVersion": "1.0",
+              "formatVersion": "2.0",
               \(extra)
               "name": "テスト配列",
               "keyboardLayout": "us",

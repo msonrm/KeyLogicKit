@@ -1,31 +1,80 @@
 {
-  "keymap": "tsuki2-263_us",
-  "description": "月配列 2-263 US: 単打 + 前置シフト（d/k）",
+  "keymap": "tsuki2-263",
+  "skip": [
+    "kide"
+  ],
+  "layout": "us",
+  "description": "月配列 2-263 US: 単打 + 前置シフト（d/k） / kide は keymap v1 のままで統合名を解決できないため skip（TODO.md の kide 移行で外す）",
   "cases": [
     {
       "name": "single_q_so",
-      "steps": [{ "press": "q" }],
-      "expect": { "text": "そ" }
+      "steps": [
+        {
+          "press": "q"
+        }
+      ],
+      "expect": {
+        "text": "そ"
+      }
     },
     {
       "name": "sequence_kono",
-      "steps": [{ "press": "w" }, { "press": "o" }],
-      "expect": { "text": "この" }
+      "steps": [
+        {
+          "press": "w"
+        },
+        {
+          "press": "o"
+        }
+      ],
+      "expect": {
+        "text": "この"
+      }
     },
     {
       "name": "prefix_shift_dq",
-      "steps": [{ "press": "d" }, { "press": "q" }],
-      "expect": { "text": "ぁ" }
+      "steps": [
+        {
+          "press": "d"
+        },
+        {
+          "press": "q"
+        }
+      ],
+      "expect": {
+        "text": "ぁ"
+      }
     },
     {
       "name": "prefix_shift_then_single",
-      "steps": [{ "press": "d" }, { "press": "w" }, { "press": "i" }],
-      "expect": { "text": "ひい" }
+      "steps": [
+        {
+          "press": "d"
+        },
+        {
+          "press": "w"
+        },
+        {
+          "press": "i"
+        }
+      ],
+      "expect": {
+        "text": "ひい"
+      }
     },
     {
       "name": "single_in_un",
-      "steps": [{ "press": "i" }, { "press": "u" }],
-      "expect": { "text": "いん" }
+      "steps": [
+        {
+          "press": "i"
+        },
+        {
+          "press": "u"
+        }
+      ],
+      "expect": {
+        "text": "いん"
+      }
     }
   ]
 }

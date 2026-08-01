@@ -21,6 +21,10 @@ final class GoldenTests: XCTestCase {
 
     private struct GoldenFixture: Decodable {
         let keymap: String
+        /// v2: どのレイアウトの追加バインドを使うか（`layouts` のキー）
+        let layout: String?
+        /// フィクスチャ単位の skip（キーマップ自体を読めない実装を除外する）
+        let skip: [String]?
         let description: String?
         let cases: [GoldenCase]
     }
@@ -87,6 +91,7 @@ final class GoldenTests: XCTestCase {
         for file in files {
             let data = try Data(contentsOf: file)
             let fixture = try JSONDecoder().decode(GoldenFixture.self, from: data)
+            if fixture.skip?.contains(Self.platform) == true { continue }
             guard let definition = loadDefinition(fixture.keymap) else {
                 XCTFail("キーマップをロードできない: \(fixture.keymap)")
                 continue
@@ -95,7 +100,8 @@ final class GoldenTests: XCTestCase {
             for testCase in fixture.cases {
                 if testCase.skip?.contains(Self.platform) == true { continue }
                 let label = "\(file.lastPathComponent) / \(testCase.name)"
-                let harness = GoldenHarness(definition: definition, inputManager: manager())
+                let harness = GoldenHarness(definition: definition, inputManager: manager(),
+                                            layout: fixture.layout)
                 try runSteps(harness, testCase.steps)
 
                 let composing = harness.inputManager.rawKanaText
@@ -208,14 +214,15 @@ private final class GoldenHarness {
     let chordBuffer: SimultaneousKeyBuffer?
     var confirmedText = ""
 
-    init(definition: KeymapDefinition, inputManager: InputManager) {
-        self.definition = definition
+    init(definition: KeymapDefinition, inputManager: InputManager, layout: String? = nil) {
+        // 役を畳み込んだ定義で KeyRouter を作る（v2: 役 → 物理キーの解決は 1 箇所）
+        let expanded = ExpandedKeymap(definition: definition, layout: layout)
+        self.definition = expanded.definition
         self.inputManager = inputManager
-        self.keyRouter = KeyRouter(definition: definition)
+        self.keyRouter = KeyRouter(definition: expanded.definition)
 
         // ケース間の状態を掃除してからキーマップを適用
         _ = inputManager.cancelConversion()
-        let expanded = ExpandedKeymap(definition: definition)
         inputManager.updateKeymap(expanded)
 
         if let chordData = expanded.chordData {
