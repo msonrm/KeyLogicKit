@@ -168,6 +168,17 @@ func route(_ event: KeyEvent, isComposing: Bool, state: InputManager.ConversionS
 動いてしまうため（`docs/keymap-v2-requirements.md` R3）。`KeymapStore.decode` /
 `load(from:)` / バンドル読み込みのいずれもこの経路を通る。
 
+### requires — 必須セマンティクスの宣言
+
+`KeymapDefinition.requires: [String]?` に理解できない名前があると
+`init(from:)` が読み込みを拒否する。理解できる名前の集合は
+`KeymapDefinition.supportedSemantics: Set<String>`。
+
+版ゲート（`formatVersion`）が構造の変化しか捉えないのに対し、こちらは
+**「同じ構造だが意味論が変わった」**変更を捉える（例: `judgment: "mutual"` を
+知らない実装が黙って時間窓で動かす）。名前の正典は
+`docs/key-action-registry.json` の `semantics`。
+
 ### enum の case ≠ キーマップ JSON に書ける語彙
 
 `KeyAction` は `Codable` だが、**JSON から書けるのは配列定義の語彙だけ**。次の 2 群は

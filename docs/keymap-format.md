@@ -47,6 +47,7 @@
 
 | フィールド | 型 | 説明 |
 |---|---|---|
+| `requires` | string[] | 必須セマンティクスの宣言（後述）。理解できない名前があるランタイムは読み込みを拒否する |
 | `description` | string | 入力方式の説明 |
 | `author` | string | 配列の原作者名 |
 | `contributor` | string / array | 派生版の改変者（後述） |
@@ -60,6 +61,43 @@
 | `bufferDisplayMap` | object | 逐次入力バッファの表示変換（OS 文字 → 表示文字） |
 | `modeKeys` | object | モード切替キー（HID キー名 → アクション名） |
 | `extensions` | object | アプリ固有の拡張フィールド |
+
+## requires: 必須セマンティクスの宣言（任意）
+
+その配列を**意図どおりに動かすために理解している必要がある**セマンティクスを名指しする。
+理解できない名前が 1 つでもあるランタイムは、**読み込みを拒否しなければならない**。
+
+```json
+{
+  "requires": ["judgment:mutual", "chord:englishTables"]
+}
+```
+
+`extensions` / `x-` アクションが「対応していないランタイムは**安全に無視してよい**」なのに対し、
+`requires` は「**無視してはならない**」カテゴリ。両者はちょうど逆向きの契約である。
+
+### なぜ要るか
+
+`formatVersion` の版ゲートは**構造の変化**しか捉えられない。実際に起きた事故は
+「既存フィールドに新しい値が入った」形だった —— 薙刀式の `judgment: "mutual"` を、
+それを知らない旧エンジンが**黙って `window` として時間窓で動かした**。フィールドも構造も
+既存のままなので、版ゲートでは検出できない。配列が
+`"requires": ["judgment:mutual"]` と書いておけば、理解できないエンジンは動かす代わりに拒否する。
+
+### 名前
+
+名前の正典は `docs/key-action-registry.json` の `semantics`。各実装が理解する集合と
+CI（`scripts/check_action_registry.py`）が照合する。
+
+**どの実装にも無い名前**（`roles` / `layouts` / `postModify` / `judgment:stroke` /
+`orderedChord` / `bufferDisplayMap`）を書くと、現時点ではすべてのランタイムが拒否する。
+これは正しい挙動で、未実装の機能に依存した配列が半分だけ動く状態を防ぐ。
+
+### 限界
+
+**後方には効かない。** `requires` を知らない旧実装は、未知のトップレベルフィールドを
+無視して読み込んでしまう。効くのは v1.11.0（web）/ 版ゲート導入後（KeyLogicKit）以降の
+実装に対してだけである。
 
 ## author / contributor / basedOn: 作者と派生情報
 

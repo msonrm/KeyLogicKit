@@ -146,6 +146,43 @@ final class KeymapCodableTests: XCTestCase {
         }
     }
 
+    // MARK: - requires（必須セマンティクスの宣言）
+
+    /// 理解できないセマンティクスを要求する JSON は**動かす代わりに拒否する**
+    ///
+    /// 版ゲート（formatVersion）では拾えない「同じ構造だが意味論が変わった」変更に効く。
+    /// 実例 = `judgment: "mutual"` を知らない旧実装が黙って時間窓で動かした事故。
+    func testRequiresSemantics() throws {
+        func json(_ requiresLine: String) -> Data {
+            Data("""
+            {
+              "formatVersion": "1.0",
+              \(requiresLine)
+              "name": "テスト配列",
+              "keyboardLayout": "us",
+              "behavior": { "type": "sequential", "characterMap": {} }
+            }
+            """.utf8)
+        }
+
+        // 理解できる名前だけ / 省略 → 通る
+        XCTAssertNoThrow(try KeymapStore.decode(from: json("")))
+        XCTAssertNoThrow(try KeymapStore.decode(
+            from: json("\"requires\": [\"behavior:sequential\", \"controlBindings\"],")))
+
+        // 未実装のセマンティクス（段 3 / 段 4 で実装予定）→ 拒否
+        for name in ["roles", "layouts", "postModify", "judgment:stroke"] {
+            XCTAssertThrowsError(
+                try KeymapStore.decode(from: json("\"requires\": [\"\(name)\"],")),
+                "requires \(name) は拒否されるべき"
+            )
+        }
+
+        // 保持もされる（ホストが何を要求されたか見られる）
+        let def = try KeymapStore.decode(from: json("\"requires\": [\"judgment:mutual\"],"))
+        XCTAssertEqual(def.requires, ["judgment:mutual"])
+    }
+
     /// JSON を JSONSerialization + sortedKeys で正規化した文字列（辞書キー順の差を吸収）
     private static func normalizedJSON(_ data: Data) throws -> String {
         let obj = try JSONSerialization.jsonObject(with: data)

@@ -632,5 +632,166 @@
       "reservedNamespace": "x-kanaeditor:",
       "notes": ""
     }
+  ],
+  "semanticsDefs": {
+    "$note": [
+      "配列が要求できるセマンティクスの名前空間（keymap の `requires` に書く値）。",
+      "kind=interpretation は入力の解釈を変えるもの、kind=display は表示だけに効くもの。",
+      "implementedBy が空 = **どの実装にも無い**。requires に書けばどの実装でも拒否される。",
+      "実装は自分が理解できる名前の集合を持ち、CI が本表と照合する。"
+    ]
+  },
+  "semantics": [
+    {
+      "name": "behavior:sequential",
+      "kind": "interpretation",
+      "summary": "逐次入力（inputMappings の greedy longest-match）",
+      "implementedBy": [
+        "swift",
+        "web"
+      ]
+    },
+    {
+      "name": "behavior:chord",
+      "kind": "interpretation",
+      "summary": "同時打鍵（ビットマスク lookupTable）",
+      "implementedBy": [
+        "swift",
+        "web"
+      ]
+    },
+    {
+      "name": "judgment:window",
+      "kind": "interpretation",
+      "summary": "時間窓による同時打鍵判定",
+      "implementedBy": [
+        "swift",
+        "web"
+      ]
+    },
+    {
+      "name": "judgment:mutual",
+      "kind": "interpretation",
+      "summary": "相互シフト（状態ベース・時間を見ない）",
+      "implementedBy": [
+        "swift",
+        "web"
+      ],
+      "notes": "旧エンジンが黙って window に潰していた実例。requires が要る理由そのもの"
+    },
+    {
+      "name": "inputBase:romaji",
+      "kind": "interpretation",
+      "summary": "組み込み標準ローマ字テーブルをベースに敷く",
+      "implementedBy": [
+        "swift",
+        "web"
+      ]
+    },
+    {
+      "name": "suffixRules",
+      "kind": "interpretation",
+      "summary": "サフィックス自動展開（AZIK 等）",
+      "implementedBy": [
+        "swift",
+        "web"
+      ]
+    },
+    {
+      "name": "keyRemap",
+      "kind": "interpretation",
+      "summary": "物理キー文字 → 論理キー文字のリマップ（大西配列等）",
+      "implementedBy": [
+        "swift",
+        "web"
+      ]
+    },
+    {
+      "name": "modeKeys",
+      "kind": "interpretation",
+      "summary": "物理キー（+修飾）によるモード切替",
+      "implementedBy": [
+        "swift",
+        "web"
+      ]
+    },
+    {
+      "name": "controlBindings",
+      "kind": "interpretation",
+      "summary": "Ctrl+キーの Emacs 風バインド",
+      "implementedBy": [
+        "swift"
+      ],
+      "notes": "**web は未実装**。書いても黙って無視される（knownGaps）。requires に書けば web が拒否する"
+    },
+    {
+      "name": "chord:shiftKeys",
+      "kind": "interpretation",
+      "summary": "シフト役キーと単打フォールバック",
+      "implementedBy": [
+        "swift",
+        "web"
+      ]
+    },
+    {
+      "name": "chord:englishTables",
+      "kind": "interpretation",
+      "summary": "英数モードでも chord バッファで解釈する（englishLookupTable / englishSpecialActions）",
+      "implementedBy": [
+        "swift",
+        "web"
+      ]
+    },
+    {
+      "name": "prefixShiftKeys",
+      "kind": "display",
+      "summary": "前置シフトキーの明示（可視化パネルのシフト面生成）",
+      "implementedBy": [
+        "web"
+      ],
+      "notes": "入力の解釈には効かない。Swift は保持するだけで消費しない"
+    },
+    {
+      "name": "bufferDisplayMap",
+      "kind": "display",
+      "summary": "未解決バッファの表示変換（OS 文字 → 論理配列の文字）",
+      "implementedBy": [],
+      "notes": "**どの実装にも無い**。schema と仕様書にだけ存在する幽霊機能（2026-08-01 に判明）。使用配列もゼロ"
+    },
+    {
+      "name": "postModify",
+      "kind": "interpretation",
+      "summary": "後置変調（濁点・半濁点・小書きのトグル）",
+      "implementedBy": [],
+      "notes": "flickmap には実装があるが keymap 側は未着手。段 3（要件 R6）"
+    },
+    {
+      "name": "roles",
+      "kind": "interpretation",
+      "summary": "役の宣言と役→物理キーの分離",
+      "implementedBy": [],
+      "notes": "段 4（要件 R1）。v2 の芯"
+    },
+    {
+      "name": "layouts",
+      "kind": "interpretation",
+      "summary": "レイアウト別の役バインド（NICOLA 親指等）",
+      "implementedBy": [],
+      "notes": "段 4（要件 R2）"
+    },
+    {
+      "name": "judgment:stroke",
+      "kind": "interpretation",
+      "summary": "全リリース一括解決（ステノ様式）",
+      "implementedBy": [],
+      "notes": "未実装（sketch §3.3）"
+    },
+    {
+      "name": "orderedChord",
+      "kind": "interpretation",
+      "summary": "順序付き chord エントリ（K>A）",
+      "implementedBy": [],
+      "notes": "未実装（sketch §3.2）"
+    }
   ]
 }

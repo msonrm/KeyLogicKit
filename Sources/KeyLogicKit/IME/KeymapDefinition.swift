@@ -11,6 +11,14 @@ public struct KeymapDefinition: Sendable {
     /// フォーマットバージョン（現在は "1.0" 固定）
     public let formatVersion: String
 
+    /// この配列が要求するセマンティクス（任意）。
+    ///
+    /// `supportedSemantics` に無い名前が 1 つでもあれば `init(from:)` が読み込みを拒否する。
+    /// 「同じ構造だが意味論が変わった」変更を捉えるための仕組みで、`formatVersion` の
+    /// 版ゲートでは拾えない事故に効く（例: `judgment: "mutual"` を知らない実装が
+    /// 黙って時間窓で動かす）。`extensions` / `x-` の「安全に無視してよい」の逆。
+    public let requires: [String]?
+
     /// キーマップ名（表示用）
     public let name: String
 
@@ -124,6 +132,25 @@ public struct KeymapDefinition: Sendable {
     /// 未知のセマンティクスを黙って無視したまま動くと、配列が意図と違う挙動をするため。
     public static let supportedFormatMajor = 1
 
+    /// この実装が理解できるセマンティクスの名前。
+    ///
+    /// 正典は `docs/key-action-registry.json` の `semantics`。
+    /// CI（`scripts/check_action_registry.py`）が本集合と照合するので、
+    /// ここを手で足すときはレジストリを先に直すこと。
+    public static let supportedSemantics: Set<String> = [
+        "behavior:sequential",
+        "behavior:chord",
+        "judgment:window",
+        "judgment:mutual",
+        "inputBase:romaji",
+        "suffixRules",
+        "keyRemap",
+        "modeKeys",
+        "controlBindings",
+        "chord:shiftKeys",
+        "chord:englishTables",
+    ]
+
     public init(name: String, behavior: InputBehavior, keyboardLayout: String,
          inputBase: String? = nil,
          keyRemap: [String: String]? = nil,
@@ -136,8 +163,10 @@ public struct KeymapDefinition: Sendable {
          description: String? = nil, author: String? = nil,
          contributor: [String]? = nil, basedOn: String? = nil,
          license: String? = nil, targetScript: String? = nil,
+         requires: [String]? = nil,
          extensions: [String: String]? = nil) {
         self.formatVersion = formatVersion
+        self.requires = requires
         self.name = name
         self.description = description
         self.author = author

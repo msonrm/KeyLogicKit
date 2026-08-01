@@ -745,6 +745,7 @@ extension KeymapDefinition.InputBehavior: Codable {
 extension KeymapDefinition: Codable {
     private enum CodingKeys: String, CodingKey {
         case formatVersion
+        case requires
         case name
         case description
         case author
@@ -768,6 +769,7 @@ extension KeymapDefinition: Codable {
         var container = encoder.container(keyedBy: CodingKeys.self)
         // メタデータ
         try container.encode(formatVersion, forKey: .formatVersion)
+        try container.encodeIfPresent(requires, forKey: .requires)
         try container.encode(name, forKey: .name)
         try container.encodeIfPresent(description, forKey: .description)
         try container.encodeIfPresent(author, forKey: .author)
@@ -835,6 +837,24 @@ extension KeymapDefinition: Codable {
             )
         }
         self.formatVersion = rawFormatVersion
+
+        // requires: 理解できないセマンティクスを要求されたら**動かす代わりに拒否する**。
+        // 版ゲート（formatVersion）では拾えない「同じ構造だが意味論が変わった」変更に効く
+        // （例: judgment: "mutual" を知らない実装が黙って時間窓で動かす）。
+        let rawRequires = try container.decodeIfPresent([String].self, forKey: .requires)
+        if let rawRequires {
+            let unknown = rawRequires.filter { !KeymapDefinition.supportedSemantics.contains($0) }
+            guard unknown.isEmpty else {
+                throw DecodingError.dataCorruptedError(
+                    forKey: .requires,
+                    in: container,
+                    debugDescription: """
+                        理解できないセマンティクスを要求しています: \(unknown.joined(separator: ", "))。                        この実装では、この配列を意図どおりに動かせません
+                        """
+                )
+            }
+        }
+        self.requires = rawRequires
         self.name = try container.decode(String.self, forKey: .name)
         self.description = try container.decodeIfPresent(String.self, forKey: .description)
         self.author = try container.decodeIfPresent(String.self, forKey: .author)
