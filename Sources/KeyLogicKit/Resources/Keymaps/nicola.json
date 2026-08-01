@@ -107,7 +107,7 @@
         "holder1+I": "ぐ",
         "holder1+O": "づ",
         "holder1+P": "ぴ",
-        "holder1+semicolon": "ー",
+        "_comment_semicolon": "NICOLA 規格書 図1: ; の交差シフト面は割り当て無し（セルは 2 文字）",
         "holder1+A": "を",
         "holder1+S": "あ",
         "holder1+D": "な",
