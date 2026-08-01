@@ -219,6 +219,52 @@ final class KeymapCodableTests: XCTestCase {
             from: json("\"addedAt\": \"2026-08-01\", \"bufferDisplayMap\": {\"h\": \"k\"},")))
     }
 
+    // MARK: - requiresInput（入力段）
+
+    /// 入力段は導出され、宣言は**厳しくする方向にのみ**効く
+    ///
+    /// ホストが自分の段と突き合わせて「この環境では動かない配列」を隠す／警告するための情報。
+    /// **読み込みの可否には使わない**（iPad で NICOLA が動かないのは配列の不備ではなく
+    /// OS がキーを予約しているため。読めないのではなく、役が届かない）。
+    func testRequiredInputLevel() throws {
+        func json(_ behavior: String, _ extra: String = "") -> Data {
+            Data("""
+            {
+              "formatVersion": "1.0",
+              \(extra)
+              "name": "テスト配列",
+              "keyboardLayout": "us",
+              "behavior": \(behavior)
+            }
+            """.utf8)
+        }
+        let sequential = "{ \"type\": \"sequential\", \"characterMap\": {} }"
+        let chord = """
+            { "type": "chord", "config": {
+                "hidToKey": { "f": "F" }, "lookupTable": { "F": "あ" },
+                "specialActions": {}, "judgment": "window",
+                "simultaneousWindow": 0.08, "shiftKeys": [] } }
+            """
+
+        // 導出: 逐次 = L1 / chord = L3（この実装は window でも keyup で単打確定する）
+        XCTAssertEqual(try KeymapStore.decode(from: json(sequential)).requiredInputLevel, .L1)
+        XCTAssertEqual(try KeymapStore.decode(from: json(chord)).requiredInputLevel, .L3)
+
+        // 厳しくする宣言は通る
+        XCTAssertEqual(
+            try KeymapStore.decode(from: json(sequential, "\"requiresInput\": \"L3\",")).requiredInputLevel,
+            .L3)
+
+        // 緩める宣言は無視する（動かない配列を「動く」と見せないため）
+        XCTAssertEqual(
+            try KeymapStore.decode(from: json(chord, "\"requiresInput\": \"L1\",")).requiredInputLevel,
+            .L3)
+
+        // 未知の値はエラー
+        XCTAssertThrowsError(
+            try KeymapStore.decode(from: json(sequential, "\"requiresInput\": \"L4\",")))
+    }
+
     /// JSON を JSONSerialization + sortedKeys で正規化した文字列（辞書キー順の差を吸収）
     private static func normalizedJSON(_ data: Data) throws -> String {
         let obj = try JSONSerialization.jsonObject(with: data)

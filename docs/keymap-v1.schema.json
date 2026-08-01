@@ -25,6 +25,15 @@
       "uniqueItems": true,
       "description": "この配列が要求するセマンティクスの名前。理解できない名前が 1 つでもあるランタイムは読み込みを拒否する（黙って無視してはならないカテゴリ。extensions / x- とは逆向きの契約）。名前の正典は docs/key-action-registry.json の semantics。"
     },
+    "requiresInput": {
+      "type": "string",
+      "enum": [
+        "L1",
+        "L2",
+        "L3"
+      ],
+      "description": "この配列の成立に必要な入力イベントの最低段。L1=文字列のみ / L2=keydown 列 / L3=keydown+keyup（押下集合が構成できる）。省略時は behavior から導出される。宣言は導出値より厳しい方向にのみ効く（緩める宣言は無視される）。ホストが「この環境では動かない配列」を隠す／警告するための情報であって、読み込みの可否には影響しない。"
+    },
     "name": {
       "type": "string",
       "minLength": 1,

@@ -756,7 +756,8 @@ extension KeymapDefinition: Codable {
     static let knownFields: Set<String> = [
         "$schema",
         "formatVersion", "requires", "name", "description", "author", "contributor",
-        "basedOn", "license", "addedAt", "keyboardLayout", "targetScript", "behavior",
+        "requiresInput", "basedOn", "license", "addedAt", "keyboardLayout", "targetScript",
+        "behavior",
         "controlBindings", "inputBase", "keyRemap", "suffixRules", "inputMappings",
         "prefixShiftKeys", "bufferDisplayMap", "modeKeys", "extensions",
     ]
@@ -764,6 +765,7 @@ extension KeymapDefinition: Codable {
     private enum CodingKeys: String, CodingKey {
         case formatVersion
         case requires
+        case requiresInput
         case name
         case description
         case author
@@ -788,6 +790,7 @@ extension KeymapDefinition: Codable {
         // メタデータ
         try container.encode(formatVersion, forKey: .formatVersion)
         try container.encodeIfPresent(requires, forKey: .requires)
+        try container.encodeIfPresent(requiresInput, forKey: .requiresInput)
         try container.encode(name, forKey: .name)
         try container.encodeIfPresent(description, forKey: .description)
         try container.encodeIfPresent(author, forKey: .author)
@@ -892,6 +895,10 @@ extension KeymapDefinition: Codable {
             }
         }
         self.requires = rawRequires
+        // 未知の値は既定へ潰さずエラー（RawRepresentable の合成 Codable が投げる）
+        self.requiresInput = try container.decodeIfPresent(
+            KeymapDefinition.InputLevel.self, forKey: .requiresInput
+        )
         self.name = try container.decode(String.self, forKey: .name)
         self.description = try container.decodeIfPresent(String.self, forKey: .description)
         self.author = try container.decodeIfPresent(String.self, forKey: .author)

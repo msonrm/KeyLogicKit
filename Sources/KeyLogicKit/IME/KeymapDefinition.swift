@@ -19,6 +19,59 @@ public struct KeymapDefinition: Sendable {
     /// 黙って時間窓で動かす）。`extensions` / `x-` の「安全に無視してよい」の逆。
     public let requires: [String]?
 
+    /// 成立に必要な入力イベントの最低段（任意）。省略時は `behavior` から導出される。
+    ///
+    /// **読み込みの可否には使わない。** ホストが自分の段と突き合わせて、
+    /// 動かない配列を隠す / 警告するための情報（`requiredInputLevel` を参照）。
+    public let requiresInput: InputLevel?
+
+    /// 入力イベントの段。各判定方式には成立に必要な**入力イベントの最低語彙**があり、
+    /// ホスト（寄生先）がどこまで提供するかで動く方式の範囲が機械的に決まる
+    /// （`docs/keymap-v2-sketch.md` §1.5）。
+    ///
+    /// keyup は「判定パラメータの一つ」ではなく、**押下集合を構成する唯一の除去イベント**。
+    /// L2 以下では「D をホールドしながら x,y,z」と「D を単打した後に x,y,z」が同一の
+    /// イベント列になる —— 精度の問題ではなく、情報が入力に存在しない。
+    public enum InputLevel: String, Sendable, Codable, Comparable {
+        /// 文字列のみ。押鍵 / 離鍵という物理事象は消えた後（VS Code の type 乗っ取り等）
+        case L1
+        /// 押鍵イベント + タイムスタンプ。離鍵は見えない
+        case L2
+        /// 押鍵 + 離鍵。押下集合（heldKeys）が構成できる（iOS pressesBegan/Ended・HID・Gamepad）
+        case L3
+
+        private var rank: Int {
+            switch self {
+            case .L1: return 1
+            case .L2: return 2
+            case .L3: return 3
+            }
+        }
+
+        public static func < (lhs: InputLevel, rhs: InputLevel) -> Bool {
+            lhs.rank < rhs.rank
+        }
+    }
+
+    /// この配列を**この実装で**動かすのに必要な段。
+    ///
+    /// - 逐次系 → `.L1`（完結した打鍵列だけで意味が決まる）
+    /// - chord 系 → **`.L3`**。仕様上は時間窓方式なら L2 で近似できるが、この実装は
+    ///   `window` でも単打確定を全キーリリースに置いている（`SimultaneousKeyBuffer` は
+    ///   heldKeys 駆動）ため、実際には keyup が要る
+    ///
+    /// `requiresInput` の宣言は**厳しくする方向にのみ**効く。緩める宣言を通すと、
+    /// 動かない配列を「動く」と誤って見せることになるため。
+    public var requiredInputLevel: InputLevel {
+        let derived: InputLevel
+        switch behavior {
+        case .chord: derived = .L3
+        case .sequential: derived = .L1
+        }
+        guard let declared = requiresInput else { return derived }
+        return max(declared, derived)
+    }
+
     /// キーマップ名（表示用）
     public let name: String
 
@@ -149,6 +202,7 @@ public struct KeymapDefinition: Sendable {
         "controlBindings",
         "chord:shiftKeys",
         "chord:englishTables",
+        "requiresInput",
     ]
 
     public init(name: String, behavior: InputBehavior, keyboardLayout: String,
@@ -164,9 +218,11 @@ public struct KeymapDefinition: Sendable {
          contributor: [String]? = nil, basedOn: String? = nil,
          license: String? = nil, targetScript: String? = nil,
          requires: [String]? = nil,
+         requiresInput: InputLevel? = nil,
          extensions: [String: String]? = nil) {
         self.formatVersion = formatVersion
         self.requires = requires
+        self.requiresInput = requiresInput
         self.name = name
         self.description = description
         self.author = author

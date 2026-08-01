@@ -792,6 +792,16 @@
       "summary": "順序付き chord エントリ（K>A）",
       "implementedBy": [],
       "notes": "未実装（sketch §3.2）"
+    },
+    {
+      "name": "requiresInput",
+      "kind": "interpretation",
+      "summary": "入力イベントの最低段（L1/L2/L3）の宣言",
+      "implementedBy": [
+        "swift",
+        "web"
+      ],
+      "notes": "拒否には使わない。ホストが自分の段と突き合わせて配列を隠す／警告するための情報"
     }
   ]
 }

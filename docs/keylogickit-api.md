@@ -168,6 +168,15 @@ func route(_ event: KeyEvent, isComposing: Bool, state: InputManager.ConversionS
 動いてしまうため（`docs/keymap-v2-requirements.md` R3）。`KeymapStore.decode` /
 `load(from:)` / バンドル読み込みのいずれもこの経路を通る。
 
+### requiredInputLevel — 入力段
+
+`KeymapDefinition.requiredInputLevel: InputLevel`（`.L1` / `.L2` / `.L3`）は、
+その配列を**この実装で**動かすのに必要な入力段。逐次系 → `.L1`、chord 系 → `.L3`
+（`SimultaneousKeyBuffer` が heldKeys 駆動で、`window` でも keyup が要るため）。
+
+JSON の `requiresInput` 宣言は**厳しくする方向にのみ**効く。ホストが自分の段と
+突き合わせるための情報で、**読み込みの可否には使わない**。
+
 ### 未知のトップレベルフィールド
 
 `init(from:)` は、`KeymapDefinition.knownFields`（`docs/keymap-v1.schema.json` の
