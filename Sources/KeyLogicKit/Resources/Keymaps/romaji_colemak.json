@@ -2,7 +2,7 @@
   "$schema": "../../../docs/keymap-v2.schema.json",
   "formatVersion": "2.0",
   "name": "ローマ字（Colemak）",
-  "description": "Colemak 配列でのローマ字入力。iPadOS が Colemak をサポートしないため、アプリ側で QWERTY→Colemak キーリマップを行う。",
+  "description": "Colemak 配列でのローマ字入力。OS 側のキーボードレイアウトは QWERTY のまま、アプリ内で QWERTY→Colemak のキーリマップを行う。OS 側を Colemak に設定している場合は QWERTY に戻してください（二重に変換されるため）。",
   "author": "Shai Coleman",
   "license": "Unlicense",
   "targetScript": "hiragana",

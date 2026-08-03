@@ -155,7 +155,7 @@
           }
         ]
       },
-      "description": "キーリマップテーブル（物理キー文字 → 論理キー文字）。inputBase と併用すると、ベーステーブルのキーを物理キー空間に自動変換する。bufferDisplayMap が未指定の場合は bufferDisplayMap としても使用される。\"_comment\" プレフィックスのキーは注記用として無視される。"
+      "description": "キーリマップテーブル（物理キー文字 → 論理キー文字）。打鍵ごとにランタイムで適用され、バッファに入る前に論理キーへ変換される。inputBase / inputMappings / suffixRules はすべて論理キー空間のまま書く。\"_comment\" プレフィックスのキーは注記用として無視される。"
     },
     "suffixRules": {
       "type": "object",
@@ -200,18 +200,6 @@
         "maxLength": 1
       },
       "description": "前置シフトキーの明示指定。指定されたキーのみシフトキーとして扱い ⇧ ラベル + シフトレイヤーを生成する。省略時は空配列と同等（前置シフトなし）。"
-    },
-    "bufferDisplayMap": {
-      "type": "object",
-      "additionalProperties": {
-        "type": "string",
-        "minLength": 1
-      },
-      "propertyNames": {
-        "type": "string",
-        "minLength": 1
-      },
-      "description": "逐次入力バッファの表示変換テーブル（OS 文字 → 表示文字）。キー位置リマップ型の配列で使用。"
     },
     "modeKeys": {
       "type": "object",

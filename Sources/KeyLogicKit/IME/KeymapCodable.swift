@@ -805,11 +805,10 @@ extension KeymapDefinition.InputBehavior: Codable {
 extension KeymapDefinition: Codable {
     /// キーマップのトップレベルに書けるフィールド。
     ///
-    /// **`docs/keymap-v1.schema.json` の properties と一致していなければならない**
+    /// **`docs/keymap-v2.schema.json` の properties と一致していなければならない**
     /// （CI: `scripts/check_action_registry.py` が照合する）。`CodingKeys` とは一致しない
-    /// —— `addedAt` / `bufferDisplayMap` のように「仕様にはあるがこの実装が読まない」
-    /// フィールドがあるため。**CodingKeys を許可リストに使うと、それらを持つ配列が
-    /// 読めなくなる**。
+    /// —— `addedAt` のように「仕様にはあるがこの実装が読まない」フィールドがあるため。
+    /// **CodingKeys を許可リストに使うと、それらを持つ配列が読めなくなる**。
     ///
     /// 未知のフィールドは黙って無視せず拒否する。v2 で足すフィールド（roles / layouts /
     /// base）を、古い実装が「知らないものを飛ばして読む」ことを防ぐため。
@@ -819,7 +818,7 @@ extension KeymapDefinition: Codable {
         "requiresInput", "roles", "layouts", "base",
         "basedOn", "license", "addedAt", "keyboardLayout", "targetScript", "behavior",
         "controlBindings", "inputBase", "keyRemap", "suffixRules", "inputMappings",
-        "prefixShiftKeys", "bufferDisplayMap", "modeKeys", "extensions",
+        "prefixShiftKeys", "modeKeys", "extensions",
     ]
 
     private enum CodingKeys: String, CodingKey {

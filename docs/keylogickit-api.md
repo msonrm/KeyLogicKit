@@ -183,9 +183,9 @@ JSON の `requiresInput` 宣言は**厳しくする方向にのみ**効く。ホ
 properties と一致）に無いフィールドがあると読み込みを拒否する
 （`$schema` / `_comment` プレフィックスは除く）。
 
-**許可リストは `CodingKeys` ではない。** `addedAt` / `bufferDisplayMap` のように
-「仕様にはあるがこの実装が読まない」フィールドがあり、`CodingKeys` を使うと
-それらを持つ正しい配列が読めなくなる。
+**許可リストは `CodingKeys` ではない。** `addedAt` のように「仕様にはあるが
+この実装が読まない」フィールドがあり、`CodingKeys` を使うとそれらを持つ
+正しい配列が読めなくなる。
 
 ### requires — 必須セマンティクスの宣言
 

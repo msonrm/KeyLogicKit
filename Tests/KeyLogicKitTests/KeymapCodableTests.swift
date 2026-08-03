@@ -171,7 +171,7 @@ final class KeymapCodableTests: XCTestCase {
             from: json("\"requires\": [\"behavior:sequential\", \"controlBindings\"],")))
 
         // 未実装のセマンティクス → 拒否（roles / layouts は段 4-C1 で実装済み）
-        for name in ["postModify", "judgment:stroke", "orderedChord", "bufferDisplayMap"] {
+        for name in ["postModify", "judgment:stroke", "orderedChord"] {
             XCTAssertThrowsError(
                 try KeymapStore.decode(from: json("\"requires\": [\"\(name)\"],")),
                 "requires \(name) は拒否されるべき"
@@ -222,7 +222,13 @@ final class KeymapCodableTests: XCTestCase {
         // **この実装が読まない既知フィールドは拒否しない**（配列としては正しい）。
         // CodingKeys を許可リストに使うとここで落ちる — knownFields を使う理由。
         XCTAssertNoThrow(try KeymapStore.decode(
-            from: json("\"addedAt\": \"2026-08-01\", \"bufferDisplayMap\": {\"h\": \"k\"},")))
+            from: json("\"addedAt\": \"2026-08-01\",")))
+
+        // 廃止したフィールドは拒否する（bufferDisplayMap: 2026-03-09 に不要化、
+        // 2026-08-02 に仕様から削除）。黙って無視すると「書いたのに効かない」に
+        // 気づけないため、未知フィールドとして落とす
+        XCTAssertThrowsError(try KeymapStore.decode(
+            from: json("\"bufferDisplayMap\": {\"h\": \"k\"},")))
     }
 
     // MARK: - requiresInput（入力段）

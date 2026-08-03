@@ -12,7 +12,7 @@
     "internal = ランタイム内部イベント。JSON からは書かない（書けてしまう実装は notes に記す）。"
   ],
   "registryVersion": "1.0",
-  "updatedAt": "2026-08-01",
+  "updatedAt": "2026-08-02",
   "surfaceDefs": {
     "keymap.specialActions": "chord の specialActions（キー組合せ → アクション）",
     "keymap.englishSpecialActions": "英数モード用 specialActions",
@@ -756,13 +756,6 @@
         "web"
       ],
       "notes": "入力の解釈には効かない。Swift は保持するだけで消費しない"
-    },
-    {
-      "name": "bufferDisplayMap",
-      "kind": "display",
-      "summary": "未解決バッファの表示変換（OS 文字 → 論理配列の文字）",
-      "implementedBy": [],
-      "notes": "**どの実装にも無い**。schema と仕様書にだけ存在する幽霊機能（2026-08-01 に判明）。使用配列もゼロ"
     },
     {
       "name": "postModify",

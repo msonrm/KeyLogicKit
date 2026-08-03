@@ -77,7 +77,6 @@
 | `keyRemap` | object | キーリマップ（物理キー文字 → 論理キー文字） |
 | `inputMappings` | object | 逐次入力用カスタムマッピング |
 | `prefixShiftKeys` | array | 前置シフトキーの明示指定（逐次入力用） |
-| `bufferDisplayMap` | object | 逐次入力バッファの表示変換（OS 文字 → 表示文字） |
 | `modeKeys` | object | モード切替キー（HID キー名 → アクション名） |
 | `extensions` | object | アプリ固有の拡張フィールド |
 
@@ -94,7 +93,11 @@
 | フィールド | 状況 |
 |---|---|
 | `controlBindings` | KeyLogicKit のみ実装。KeymapEngine（web）は解釈しない |
-| `bufferDisplayMap` | **どの実装にも無い**（仕様書と schema にだけ存在する） |
+
+> **廃止したフィールド**: `bufferDisplayMap`（未解決バッファの表示変換）は 2026-03-09 に
+> 不要になり、2026-08-02 に仕様から削除した。`keyRemap` をランタイム適用に変えた結果、
+> バッファが最初から論理キー空間になり表示変換が要らなくなったため。**書くと未知の
+> フィールドとして拒否される**。
 
 ## requires: 必須セマンティクスの宣言（任意）
 
@@ -123,8 +126,8 @@
 名前の正典は `docs/key-action-registry.json` の `semantics`。各実装が理解する集合と
 CI（`scripts/check_action_registry.py`）が照合する。
 
-**どの実装にも無い名前**（`roles` / `layouts` / `postModify` / `judgment:stroke` /
-`orderedChord` / `bufferDisplayMap`）を書くと、現時点ではすべてのランタイムが拒否する。
+**どの実装にも無い名前**（`judgment:stroke` / `orderedChord`）を書くと、現時点では
+すべてのランタイムが拒否する。
 これは正しい挙動で、未実装の機能に依存した配列が半分だけ動く状態を防ぐ。
 
 ### 限界
@@ -456,11 +459,13 @@ chord の `specialActions`（F+G 等の同時押し）と共存可能。
   - 省略時はベーステーブルなし（`inputMappings` のみ使用）
 - `keyRemap`: キーリマップテーブル（任意、object）
   - 物理キー文字 → 論理キー文字のマッピング（1文字→1文字）
-  - `inputBase` と併用すると、ベーステーブルのキーを論理キー空間から物理キー空間に自動変換する
-  - 展開順序: ベーステーブル（論理）→ suffixRules 展開（論理）→ keyRemap 逆変換（→ 物理）
-  - 例: 大西配列では `"d": "a"` （物理キー D → 論理キー a）。標準ローマ字の `ka→か` が `hd→か` に変換される
-  - `bufferDisplayMap` が未指定の場合、`keyRemap` を `bufferDisplayMap` としても使用する
-  - `suffixRules` と併用可能。suffixRules は論理キー空間で適用されるため、標準ローマ字の拡張がそのまま機能する
+  - **ランタイム適用**。打鍵ごとに物理キーを論理キーへ変換してからバッファに入れる
+  - したがって `inputBase` / `inputMappings` / `suffixRules` は**すべて論理キー空間のまま書く**
+    （ロード時にテーブルを物理キー空間へ展開する方式は 2026-03-09 に廃止した）
+  - バッファの内部状態も表示も論理キー空間で一貫するため、表示用の変換テーブルは要らない
+  - 例: 大西配列では `"d": "a"`（物理キー D → 論理キー a）。標準ローマ字の `ka→か` は
+    論理空間のまま保たれ、物理キーでは H→D と打つことになる
+  - `suffixRules` と併用可能（同じ論理キー空間で適用されるため、標準ローマ字の拡張がそのまま機能する）
 - `suffixRules`: サフィックス展開ルール（任意、object）
   - ベーステーブル + `inputMappings` の全エントリに対してサフィックスを自動展開する
   - 各キーは展開トリガーの文字、値は `{ "vowel": "a", "suffix": "ん" }` 形式
@@ -479,11 +484,6 @@ chord の `specialActions`（F+G 等の同時押し）と共存可能。
   - 月配列2-263 等の前置シフト方式: `"prefixShiftKeys": ["d", "k"]`
   - ローマ字系配列（AZIK 等）: `"prefixShiftKeys": []`（子音キーはシフトキーではない）
   - 省略時は `[]` と同等（前置シフトキーなし）
-- `bufferDisplayMap`: 未解決バッファの表示変換テーブル（OS 文字 → 表示文字）
-  - キー位置リマップ型の配列（大西配列等）で使用
-  - バッファに未解決文字が残っている間、OS が報告する文字の代わりに論理配列の文字を表示する
-  - 例: `"h": "k"`（大西配列では物理 H = 論理 k。バッファに `h` が入っても `k` と表示）
-  - 省略時は OS 報告文字をそのまま表示
 
 ### chord（同時打鍵）
 
