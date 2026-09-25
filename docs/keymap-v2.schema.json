@@ -217,6 +217,21 @@
         "type": "string"
       },
       "description": "アプリ固有の拡張フィールド。キー名は \"x-\" プレフィックスを推奨。"
+    },
+    "postModifyCycles": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 2
+      },
+      "description": "後置変調（postModify:cycle）のサイクル表。書けば既定表を完全置換する（flickmap と同じ）。例: 「つづ」で つ→づ→つ（v2.10.0+）"
+    },
+    "postModifyYouon": {
+      "enum": [
+        "tail",
+        "base"
+      ],
+      "description": "後置変調を拗音のどちらに効かせるか。tail（既定）= 末尾の小書き（きゃ→きや）、base = 直前の基字（きゃ→ぎゃ）（v2.10.0+）"
     }
   },
   "additionalProperties": false,
@@ -255,6 +270,18 @@
                 "minLength": 1
               },
               "description": "続きを待っている打鍵列 → 見せる文字（表示だけ。例: 行段系の子音 q を「ま」で見せる）"
+            },
+            "specialActions": {
+              "type": "object",
+              "patternProperties": {
+                "^_comment": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": {
+                "$ref": "#/$defs/keyActionValue"
+              },
+              "description": "日本語入力中だけ効く 1 文字 → アクション（逐次系・v2.10.0+）。英字モードでは素の文字を打つ。requires に sequential:specialActions が要る"
             }
           },
           "required": [

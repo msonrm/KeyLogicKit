@@ -819,6 +819,9 @@ extension KeymapDefinition: Codable {
         "basedOn", "license", "addedAt", "keyboardLayout", "targetScript", "behavior",
         "controlBindings", "inputBase", "keyRemap", "suffixRules", "inputMappings",
         "prefixShiftKeys", "modeKeys", "extensions",
+        // web v2.10.0+ の後置変調の設定。Swift は postModify 自体に未対応で、それを使う配列は
+        // requires の postModify で拒否されるので、ここでは受け取って無視するだけでよい
+        "postModifyCycles", "postModifyYouon",
     ]
 
     private enum CodingKeys: String, CodingKey {

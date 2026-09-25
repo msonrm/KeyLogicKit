@@ -14,7 +14,7 @@
   "registryVersion": "1.0",
   "updatedAt": "2026-09-25",
   "surfaceDefs": {
-    "keymap.specialActions": "chord の specialActions（キー組合せ → アクション）",
+    "keymap.specialActions": "specialActions（chord: キー組合せ → アクション / sequential: 1 文字 → アクション。日本語入力中だけ効く）",
     "keymap.englishSpecialActions": "英数モード用 specialActions",
     "keymap.singleTapAction": "shiftKeys[].singleTapAction（役の単打フォールバック）",
     "keymap.modeKeys": "modeKeys（物理キー + 修飾 → アクション）",
@@ -846,6 +846,15 @@
         "web"
       ],
       "notes": "入力の解釈には効かない（何が確定するかは変わらない）。知らない実装は打鍵そのものを見せるだけなので、requires に書く必要は無い"
+    },
+    {
+      "name": "sequential:specialActions",
+      "kind": "interpretation",
+      "summary": "逐次系の behavior.specialActions（1 文字 → アクション。日本語入力中だけ効く）",
+      "implementedBy": [
+        "web"
+      ],
+      "notes": "知らない実装は黙って無視し、そのキーで素の文字を打ってしまう（T = ← のつもりが t）ので requires が要る。postModifyCycles / postModifyYouon はトップレベルなので、知らない実装は未知フィールドとして拒否する（requires 不要）"
     }
   ]
 }

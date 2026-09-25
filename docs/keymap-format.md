@@ -171,12 +171,29 @@ CI（`scripts/check_action_registry.py`）が照合する。
 そうでなければ変換セッション層のよみが対象になる（局面の項を参照）。合成していなければ
 何も起きない。
 
+### 変換系列の差し替えと拗音（v2.10.0+・トップレベル）
+
+- `postModifyCycles`（string[]）: サイクル（`postModify` / `postModify:cycle`）の表を**完全置換**する。
+  各要素は 2 文字以上の文字列で、押すたびに次の字へ進む（末尾 → 先頭）。flickmap の同名フィールドと同じ形。
+  例: 既定の `"つっづ"` を `"つづ"` にすると つ→づ→つ（小書きの っ を単打できる配列向け）
+- `postModifyYouon`: 拗音のどちらに効かせるか
+  - `"tail"`（既定）: 末尾の小書きに効く（きゃ → きや。iOS 標準のフリックと同じ）
+  - `"base"`: 直前の基字に効く（きゃ → ぎゃ、ひゃ → びゃ → ぴゃ。ゲームパッドの濁点と同じ）。
+    対象は い段の子音 + ゃゅょ だけで、「あ + ゃ」のような並びは従来どおり小書きに効く。
+    基字が変わらない拗音（にゃ）では何もしない。`postModify:small` は対象外（ゃ↔や そのもののため）
+
+どちらも知らない実装は未知のトップレベルフィールドとして拒否するので、`requires` は要らない。
+
 ### 置き場
 
-`modeKeys` に置くのが標準（濁点キーは物理キー 1 つに割り当てるもので、30 キー枠には
-入れない）。`modeKeys` は局面を問わず最優先で発火するが、**合成していなければ何もしない**
-ため実害は無い。明示したいなら `{ "action": "postModify:dakuten", "when": ["composing"] }`
-と書ける。
+濁点キーは物理キー 1 つに割り当てる。どこに置くかは、**そのキーが英字モードで何を打つか**で決まる:
+
+- **文字キー**（B など）に置くなら、逐次系は `behavior.specialActions`、chord は `specialActions` へ。
+  どちらも日本語入力中だけ効き、英字モードではそのキーの文字を打つ
+- **文字を持たないキー**（変換・無変換など）なら `modeKeys` でよい。`modeKeys` は入力モードも局面も
+  問わず最優先で発火するので、**文字キーに置くと英字モードでもその文字が打てなくなる**
+  （いすか配列の下書きで B が打てなかった）。合成していなければ何もしないので、それ以外の実害は無い。
+  明示したいなら `{ "action": "postModify:dakuten", "when": ["composing"] }` と書ける
 
 ## 局面（phase）とアクションの意味
 
@@ -466,6 +483,12 @@ chord の `specialActions`（F+G 等の同時押し）と共存可能。
   - 待ちの打鍵列そのものに割り当てがあるとき（`"v": "ん"` が `"vv"` を待つ等）は割り当てのほうを見せる
   - 待ちにならない打鍵列（ほかのエントリの頭に現れない）に書いた項目は、表示されることがないので診断する
   - 知らない実装は打鍵そのものを見せるだけなので、`requires` に書く必要は無い
+- `specialActions`: 日本語入力中だけ効く **1 文字 → アクション**（任意・web v2.10.0+）
+  - 例: `{ "t": "moveLeft", "y": "moveRight", "u": "deleteBack", "b": "postModify:cycle" }`（薙刀式の T = ← にならう）
+  - 英字モードではそのキーの文字を打つ（`modeKeys` との違い）。Ctrl / Alt / Meta 付きは奪わない
+  - キーは `inputMappings` と同じ文字空間（`base: positional` なら US 刻印、`keyRemap` があれば論理キー）
+  - 語彙と局面ガード（`{ action, when }`）は chord の `specialActions` と同じ
+  - **`requires` に `"sequential:specialActions"` が要る**（知らない実装はこの項目を黙って無視し、そのキーで文字を打ってしまう）
 - キー入力は OS が解決した文字コード（`key.characters` 相当）で判定
 
 **逐次入力固有のトップレベルフィールド:**
@@ -495,6 +518,8 @@ chord の `specialActions`（F+G 等の同時押し）と共存可能。
   - greedy longest-match で解決される
   - `inputBase` / `suffixRules` と併用時は、自動生成されない固有エントリのみ記述すればよい
   - `_comment` で始まるキーはコメントとして無視される（例: `"_comment_base": "単打（上段）"`）
+  - **空文字に割り当てたキーは何も入力しない**（例: `"q": ""`）。かな配列の空きキーで英字が出て
+    混乱しないように。キーは消費され、続きを待っていた前置は `unusedPrefix` の規則どおり扱われる
 - `prefixShiftKeys`: 前置シフトキーの明示指定（1文字の文字列の配列）
   - 指定されたキーのみシフトキーとして扱い、⇧ ラベル + シフトレイヤーを可視化パネルに生成する
   - 月配列2-263 等の前置シフト方式: `"prefixShiftKeys": ["d", "k"]`
@@ -658,7 +683,7 @@ v1 の本節は両者を区別せず並べていたため、実装ごとに解�
 
 | 面 | 書けるもの |
 |---|---|
-| `specialActions` / `englishSpecialActions` | 上記のすべて |
+| `specialActions` / `englishSpecialActions` | 上記のすべて（逐次系の `behavior.specialActions` も同じ面） |
 | `shiftKeys[].singleTapAction` | 上記のすべて |
 | `modeKeys` | モード切替系（`switchToEnglish` / `switchToJapanese` / `toggleInputMode`）と `pass` |
 | `controlBindings` | 上記のすべて |
