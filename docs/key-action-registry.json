@@ -12,7 +12,7 @@
     "internal = ランタイム内部イベント。JSON からは書かない（書けてしまう実装は notes に記す）。"
   ],
   "registryVersion": "1.0",
-  "updatedAt": "2026-08-02",
+  "updatedAt": "2026-09-25",
   "surfaceDefs": {
     "keymap.specialActions": "chord の specialActions（キー組合せ → アクション）",
     "keymap.englishSpecialActions": "英数モード用 specialActions",
@@ -828,6 +828,15 @@
         "web"
       ],
       "notes": "HID コード → US 刻印の正規化。修飾キー無しのときだけ適用する（Shift まで正規化すると characterMap のシフト記号が死ぬ）"
+    },
+    {
+      "name": "unusedPrefix:drop",
+      "kind": "interpretation",
+      "summary": "続きを得られなかった前置打鍵を捨てる（behavior.unusedPrefix: \"drop\"。逐次系のみ）",
+      "implementedBy": [
+        "web"
+      ],
+      "notes": "行段系の「押してみたが使わなかった子音」を英字で残さないため。単独の割り当てを持たない前置だけが対象で、数字など前置でない文字は従来どおり素で出す。KeyLogicKit（Swift）は未対応で、この名前を requires に持つ配列は読み込みを拒否する"
     }
   ]
 }

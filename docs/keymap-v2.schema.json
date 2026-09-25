@@ -240,6 +240,13 @@
                 "maxLength": 1
               },
               "description": "半角→全角文字マッピング（1文字→1文字）"
+            },
+            "unusedPrefix": {
+              "enum": [
+                "emit",
+                "drop"
+              ],
+              "description": "続きを得られなかった前置打鍵の扱い。emit（既定）= 素の文字で出す、drop = 捨てる。drop は requires に unusedPrefix:drop が要る"
             }
           },
           "required": [
