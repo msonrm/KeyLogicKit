@@ -837,6 +837,15 @@
         "web"
       ],
       "notes": "行段系の「押してみたが使わなかった子音」を英字で残さないため。単独の割り当てを持たない前置だけが対象で、数字など前置でない文字は従来どおり素で出す。KeyLogicKit（Swift）は未対応で、この名前を requires に持つ配列は読み込みを拒否する"
+    },
+    {
+      "name": "pendingLabels",
+      "kind": "display",
+      "summary": "続きを待っている打鍵の見せ方（behavior.pendingLabels。逐次系のみ）",
+      "implementedBy": [
+        "web"
+      ],
+      "notes": "入力の解釈には効かない（何が確定するかは変わらない）。知らない実装は打鍵そのものを見せるだけなので、requires に書く必要は無い"
     }
   ]
 }

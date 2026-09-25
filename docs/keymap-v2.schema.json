@@ -247,6 +247,14 @@
                 "drop"
               ],
               "description": "続きを得られなかった前置打鍵の扱い。emit（既定）= 素の文字で出す、drop = 捨てる。drop は requires に unusedPrefix:drop が要る"
+            },
+            "pendingLabels": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "続きを待っている打鍵列 → 見せる文字（表示だけ。例: 行段系の子音 q を「ま」で見せる）"
             }
           },
           "required": [
