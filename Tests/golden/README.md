@@ -62,8 +62,8 @@ Tests/golden/
 - 各ケースの終了時、ランナーは**未満了のタイマーをすべて満了させてから**期待値を検証する（末尾の `wait` は不要）。
 - 同時打鍵キーマップで単打を連続させる場合は、間に `{ "wait": <window超> }` を挟むこと（挟まないと2打目が chord 判定される — それ自体をテストしたい場合は挟まない）。
 - `judgment: "mutual"`（相互シフト。薙刀式等）のキーマップは時間を見ないため `wait` は判定に影響しない。
-  単打の連続は `press`（down→up）を並べれば十分。mutual 依存ケースは mutual 未対応プラットフォーム
-  （現状 `"kide"` = window 実装のまま）を skip すること。
+  単打の連続は `press`（down→up）を並べれば十分。web / Swift / kide の 3 実装とも mutual 対応済み
+  （kide は 2026-09-26〜）。
 
 ### expect
 
@@ -103,13 +103,17 @@ kide は IME を持たないキーボード変換器（HID stroke 出力）の�
 | web (TypeScript) | `web/src/engine/__tests__/golden.test.ts` | `cd web && npm test`（vitest / fake timers） |
 | web / node 単体 | `web/scripts/run-golden-node.mjs` | `cd web && npm run test:engine`（ビルド済み UMD バンドルを `require`。QuuBee 統合回帰と同じ経路。仮想クロックで `wait` を進める） |
 | Swift (KeyLogicKit) | `Tests/KeyLogicKitTests/GoldenTests.swift` | CI (`swift-test.yml`、iOS Simulator)。iOS 専用パッケージのため macOS + Xcode 必須 |
-| Kotlin (android-kide) | `android-kide/app/src/test/.../golden/GoldenTest.kt` | `gradle :app:testDebugUnitTest`（CI: `kide-test.yml`） |
+| Kotlin (android-kide) | `android-kide/app/src/test/.../golden/GoldenTest.kt` | `gradle :app:testDebugUnitTest`（CI: `kide-test.yml`）。aarch64 Linux で aapt2 が動かない手元は `android-kide/scripts/jvm-golden-test.sh`（素の JVM で同じテスト） |
 
 ### 実装差メモ（kide）
 
 - kide は IME を持たず、Router の出力は**かな文字列ではなく JIS かな HID stroke 列**。
   ランナーは期待かなを `KanaToJisKeyTable.toStrokes()` で順方向に stroke 化して突き合わせる
   （濁点の 2 stroke 分解も同じ経路なので一致する）。
+- ランナーは受信側のかな入力を模し、濁点・半濁点 stroke を直前の文字に合成、BS で 1 文字消す
+  （3 キー chord の差し替えや deleteBack を最終テキストで検証するため）。
+- fixture の keymap 名に対応する assets が無いときは `<name>_us.json` を読む（kide は JIS/US を
+  別 JSON で持ち、fixture のキー名は US 配列）。
 - AZIK 系キーマップは `AzikRouter`（ASCII ローマ字出力）ではなく
   `SequentialKanaRouter`（かな出力）側を検証対象にする。
 - `ChordKanaRouter.fromKeymap` は実機 BT ジッター対策で宣言 window を増幅するため、

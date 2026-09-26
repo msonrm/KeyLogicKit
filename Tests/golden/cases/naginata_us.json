@@ -1,10 +1,7 @@
 {
   "keymap": "naginata",
-  "skip": [
-    "kide"
-  ],
   "layout": "us",
-  "description": "薙刀式(US): judgment=mutual（相互シフト）。文字キー同士の同時打鍵 + スペースシフト + specialActions（編集系）。時間窓を使わず押下の重なりで判定する。kide は mutual 未対応（window のまま）のため mutual 依存ケースは skip。v1.4.0: 英数モードも chord バッファで解釈（H+J 復帰・SandS 大文字）— swift ゴールデンハーネスは英数モード未配線のため english 系は skip / kide は keymap v1 のままで統合名を解決できないため skip（TODO.md の kide 移行で外す）",
+  "description": "薙刀式(US): judgment=mutual（相互シフト）。文字キー同士の同時打鍵 + スペースシフト + specialActions（編集系）。時間窓を使わず押下の重なりで判定する。v1.4.0: 英数モードも chord バッファで解釈（H+J 復帰・SandS 大文字）— swift ゴールデンハーネスは英数モード未配線のため english 系は skip。kide は IME を持たないため confirmed/composing を分けて検証するケースと英数モードのケースを skip",
   "cases": [
     {
       "name": "single_f_ka",
@@ -62,7 +59,7 @@
     },
     {
       "name": "mutual_hold_beyond_window_still_chord",
-      "description": "相互シフト: ミリ秒を見ない。F を 200ms 押しっぱなしでも J が来れば chord → が（旧 window 判定では かあ になっていた）。kide は window 実装のまま（mutual 未対応）のため skip",
+      "description": "相互シフト: ミリ秒を見ない。F を 200ms 押しっぱなしでも J が来れば chord → が（旧 window 判定では かあ になっていた）",
       "steps": [
         {
           "down": "f"
@@ -163,6 +160,36 @@
       ],
       "expect": {
         "text": "ぎゃぎょ"
+      }
+    },
+    {
+      "name": "mutual_three_key_replace_keeps_preceding",
+      "description": "3キー目の差し替えは直前の chord 出力（ぎ = 1 文字）だけを取り消し、その前の確定分（か）は残す。差し替え数は文字数で数える（kide は「き+゛」の 2 stroke を受信側で 1 文字として BS 1 回で消す）",
+      "steps": [
+        {
+          "press": "f"
+        },
+        {
+          "down": "j"
+        },
+        {
+          "down": "w"
+        },
+        {
+          "down": "h"
+        },
+        {
+          "up": "h"
+        },
+        {
+          "up": "w"
+        },
+        {
+          "up": "j"
+        }
+      ],
+      "expect": {
+        "text": "かぎゃ"
       }
     },
     {
@@ -303,7 +330,8 @@
       "name": "special_moveright_Y_confirms",
       "description": "specialActions: Y 単打 = moveRight。web はカーソル制御を持たないため composing を確定する",
       "skip": [
-        "swift"
+        "swift",
+        "kide"
       ],
       "steps": [
         {
@@ -328,7 +356,8 @@
       "name": "special_moveleft_T_confirms",
       "description": "specialActions: T 単打 = moveLeft。web は同様に確定する",
       "skip": [
-        "swift"
+        "swift",
+        "kide"
       ],
       "steps": [
         {
@@ -353,7 +382,8 @@
       "name": "special_switch_english_FG",
       "description": "specialActions: F+G chord = switchToEnglish。切替後は生キー透過（h がそのまま）",
       "skip": [
-        "swift"
+        "swift",
+        "kide"
       ],
       "steps": [
         {
@@ -410,7 +440,10 @@
       "expect": {
         "confirmed": "か",
         "composing": ""
-      }
+      },
+      "skip": [
+        "kide"
+      ]
     },
     {
       "name": "special_insertAndConfirm_space_M",
@@ -429,13 +462,17 @@
       "expect": {
         "confirmed": "。",
         "composing": ""
-      }
+      },
+      "skip": [
+        "kide"
+      ]
     },
     {
       "name": "english_chord_HJ_switch_japanese",
       "description": "英数モードの chord: F+G で英数 → h 単打は素の英字 → H+J = switchToJapanese で日本語復帰 → F = か。英数モードでも chord バッファでキーを解釈する（keymap-engine v1.4.0+。swift ハーネスは英数モード未配線のため skip）",
       "skip": [
-        "swift"
+        "swift",
+        "kide"
       ],
       "steps": [
         {
@@ -470,7 +507,8 @@
       "name": "english_sands_uppercase",
       "description": "英数モードの SandS: space+X = 大文字 X（englishLookupTable のシフト面。消費済み space の単打 convert は抑制）",
       "skip": [
-        "swift"
+        "swift",
+        "kide"
       ],
       "steps": [
         {
@@ -505,7 +543,8 @@
       "name": "english_rollover_letters",
       "description": "英数モードのロールオーバー: h を離す前に e を押下 → H+E は英数テーブル未定義 → fall-through で he（通常タイプがそのまま流れる）",
       "skip": [
-        "swift"
+        "swift",
+        "kide"
       ],
       "steps": [
         {
@@ -541,7 +580,8 @@
       "name": "mutual_reentrant_reset_no_swallow",
       "description": "再入 reset 後の単打消失の回帰: F+G の F を離した瞬間に switchToEnglish が発火（コールバックが chordBuffer.reset() を再入的に呼ぶ）。G を離す前に押した h が抑制されずに出力されること",
       "skip": [
-        "swift"
+        "swift",
+        "kide"
       ],
       "steps": [
         {
