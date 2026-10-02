@@ -41,6 +41,10 @@ init()  // 辞書変換エンジンを初期化
 | `visibleCandidateRange` | `ClosedRange<Int>` | 表示中の候補ウィンドウ範囲 |
 | `visibleCandidateTexts` | `[String]` | ウィンドウ内の候補テキスト |
 | `selectedIndexInWindow` | `Int` | ウィンドウ内の選択位置（0-based） |
+| `pagedCandidateWindow` | `Bool`（get/set） | `true` で候補ウィンドウを固定ページ方式にする（既定 `false` = 1 件ずつスライド）。へちまと同じ。ページは 9 件ごと |
+| `maxCandidateCount` | `Int?`（get/set） | 保持する変換候補の上限件数。`nil`（既定）= 無制限。へちまは 50 で打ち切り、ページ数を 6 以下に抑えて点列を常に出す |
+| `candidatePageCount` | `Int` | 候補のページ数（9 件ごと。候補なしは 0） |
+| `candidatePageIndex` | `Int` | 選択中の候補が属するページ（0-based） |
 | `isEmpty` | `Bool` | 入力が空か |
 | `rawKanaText` | `String` | 変換前の生かなテキスト（拗音・濁点判定用） |
 | `previewText` | `String?` | previewing 時の第1候補テキスト |
@@ -682,11 +686,14 @@ init(additionalCandidates: [InputManager.AdditionalCandidate],
      isAdditionalCandidateSelected: Bool, selectedAdditionalCandidateIndex: Int,
      candidates: [String], selectedIndex: Int,
      font: Font = .system(size: 15), fontSize: CGFloat = 15,
+     pageCount: Int = 1, pageIndex: Int = 0,
      anchor: CGRect? = nil, bounds: CGSize? = nil)
 ```
 
 | パラメータ | 型 | 説明 |
 |---|---|---|
+| `pageCount` | `Int` | 候補のページ数。2 以上のとき下に点列でページ位置を出す（8 ページ超は `n/N` の数字）。`InputManager.candidatePageCount` を渡す |
+| `pageIndex` | `Int` | 現在のページ（0-based）。`InputManager.candidatePageIndex` を渡す |
 | `anchor` | `CGRect?` | カーソル矩形（配置のアンカー）。`bounds` と共に指定すると自動配置が有効になる |
 | `bounds` | `CGSize?` | 表示領域のサイズ（overlay の親ビューサイズ） |
 

@@ -1444,6 +1444,11 @@ public class IMETextView: UITextView {
         removeMarkedTextAttributes()
         setMarkedText("", selectedRange: NSRange(location: 0, length: 0))
         unmarkText()
+        // ★`commitText` と同じ理由でレイアウトを強制する。BS で最後の 1 文字を消したとき
+        //   （composing が空になり `.cancelled` で来る）に、文字が画面に残って見え、
+        //   タップするまで消えない症状があった（実機: iPad / GIME）。
+        layoutManager.ensureLayout(for: textContainer)
+        setNeedsDisplay()
         onCaretRectChange?(.zero)
     }
 

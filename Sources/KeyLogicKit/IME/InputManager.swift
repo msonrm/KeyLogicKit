@@ -211,7 +211,38 @@ public class InputManager {
     /// 候補ウィンドウの最大表示件数
     private static let windowSize = 9
 
-    /// 現在表示中の候補ウィンドウ範囲（スライディングウィンドウ）
+    /// 候補ウィンドウを固定ページ方式にするか。
+    ///
+    /// - `false`（既定）: 選択に合わせて 1 件ずつスライドする（従来どおり）
+    /// - `true`: 候補を `windowSize` 件ずつの**ページ**に区切り、選択がページをまたいだときだけ
+    ///   ウィンドウが切り替わる（へちま / Obsidian プラグインと同じ。`candidatePageCount` /
+    ///   `candidatePageIndex` で「ページ数と現在地」の点列を出せる）
+    public var pagedCandidateWindow = false
+
+    /// 保持する変換候補の上限件数。`nil`（既定）は無制限。
+    ///
+    /// 変換候補は数百件になることがあり、ページ送りの点列（`candidatePageCount`）が
+    /// 数えられないほど増える。へちまは 50 件で打ち切っており（≤ 6 ページ = 常に点で出せる）、
+    /// 末尾の候補は実用上ほぼ選ばれない。
+    public var maxCandidateCount: Int?
+
+    private func cappedCandidates(_ all: [Candidate]) -> [Candidate] {
+        guard let limit = maxCandidateCount, all.count > limit else { return all }
+        return Array(all.prefix(limit))
+    }
+
+    /// 候補のページ数（`windowSize` 件ごと。候補が空なら 0）。`pagedCandidateWindow` 用だが、
+    /// どちらのモードでも「選択位置を含む窓」の目安として読める。
+    public var candidatePageCount: Int {
+        (candidates.count + Self.windowSize - 1) / Self.windowSize
+    }
+
+    /// 選択中の候補が属するページ（0-based）
+    public var candidatePageIndex: Int {
+        selectedCandidateIndex / Self.windowSize
+    }
+
+    /// 現在表示中の候補ウィンドウ範囲（スライディングウィンドウ。`pagedCandidateWindow` 時は固定ページ）
     public private(set) var visibleCandidateRange: ClosedRange<Int> = 0...0
 
     /// 現在表示中の候補テキスト配列（ウィンドウ内のみ、UI 表示用）
@@ -691,14 +722,14 @@ public class InputManager {
         if forceSelecting || liveConversionEnabled {
             // forceSelecting / ライブ変換 ON: selecting に直接遷移
             previewText = nil
-            candidates = allCandidates
+            candidates = cappedCandidates(allCandidates)
             selectedCandidateIndex = 0
             resetVisibleRange()
             state = .selecting
         } else {
             // ライブ変換 OFF: previewing に遷移（第1候補のプレビューのみ）
             previewText = allCandidates.first?.text
-            candidates = allCandidates
+            candidates = cappedCandidates(allCandidates)
             selectedCandidateIndex = 0
             resetVisibleRange()
             state = .previewing
@@ -1079,7 +1110,7 @@ public class InputManager {
             }
             if let first = allCandidates.first {
                 previewText = first.text
-                candidates = allCandidates
+                candidates = cappedCandidates(allCandidates)
                 selectedCandidateIndex = 0
                 resetVisibleRange()
                 state = .previewing
@@ -1136,6 +1167,12 @@ public class InputManager {
     /// 選択位置に合わせてウィンドウをスライドする
     private func updateVisibleRange() {
         guard !candidates.isEmpty else { return }
+        if pagedCandidateWindow {
+            let lower = candidatePageIndex * Self.windowSize
+            let upper = min(lower + Self.windowSize - 1, candidates.count - 1)
+            visibleCandidateRange = lower...upper
+            return
+        }
         let current = clampedVisibleRange
         if selectedCandidateIndex < current.lowerBound {
             // 上にはみ出た → 選択位置をウィンドウの先頭に

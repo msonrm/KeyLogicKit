@@ -35,6 +35,10 @@ public struct CandidatePopup: View {
     var font: Font
     /// フォントサイズ（動的幅計算用）
     var fontSize: CGFloat
+    /// 候補のページ数。2 以上のとき下に点列でページ位置を出す（1 以下は出さない）
+    var pageCount: Int
+    /// 現在のページ（0-based）
+    var pageIndex: Int
 
     /// カーソル矩形（配置のアンカー）
     private let anchor: CGRect?
@@ -52,6 +56,8 @@ public struct CandidatePopup: View {
         selectedIndex: Int,
         font: Font = .system(size: 15),
         fontSize: CGFloat = 15,
+        pageCount: Int = 1,
+        pageIndex: Int = 0,
         anchor: CGRect? = nil,
         bounds: CGSize? = nil
     ) {
@@ -62,6 +68,8 @@ public struct CandidatePopup: View {
         self.selectedIndex = selectedIndex
         self.font = font
         self.fontSize = fontSize
+        self.pageCount = pageCount
+        self.pageIndex = pageIndex
         self.anchor = anchor
         self.bounds = bounds
     }
@@ -148,6 +156,11 @@ public struct CandidatePopup: View {
                 let isSelected = !isAdditionalCandidateSelected && index == selectedIndex
                 candidateRow(index: index, text: candidate, isSelected: isSelected)
             }
+
+            // ページ位置の点列。1 ページに収まるなら出さない（情報ゼロなので）
+            if pageCount > 1 {
+                pageIndicator
+            }
         }
         .padding(.vertical, 2)
         .background(Color(.systemBackground))
@@ -161,6 +174,33 @@ public struct CandidatePopup: View {
     }
 
     // MARK: - Private
+
+    /// ページ位置の点列。点が多すぎて数えられない（8 ページ超）ときは `n/N` の数字に倒す。
+    /// （へちまの `pageDots` と同じ語彙）
+    @ViewBuilder
+    private var pageIndicator: some View {
+        Group {
+            if pageCount > 8 {
+                Text("\(pageIndex + 1)/\(pageCount)")
+                    .font(.system(.caption2, design: .monospaced))
+                    .foregroundStyle(.secondary)
+            } else {
+                HStack(spacing: 5) {
+                    ForEach(0..<pageCount, id: \.self) { i in
+                        Circle()
+                            .fill(i == pageIndex ? Color.secondary : Color.clear)
+                            .overlay(Circle().strokeBorder(Color.secondary, lineWidth: 1))
+                            .frame(width: 6, height: 6)
+                            .opacity(i == pageIndex ? 1 : 0.55)
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, minHeight: 14)
+        .padding(.top, 2)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("候補ページ \(pageIndex + 1) / \(pageCount)")
+    }
 
     @ViewBuilder
     private func candidateRow(index: Int, text: String, isSelected: Bool) -> some View {
