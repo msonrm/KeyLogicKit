@@ -407,8 +407,19 @@ public struct IMETextViewRepresentable: UIViewRepresentable {
                 // UIKit → Binding → updateUIView のフィードバック: スキップ
             } else {
                 coordinator.isProgrammaticChange = true
+                let oldLength = uiView.textStorage.length
                 uiView.text = text
                 coordinator.isProgrammaticChange = false
+                // ★テキストが**縮んだ**ときは、消えた末尾の字の領域を明示的に再描画させる。
+                //   全文代入だと TextKit 1 の dirty rect が新しい内容ぶんしか立たず、
+                //   消した字の下端が画面に残り、別の再描画まで消えない症状があった
+                //   （GIME: 確定 → BS で最後の 1 文字の下がわずかに消え、あとで全部消える。
+                //   実機 iPad・フォント 42pt）。
+                if (text as NSString).length < oldLength {
+                    uiView.layoutManager.ensureLayout(for: uiView.textContainer)
+                    for subview in uiView.subviews { subview.setNeedsDisplay() }
+                    uiView.setNeedsDisplay()
+                }
                 // uiView.text 代入でカーソルが末尾にリセットされるため、
                 // appliedCursorLocation を無効化して必ず再適用させる
                 coordinator.appliedCursorLocation = -1
