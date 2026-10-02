@@ -1,8 +1,5 @@
 {
   "keymap": "azik",
-  "skip": [
-    "kide"
-  ],
   "layout": "us",
   "description": "AZIK US: ローマ字ベース + 拡張マッピング + suffixRules / kide は keymap v1 のままで統合名を解決できないため skip（TODO.md の kide 移行で外す）",
   "cases": [
@@ -47,7 +44,10 @@
       ],
       "expect": {
         "text": "きん"
-      }
+      },
+      "skip": [
+        "kide"
+      ]
     },
     {
       "name": "sokuon_beats_suffix_kka",
@@ -76,7 +76,10 @@
       ],
       "expect": {
         "text": "ん"
-      }
+      },
+      "skip": [
+        "kide"
+      ]
     },
     {
       "name": "semicolon_sokuon",

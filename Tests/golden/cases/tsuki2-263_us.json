@@ -1,8 +1,5 @@
 {
   "keymap": "tsuki2-263",
-  "skip": [
-    "kide"
-  ],
   "layout": "us",
   "description": "月配列 2-263 US: 単打 + 前置シフト（d/k） / kide は keymap v1 のままで統合名を解決できないため skip（TODO.md の kide 移行で外す）",
   "cases": [
@@ -15,7 +12,10 @@
       ],
       "expect": {
         "text": "そ"
-      }
+      },
+      "skip": [
+        "kide"
+      ]
     },
     {
       "name": "sequence_kono",

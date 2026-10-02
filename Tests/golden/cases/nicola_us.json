@@ -1,8 +1,5 @@
 {
   "keymap": "nicola",
-  "skip": [
-    "kide"
-  ],
   "layout": "us",
   "description": "NICOLA US: 単打 + 親指シフト同時打鍵（space=左親指、rightAlt=右親指） / kide は keymap v1 のままで統合名を解決できないため skip（TODO.md の kide 移行で外す）",
   "cases": [
@@ -106,7 +103,10 @@
       "expect": {
         "confirmed": "か",
         "composing": ""
-      }
+      },
+      "skip": [
+        "kide"
+      ]
     },
     {
       "name": "rolling_stagger_two_letters",
@@ -260,7 +260,8 @@
       "name": "mode_switch_confirms_composing",
       "description": "composing 中の切替は確定してから切替: か を打鍵中に Ctrl+Space → か 確定 + 英字 x",
       "skip": [
-        "swift"
+        "swift",
+        "kide"
       ],
       "steps": [
         {

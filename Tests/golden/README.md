@@ -107,18 +107,14 @@ kide は IME を持たないキーボード変換器（HID stroke 出力）の�
 
 ### 実装差メモ（kide）
 
-- kide は IME を持たず、Router の出力は**かな文字列ではなく JIS かな HID stroke 列**。
-  ランナーは期待かなを `KanaToJisKeyTable.toStrokes()` で順方向に stroke 化して突き合わせる
-  （濁点の 2 stroke 分解も同じ経路なので一致する）。
-- ランナーは受信側のかな入力を模し、濁点・半濁点 stroke を直前の文字に合成、BS で 1 文字消す
-  （3 キー chord の差し替えや deleteBack を最終テキストで検証するため）。
-- fixture の keymap 名に対応する assets が無いときは `<name>_us.json` を読む（kide は JIS/US を
-  別 JSON で持ち、fixture のキー名は US 配列）。
-- AZIK 系キーマップは `AzikRouter`（ASCII ローマ字出力）ではなく
-  `SequentialKanaRouter`（かな出力）側を検証対象にする。
-- `ChordKanaRouter.fromKeymap` は実機 BT ジッター対策で宣言 window を増幅するため、
-  ランナーは JSON 宣言値に戻して実行する。時間は実時間（`System.currentTimeMillis`）なので
-  `wait` は実スリープ。
+- **kide の配列エンジンは web の keymap-engine そのもの**（2026-09-26〜。QuickJS で動かす）。
+  ランナーは `web/public/keymaps/<name>.json` と `web/public/engine/keymap-engine.min.js` を読み、
+  KiDE の実パイプライン（EngineRouter + HidOutputMirror = 差分を BS + かなの HID stroke にする）に通す。
+  `builtin:romaji_*` は `romaji.json`
+- 出力は**かな文字列ではなく JIS かな HID stroke 列**。ランナーは受信側のかな入力を模し、
+  濁点・半濁点 stroke を直前の文字に合成、BS で 1 文字消し、Enter・矢印・かな/英数は文字として数えない。
+  期待かなは `HidOutputMirror.strokesForText()` で stroke 化して突き合わせる
+- 時間は実時間。`wait` は実スリープ、時間窓の配列はケースの最後にタイマーの満了を待つ
 
 ### 実装差メモ（web ⇔ Swift）
 
